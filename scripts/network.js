@@ -66,6 +66,7 @@ if (networkEnabled) {
       if (cVout.scriptPubKey.type === 'pubkeyhash') {
         // P2PKH type (Pay-To-Pub-Key-Hash)
         cachedUTXOs.push(cUTXO);
+        mempool.addUTXO(cUTXO.id,path,cUTXO.sats,cUTXO.script,cUTXO.vout)
       } else
       if (cVout.scriptPubKey.type === 'coldstake') {
         // Cold Stake type
@@ -101,7 +102,6 @@ if (networkEnabled) {
     } else {
       publicKey = await masterKey.getAddress();
     }
-
     request.open('GET', cExplorer.url + "/api/v2/utxo/" + publicKey, true);
     request.onerror = networkError;
     request.onload = function() {
@@ -272,6 +272,8 @@ var getUTXOsHeavy = async function() {
               'script': cOut.hex,
               'path': path.join("/"),
             });
+            //console.log(cTx,cOut) TODO ADD BLOCKHEIGHT IN OTHER CASE
+            mempool.addUTXO(cTx.txid,path.join("/"),parseInt(cOut.value),cOut.hex,cOut.n,cTx.blockHeight)
           }
         }
       }

@@ -879,9 +879,10 @@
   <script type="text/javascript" src="scripts/misc.js"></script>
   <script type="text/javascript" src="scripts/wallet.js"></script>
   <script type="text/javascript" src="scripts/network.js"></script>
-
+  <script type="text/javascript" src="scripts/mempool.js"></script>
   <script>
     // WALLET STATE DATA
+    let mempool = new Mempool();
     let cachedUTXOs = [];
     let arrDelegatedUTXOs = [];
     let arrRewards = [];
@@ -990,8 +991,8 @@
     const domAlertPos = document.getElementsByClassName("alertPositioning")[0];
 
     function getBalance(updateGUI = false) {
-      const nBalance = cachedUTXOs.filter(a => !isMasternodeUTXO(a)).reduce((a, b) => a + b.sats, 0);
-
+      const nBalance = mempool.getBalance();
+      
       // Update the GUI too, if chosen
       if (updateGUI) {
         // Set the balance, and adjust font-size for large balance strings
@@ -1750,14 +1751,19 @@
       console.log("Constructing TX of value: " + (nTotalSatsRequired / COIN) + " " + cChainParams.current.TICKER);
 
       // Select the UTXO type bucket
-      const arrUTXOs = fColdOnly ? arrDelegatedUTXOs : cachedUTXOs;
+
+      //const arrUTXOs = fColdOnly ? arrDelegatedUTXOs : cachedUTXOs;
+      const arrUTXOs = fColdOnly ? arrDelegatedUTXOs : mempool.UTXOs;
 
       // Select and return UTXO pointers (filters applied)
       const cCoinControl = { nValue: 0, nChange: 0, arrSelectedUTXOs: [] }
-      for (const cUTXO of arrUTXOs) {
-
+      
+      let spent=[]
+      for(let i=0; i< arrUTXOs.length;i++){
+        const cUTXO= arrUTXOs[i]
+        if(cUTXO.status!=Mempool.OK) continue;
         // Don't spend locked Masternode collaterals
-        if (isMasternodeUTXO(cUTXO)) continue;
+        if (isMasternodeUTXO(cUTXO)) continue; //CHANGE THIS
 
         // Have we met the required sats threshold?
         if (cCoinControl.nValue >= nTotalSatsRequired + getFee(cTx.serialize().length)) {
@@ -1765,6 +1771,8 @@
           console.log("Coin Control: TX Constructed! Selected " + cCoinControl.arrSelectedUTXOs.length + " input(s) (" + (cCoinControl.nValue / COIN) + " " + cChainParams.current.TICKER + ")");
           break;
         }
+        console.log("madonna troia")
+        console.log(cUTXO)
 
         // Does the UTXO meet size requirements?
         if (cUTXO.sats < nMinInputSize) continue;
@@ -1781,6 +1789,7 @@
           script: cUTXO.script,
           path: cUTXO.path
         });
+        spent.push(cUTXO);
       }
 
       // if we don't have enough value: return false
@@ -1788,6 +1797,7 @@
 
       // Reaching here: we have sufficient UTXOs, calc final misc data and return!
       cCoinControl.nChange = nTotalSatsRequired - cCoinControl.nValue;
+      mempool.autoRemoveUTXOs(spent);
       return ccSuccess(cCoinControl);
     }
 
@@ -1846,6 +1856,7 @@
       const outputs = [];
       if (nChange > 0) {
         // Change output
+        //SHOULD WE ADD THE CHANGE AS INCOMING UTXO???
         outputs.push([changeAddress, nChange / COIN]);
       } else {
         // We're sending alot! So we deduct the fee from the send amount. There's not enough change to pay it with!
@@ -1866,6 +1877,7 @@
       // Sign and broadcast!
       if (!masterKey.isHardwareWallet) {
         const sign = await cTx.sign(masterKey, 1);
+        console.log(sign);
         sendTransaction(sign);
       } else {
         // Format the inputs how the Ledger SDK prefers
