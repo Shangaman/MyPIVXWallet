@@ -1205,6 +1205,10 @@
       // Sign and broadcast!
       if (!masterKey.isHardwareWallet) {
         const sign = await cTx.sign(masterKey, 1);
+        const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+  
+        mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
+        mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.T_PENDING)
         sendTransaction(sign);
       } else {
         // Format the inputs how the Ledger SDK prefers
@@ -1267,7 +1271,7 @@
       
       if (!masterKey.isHD) {
         // Find the first UTXO matching the expected collateral size
-	const cCollaUTXO = cachedUTXOs.find(cUTXO => cUTXO.sats === cChainParams.current.collateralInSats);
+	const cCollaUTXO = mempool.getUTXOsByState(Mempool.OK).find(cUTXO => cUTXO.sats === cChainParams.current.collateralInSats);
 
         // If there's no valid UTXO, exit with a contextual message
         if (!cCollaUTXO) {
@@ -1287,7 +1291,7 @@
         collateralPrivKeyPath = "legacy";
       } else {
         const path = domMnTxId.value;
-        const masterUtxo = cachedUTXOs.findLast(u=>u.path === path); // first UTXO for each address in HD
+        const masterUtxo = mempool.getUTXOsByState(Mempool.OK).findLast(u=>u.path === path); // first UTXO for each address in HD
         // sanity check:
         if (masterUtxo.sats !== cChainParams.current.collateralInSats) {
           return createAlert("warning", "This is not a suitable UTXO for a Masternode", 10000);
@@ -1591,7 +1595,8 @@
         }
 
         // The re-delegated change output
-        cTx.addcoldstakingoutput(await getNewAddress(), cachedColdStakeAddr, nChange / COIN);
+        //cTx.addcoldstakingoutput(await getNewAddress(), cachedColdStakeAddr, nChange / COIN);
+        cTx.addcoldstakingoutput(await masterKey.getAddress(getDerivationPath(masterKey.isHardwareWallet)), cachedColdStakeAddr, nChange / COIN);
         console.log('Re-delegated delegation spend change!');
       } else {
         // Not enough change to cold stake, so we'll just unstake everything (and deduct the fee from the value)
@@ -1644,8 +1649,8 @@
       } else {
          let sign= await cTx.sign(masterKey, 1, 'coldstake');
          //ADD THE PENDING CHANGE
-         if(fReDelegateChange){
-          const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+         const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+        if(fReDelegateChange){
           mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.D_PENDING)
           mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.T_PENDING)
         }else{
@@ -1747,8 +1752,9 @@
         
         const sign= await cTx.sign(masterKey, 1);
         //ADD THE PENDING CHANGE
+        const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+          
         if(nChange>0){
-          const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
           mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.D_PENDING)
         }else{
@@ -1779,8 +1785,15 @@
       let spent=[]
       for(let i=0; i< arrUTXOs.length;i++){
         const cUTXO= arrUTXOs[i]
-        if(!fColdOnly && cUTXO.status!=Mempool.OK) continue;
-        if(fColdOnly && cUTXO.status!=Mempool.DELEGATE) continue;
+        if(!fColdOnly){
+          if(cUTXO.status!==Mempool.OK && cUTXO.status!==Mempool.REWARD){
+            continue;
+          }
+          if(cUTXO.status===Mempool.REWARD && !Mempool.isValidReward(cUTXO)){
+            continue
+          }
+        }
+        if(fColdOnly && cUTXO.status!==Mempool.DELEGATE) continue;
         // Don't spend locked Masternode collaterals
         if (isMasternodeUTXO(cUTXO)) continue; //CHANGE THIS
 
@@ -2113,7 +2126,7 @@
       return;
     }
 
-    if(!cachedUTXOs.length) {
+    if(!mempool.getUTXOsByState(Mempool.OK).length) {
       domMnTextErrors.innerHTML = "Your wallet is empty or still loading, re-open the tab in a few seconds!";
       return;
     }
@@ -2122,7 +2135,7 @@
     // If the collateral is missing (spent, or switched wallet) then remove the current MN
     if (strMasternodeJSON) {
       const cMasternode = JSON.parse(strMasternodeJSON);
-      if (!cachedUTXOs.find(utxo => isMasternodeUTXO(utxo, cMasternode))) {
+      if (!mempool.getUTXOsByState(Mempool.OK).find(utxo => isMasternodeUTXO(utxo, cMasternode))) {
         localStorage.removeItem("masternode");
 	strMasternodeJSON = null;
       }
@@ -2135,7 +2148,7 @@
       domMnAccessMasternodeText.innerHTML = masternodeLegacyAccessText;
       domMnTxId.style.display = "none";
       // Find the first UTXO matching the expected collateral size
-      const cCollaUTXO = cachedUTXOs.find(cUTXO => cUTXO.sats === cChainParams.current.collateralInSats);
+      const cCollaUTXO = mempool.getUTXOsByState(Mempool.OK).find(cUTXO => cUTXO.sats === cChainParams.current.collateralInSats);
       const balance = getBalance(false);
       if (cCollaUTXO) {
 	if (strMasternodeJSON) {
@@ -2164,7 +2177,7 @@
       const mapCollateralAddresses = new Map();
       
       // Aggregate all valid Masternode collaterals into a map of Address <--> Collateral
-      for (const cUTXO of cachedUTXOs) {
+      for (const cUTXO of mempool.getUTXOsByState(Mempool.OK)) {
         if (cUTXO.sats !== cChainParams.current.collateralInSats) continue;
         mapCollateralAddresses.set(cUTXO.path, cUTXO);
       }

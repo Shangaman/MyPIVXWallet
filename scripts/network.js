@@ -24,6 +24,7 @@ if (networkEnabled) {
         getStakingRewards();
       }
       cachedBlockCount = data.backend.blocks;
+      Mempool.blockCount=data.backend.blocks;
     }
     request.send();
   }
@@ -102,6 +103,7 @@ if (networkEnabled) {
     } else {
       publicKey = await masterKey.getAddress();
     }
+    console.log(cExplorer.url + "/api/v2/utxo/" + publicKey)
     request.open('GET', cExplorer.url + "/api/v2/utxo/" + publicKey, true);
     request.onerror = networkError;
     request.onload = function() {
@@ -230,6 +232,7 @@ var getUTXOsHeavy = async function() {
       const xpub = await masterKey.getxpub(derivationPath);
 
       // Run an xpub balance synchronisation
+      
       cData = await (await fetch(`${cExplorer.url}/api/v2/xpub/${xpub}?details=txs&pageSize=1000`)).json();
 
       // Map all address <--> derivation paths
@@ -246,6 +249,7 @@ var getUTXOsHeavy = async function() {
     if (cData && cData.transactions) {
       cachedUTXOs = []; arrDelegatedUTXOs = [];
       for (const cTx of cData.transactions) {
+        const isCoinstake = cTx.vout[0].addresses[0] === "CoinStake TX"
         for (const cOut of cTx.vout) {
           if (cOut.spent) continue; // We don't care about spent outputs
           const paths = cOut.addresses.map(strAddr => mapPaths.get(strAddr)).filter(v => v);
@@ -264,6 +268,7 @@ var getUTXOsHeavy = async function() {
           }
           // Otherwise, an address matches one of ours
           else if (paths.length > 0) {
+          
 	    // Blockbook still returns 119' as the coinType, even in testnet
 	    let path = paths[0].split("/");
 	    path[2] = (masterKey.isHardwareWallet ? cChainParams.current.BIP44_TYPE_LEDGER : cChainParams.current.BIP44_TYPE) + "'";
@@ -275,7 +280,11 @@ var getUTXOsHeavy = async function() {
               'path': path.join("/"),
             });
             //console.log(cTx,cOut) TODO ADD BLOCKHEIGHT IN OTHER CASE
-            mempool.addUTXO(cTx.txid,path.join("/"),parseInt(cOut.value),cOut.hex,cOut.n,cTx.blockHeight,Mempool.OK)
+            if(!isCoinstake){
+              mempool.addUTXO(cTx.txid,path.join("/"),parseInt(cOut.value),cOut.hex,cOut.n,cTx.blockHeight,Mempool.OK)
+            }else{
+              mempool.addUTXO(cTx.txid,path.join("/"),parseInt(cOut.value),cOut.hex,cOut.n,cTx.blockHeight,Mempool.REWARD);
+            }
           }
         }
       }

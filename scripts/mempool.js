@@ -49,6 +49,10 @@ class Mempool {
     /** The CONFIRMED DELEGATED state (UTXO is in mempool, pending confirmation) */
     static DELEGATE = 4;
 
+    /** The REWARD state (UTXO is a reward either cold stake or masternode) */
+    static REWARD=5;
+
+    static blockCount;
     /**
      * Remove a UTXO after a set amount of time
      * @param {Number} nBlocks - Estimated blocks to wait
@@ -161,8 +165,15 @@ class Mempool {
         console.log("mempool error: UTXO NOT FOUND");
     }
     getBalance(){
-        return this.UTXOs.filter(utxo => (utxo.status===Mempool.OK ||utxo.status===Mempool.T_PENDING)).reduce((a,b)=> a+b.sats,0)
+        const firstAddend=this.UTXOs.filter(utxo => (utxo.status===Mempool.OK ||utxo.status===Mempool.T_PENDING)).reduce((a,b)=> a+b.sats,0);
+        const secondAddend=this.UTXOs.filter(utxo => utxo.status===Mempool.REWARD).filter(utxo => Mempool.blockCount-utxo.height>100).reduce((a,b)=> a+b.sats,0);
+        return firstAddend+secondAddend;
     }
+
+    static isValidReward(utxo){
+        return(Mempool.blockCount-utxo.height>100);
+    }
+    
     getDelegatedBalance(){
         return this.UTXOs.filter(utxo => (utxo.status===Mempool.DELEGATE ||utxo.status===Mempool.D_PENDING)).reduce((a,b)=> a+b.sats,0);
     }
