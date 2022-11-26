@@ -259,6 +259,7 @@ var getUTXOsHeavy = async function() {
 	      // We will only use the first key
 	      'path': getDerivationPath(masterKey.isHardwareWallet),
             });
+
           }
           // Otherwise, an address matches one of ours
           else if (paths.length > 0) {
@@ -273,7 +274,7 @@ var getUTXOsHeavy = async function() {
               'path': path.join("/"),
             });
             //console.log(cTx,cOut) TODO ADD BLOCKHEIGHT IN OTHER CASE
-            mempool.addUTXO(cTx.txid,path.join("/"),parseInt(cOut.value),cOut.hex,cOut.n,cTx.blockHeight)
+            mempool.addUTXO(cTx.txid,path.join("/"),parseInt(cOut.value),cOut.hex,cOut.n,cTx.blockHeight,Mempool.OK)
           }
         }
       }

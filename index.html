@@ -1877,7 +1877,11 @@
       // Sign and broadcast!
       if (!masterKey.isHardwareWallet) {
         const sign = await cTx.sign(masterKey, 1);
-        console.log(sign);
+        //ADD THE CHANGE AS A PENDING UTXO
+        if(nChange>0){
+          const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
+        }
         sendTransaction(sign);
       } else {
         // Format the inputs how the Ledger SDK prefers
