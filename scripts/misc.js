@@ -223,3 +223,16 @@ function sanitizeHTML(text) {
   element.innerText = text;
   return element.innerHTML;
 }
+
+/** 
+ * An artificial sleep function to pause code execution
+ * 
+ * @param {Number} ms - The milliseconds to sleep
+ * 
+ * @example
+ * // Pause an asynchronous script for 1 second
+ * await sleep(1000);
+ */
+function sleep(ms) {
+    return new Promise((res, _) => setTimeout(res, ms));
+}

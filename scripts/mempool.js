@@ -1,88 +1,135 @@
 "use strict";
 //STATUS: OK, REMOVED, REWARD, INCOMING, LOCKED
 
-class UTXO{
-    constructor({id, path, sats, script, vout,height,status} = {}) {
-            this.id=id;
-            this.path=path;
-            this.sats=sats;
-            this.script=script;
-            this.vout=vout;
-            this.status=status;
-            this.height=height;
-        }
+/** An Unspent Transaction Output, used as Inputs of future transactions */
+class UTXO {
+    /**
+     * @param {string} id - Transaction ID
+     * @param {string} path - If applicable, the HD Path of the owning address
+     * @param {number} sats - The satoshi value in this UTXO
+     * @param {string} script - The HEX encoded spending script
+     * @param {number} vout - The output position of this transaction
+     * @param {number} height - The block height of the UTXO
+     * @param {number} status - The UTXO status enum state
+     */
+    constructor({id, path, sats, script, vout, height, status} = {}) {
+        this.id = id;
+        this.path = path;
+        this.sats = sats;
+        this.script = script;
+        this.vout = vout;
+        this.height = height;
+        this.status = status;
+    }
 };
 
-class Mempool{
-
-    constructor(){
-        this.UTXOs=[]
-    }
-    static OK="OK";
-    static REMOVED="REMOVED";
-    static T_PENDING="T_PENDING";
-    static D_PENDING="D_PENDING";
-    static DELEGATE="DELEGATE";
-
-    async autoRemove(nBlocks,utxo){
-        const delay = ms => new Promise(res => setTimeout(res, ms));
-        await delay(nBlocks*60*1000);
-        this.removeUTXO(utxo);
-        console.log("awaited", nBlocks*60);
+/** A Mempool instance, stores and handles UTXO data for the wallet */
+class Mempool {
+    constructor() {
+        /** 
+         * An array of all known UTXOs
+         * @type {Array<UTXO>}
+         */
+        this.UTXOs = [];
     }
 
-    isAlreadyStored(newUtxo){
-        for(let utxo of this.UTXOs){
-            if(JSON.stringify(utxo)===JSON.stringify(newUtxo)){
+    /** The OK state (UTXO is spendable) */
+    static OK = 0;
+
+    /** The REMOVED state (UTXO was spent and will be removed soon) */
+    static REMOVED = 1;
+
+    /** The PENDING state (UTXO is in mempool, pending confirmation) */
+    static T_PENDING = 2;
+
+    static D_PENDING = 3;
+
+    static DELEGATE = 4;
+
+    /**
+     * Remove a UTXO after a set amount of time
+     * @param {Number} nBlocks - Estimated blocks to wait
+     * @param {UTXO} cUTXO - UTXO to remove
+     */
+     async autoRemove(nBlocks, cUTXO) {
+        await sleep(nBlocks * 60 * 1000);
+        this.removeUTXO(cUTXO);
+    }
+
+    /**
+     * Check if an exact UTXO match can be found in our wallet
+     * @param {UTXO} cNewUTXO 
+     * @returns {Boolean} `true` or `false`
+     */
+    isAlreadyStored(cNewUTXO) {
+        for (const cUTXO of this.UTXOs) {
+            if (JSON.stringify(cUTXO) === JSON.stringify(cNewUTXO)) {
                 return true;
             }
         }
         return false;
     }
 
-    isBeingRemoved(newUtxo){
-        return this.isAlreadyStored(newUtxo);
+    /**
+     * Fetches an array of UTXOs filtered by their state
+     * @param {number} nState - The UTXO state
+     * @returns {Array<UTXO>} `array` - An array of UTXOs
+     */
+    getUTXOsByState(nState) {
+        return this.UTXOs.filter(cUTXO => cUTXO.status === nState);
     }
 
-    getSubsetUTXOs(kind){
-        return this.UTXOs.filter(utxo => utxo.status===kind)
-    }
-    resolvesTPending(newUtxo){
-        let pendingUTXOs=this.getSubsetUTXOs(Mempool.T_PENDING);
-        for(let utxo of pendingUTXOs){
-            if(utxo.id===newUtxo.id && utxo.vout===newUtxo.vout){
-                this.removeUTXO(utxo);
+    /**
+     * Removes a pending UTXO
+     * @param {UTXO} cNewUTXO - The pending UTXO to remove
+     */
+    resolvesPending(cNewUTXO, nType) {
+        const arrPendingUTXOs = this.getUTXOsByState(nType);
+        // Loop each pending UTXO
+        for (const cUTXO of arrPendingUTXOs) {
+            // Search for matching ID + output number
+            if (cUTXO.id === cNewUTXO.id && cUTXO.vout === cNewUTXO.vout) {
+                // Nuke it from orbit
+                this.removeUTXO(cUTXO);
                 break;
             }
         }
     }
 
-    resolvesDPending(newUtxo){
-        let pendingUTXOs=this.getSubsetUTXOs(Mempool.D_PENDING);
-        for(let utxo of pendingUTXOs){
-            if(utxo.id===newUtxo.id && utxo.vout===newUtxo.vout){
-                this.removeUTXO(utxo);
-                break;
-            }
-        }
-    }
+    /**
+     * Add a new UTXO to the wallet
+     * @param {string} id - Transaction ID
+     * @param {string} path - If applicable, the HD Path of the owning address
+     * @param {number} sats - The satoshi value in this UTXO
+     * @param {string} script - The HEX encoded spending script
+     * @param {number} vout - The output position of this transaction
+     * @param {number} height - The block height of the UTXO
+     * @param {number} status - The UTXO status enum state
+     */
+    addUTXO(id, path, sats, script, vout, height, status) {
+        const newUTXO = new UTXO({id, path, sats, script, vout, height, status});
+        // Ensure the new UTXO doesn't have the same status
+        if (this.isAlreadyStored(newUTXO)) return;
 
-    addUTXO(id,path,sats,script,vout,blockHeight,status){
-        const newUtxo = new UTXO({id:id,path:path,sats:sats,script:script,vout:vout,height:blockHeight,status:status});
-        if(this.isAlreadyStored(newUtxo)) return;
-        if(this.isBeingRemoved(new UTXO({id:id,path:path,sats:sats,script:script,vout:vout,height:blockHeight,status:Mempool.REMOVED}))) return;
-        this.resolvesTPending(newUtxo);
-        if(status===Mempool.DELEGATE) this.resolvesDPending(newUtxo);
+        // Ensure the new UTXO doesn't have a REMOVED status
+        if (this.isAlreadyStored(new UTXO({id, path, sats, script, vout, height, status: Mempool.REMOVED}))) return;
         
-        this.UTXOs.push(newUtxo);
+        // Remove any pending versions of this UTXO
+        this.resolvesPending(newUTXO, Mempool.T_PENDING);
+
+        // If delegated, remove pending versions of that too
+        if (status === Mempool.DELEGATE) this.this.resolvesPending(newUTXO, D_PENDING);
+
+        // Add to list
+        this.UTXOs.push(newUTXO);
     }
 
-    removeUTXO(id,path,sats,script,vout,blockHeight){
-        const newUtxo = new UTXO({id:id,path:path,sats:sats,script:script,vout:vout,height:blockHeight,status:Mempool.OK});
-        this.UTXOs=this.UTXOs.filter(utxo => JSON.stringify(utxo)!== JSON.stringify(newUtxo));
-    }
-    removeUTXO(utxoToRemove){
-        this.UTXOs=this.UTXOs.filter(utxo => JSON.stringify(utxo)!== JSON.stringify(utxoToRemove));
+    /**
+     * Remove a UTXO completely from our wallet
+     * @param {UTXO} cUTXO
+     */
+    removeUTXO(cUTXO) {
+        this.UTXOs = this.UTXOs.filter(utxo => JSON.stringify(utxo) !== JSON.stringify(cUTXO));
     }
 
     autoRemoveUTXOs(utxos){
