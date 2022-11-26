@@ -1582,7 +1582,7 @@
       if (fReDelegateChange) {
         // Enough change to resume cold staking, so we'll re-delegate change to the cold staking address
         // Ensure the user has an address set - if not, request one!
-        if (!askForCSAddr()) return;
+        if (!askForCSAddr()) return; // BAD EXIT
 
         // Sanity
         if (cachedColdStakeAddr.length !== 34 || !cachedColdStakeAddr.startsWith(cChainParams.current.STAKING_PREFIX)) {
@@ -1642,8 +1642,19 @@
         // Broadcast the Hardware (Ledger) TX
         sendTransaction(strSerialisedTx, "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
       } else {
+         let sign= await cTx.sign(masterKey, 1, 'coldstake');
+         //ADD THE PENDING CHANGE
+         if(fReDelegateChange){
+          const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.D_PENDING)
+          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.T_PENDING)
+        }else{
+          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.T_PENDING)
+        }
+
         // Broadcast the software TX
-        sendTransaction(await cTx.sign(masterKey, 1, 'coldstake'), "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
+       
+        sendTransaction(sign, "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
       }
 
       domGenIt.innerHTML = "Continue";
@@ -1759,8 +1770,8 @@
 
       // Select the UTXO type bucket
 
-      //const arrUTXOs = fColdOnly ? arrDelegatedUTXOs : cachedUTXOs;
-      const arrUTXOs = fColdOnly ? arrDelegatedUTXOs : mempool.UTXOs;
+      //const arrUTXOs
+      const arrUTXOs = mempool.UTXOs;
 
       // Select and return UTXO pointers (filters applied)
       const cCoinControl = { nValue: 0, nChange: 0, arrSelectedUTXOs: [] }
@@ -1768,7 +1779,8 @@
       let spent=[]
       for(let i=0; i< arrUTXOs.length;i++){
         const cUTXO= arrUTXOs[i]
-        if(cUTXO.status!=Mempool.OK) continue;
+        if(!fColdOnly && cUTXO.status!=Mempool.OK) continue;
+        if(fColdOnly && cUTXO.status!=Mempool.DELEGATE) continue;
         // Don't spend locked Masternode collaterals
         if (isMasternodeUTXO(cUTXO)) continue; //CHANGE THIS
 
