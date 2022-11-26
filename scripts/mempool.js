@@ -118,7 +118,7 @@ class Mempool {
         this.resolvesPending(newUTXO, Mempool.T_PENDING);
 
         // If delegated, remove pending versions of that too
-        if (status === Mempool.DELEGATE) this.this.resolvesPending(newUTXO, D_PENDING);
+        if (status === Mempool.DELEGATE) this.resolvesPending(newUTXO, Mempool.D_PENDING);
 
         // Add to list
         this.UTXOs.push(newUTXO);
