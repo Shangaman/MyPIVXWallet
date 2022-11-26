@@ -1237,6 +1237,10 @@
           }
         );
 
+        const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
+  
+        mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
+        mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.T_PENDING)
         // Broadcast the Hardware (Ledger) TX
         sendTransaction(strSerialisedTx);
         
@@ -1572,7 +1576,15 @@
 
     async function undelegate(nValue) {
       if (!hasWalletUnlocked(true)) return;
-	
+      // Ensure the user has an address set - if not, request one!
+      if (!askForCSAddr()) return; 
+
+      // Sanity
+      if (cachedColdStakeAddr.length !== 34 || !cachedColdStakeAddr.startsWith(cChainParams.current.STAKING_PREFIX)) {
+        askForCSAddr(true);
+        return createAlert('success', '<b>Staking Address set!</b><br>Now go ahead and unstake!');
+      }
+
       // Construct a TX and fetch Cold inputs
       const nBalance = getStakingBalance();
       const cTx = bitjs.transaction();
@@ -1585,15 +1597,7 @@
       const fReDelegateChange = nChange > 1.01 * COIN;
       if (fReDelegateChange) {
         // Enough change to resume cold staking, so we'll re-delegate change to the cold staking address
-        // Ensure the user has an address set - if not, request one!
-        if (!askForCSAddr()) return; // BAD EXIT
-
-        // Sanity
-        if (cachedColdStakeAddr.length !== 34 || !cachedColdStakeAddr.startsWith(cChainParams.current.STAKING_PREFIX)) {
-          askForCSAddr(true);
-          return createAlert('success', '<b>Staking Address set!</b><br>Now go ahead and unstake!');
-        }
-
+      
         // The re-delegated change output
         //cTx.addcoldstakingoutput(await getNewAddress(), cachedColdStakeAddr, nChange / COIN);
         cTx.addcoldstakingoutput(await masterKey.getAddress(getDerivationPath(masterKey.isHardwareWallet)), cachedColdStakeAddr, nChange / COIN);
@@ -1643,7 +1647,14 @@
         const arrPubkeyWithScript = addExtraBytes(arrPubkeyWithScriptLen, arrPubkey, nInputLen);
 
         const strSerialisedTx = Crypto.util.bytesToHex(arrPubkeyWithScript);
-
+         //ADD THE PENDING CHANGE
+        const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
+        if(fReDelegateChange){
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.D_PENDING)
+          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.T_PENDING)
+        }else{
+          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.T_PENDING)
+        }
         // Broadcast the Hardware (Ledger) TX
         sendTransaction(strSerialisedTx, "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
       } else {
@@ -1745,7 +1756,14 @@
           associatedKeysets: arrAssociatedKeysets,
           outputScriptHex: strOutputScriptHex,
         });
-
+        const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
+        
+        if(nChange>0){
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
+          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.D_PENDING)
+        }else{
+          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.D_PENDING)
+        }
         // Broadcast the Hardware (Ledger) tx
         sendTransaction(strSerialisedTx, "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
       } else {
@@ -1942,6 +1960,11 @@
           }
         );
 
+         //ADD THE CHANGE AS A PENDING UTXO
+         if(nChange>0){
+          const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
+        }
         // Broadcast the Hardware (Ledger) TX
         sendTransaction(strSerialisedTx);
       }

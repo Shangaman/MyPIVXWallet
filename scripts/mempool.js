@@ -165,7 +165,7 @@ class Mempool {
         console.log("mempool error: UTXO NOT FOUND");
     }
     getBalance(){
-        const firstAddend=this.UTXOs.filter(utxo => (utxo.status===Mempool.OK ||utxo.status===Mempool.T_PENDING)).reduce((a,b)=> a+b.sats,0);
+        const firstAddend=this.UTXOs.filter(utxo => (utxo.status===Mempool.OK ||utxo.status===Mempool.T_PENDING)).filter(utxo => !isMasternodeUTXO(utxo)).reduce((a,b)=> a+b.sats,0);
         const secondAddend=this.UTXOs.filter(utxo => utxo.status===Mempool.REWARD).filter(utxo => Mempool.blockCount-utxo.height>100).reduce((a,b)=> a+b.sats,0);
         return firstAddend+secondAddend;
     }
@@ -173,7 +173,7 @@ class Mempool {
     static isValidReward(utxo){
         return(Mempool.blockCount-utxo.height>100);
     }
-    
+
     getDelegatedBalance(){
         return this.UTXOs.filter(utxo => (utxo.status===Mempool.DELEGATE ||utxo.status===Mempool.D_PENDING)).reduce((a,b)=> a+b.sats,0);
     }
