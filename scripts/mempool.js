@@ -20,7 +20,9 @@ class Mempool{
     }
     static OK="OK";
     static REMOVED="REMOVED";
-    static PENDING="PENDING";
+    static T_PENDING="T_PENDING";
+    static D_PENDING="D_PENDING";
+    static DELEGATE="DELEGATE";
 
     async autoRemove(nBlocks,utxo){
         const delay = ms => new Promise(res => setTimeout(res, ms));
@@ -45,8 +47,8 @@ class Mempool{
     getSubsetUTXOs(kind){
         return this.UTXOs.filter(utxo => utxo.status===kind)
     }
-    resolvesPending(newUtxo){
-        let pendingUTXOs=this.getSubsetUTXOs(Mempool.PENDING);
+    resolvesTPending(newUtxo){
+        let pendingUTXOs=this.getSubsetUTXOs(Mempool.T_PENDING);
         for(let utxo of pendingUTXOs){
             if(utxo.id===newUtxo.id && utxo.vout===newUtxo.vout){
                 this.removeUTXO(utxo);
@@ -54,11 +56,24 @@ class Mempool{
             }
         }
     }
+
+    resolvesDPending(newUtxo){
+        let pendingUTXOs=this.getSubsetUTXOs(Mempool.D_PENDING);
+        for(let utxo of pendingUTXOs){
+            if(utxo.id===newUtxo.id && utxo.vout===newUtxo.vout){
+                this.removeUTXO(utxo);
+                break;
+            }
+        }
+    }
+
     addUTXO(id,path,sats,script,vout,blockHeight,status){
         const newUtxo = new UTXO({id:id,path:path,sats:sats,script:script,vout:vout,height:blockHeight,status:status});
         if(this.isAlreadyStored(newUtxo)) return;
         if(this.isBeingRemoved(new UTXO({id:id,path:path,sats:sats,script:script,vout:vout,height:blockHeight,status:Mempool.REMOVED}))) return;
-        this.resolvesPending(newUtxo);
+        this.resolvesTPending(newUtxo);
+        if(status===Mempool.DELEGATE) this.resolvesDPending(newUtxo);
+        
         this.UTXOs.push(newUtxo);
     }
 
@@ -95,6 +110,9 @@ class Mempool{
         console.log("mempool error: UTXO NOT FOUND");
     }
     getBalance(){
-        return this.UTXOs.filter(utxo => (utxo.status===Mempool.OK ||utxo.status===Mempool.PENDING)).reduce((a,b)=> a+b.sats,0)
+        return this.UTXOs.filter(utxo => (utxo.status===Mempool.OK ||utxo.status===Mempool.T_PENDING)).reduce((a,b)=> a+b.sats,0)
+    }
+    getDelegatedBalance(){
+        return this.UTXOs.filter(utxo => (utxo.status===Mempool.DELEGATE ||utxo.status===Mempool.D_PENDING)).reduce((a,b)=> a+b.sats,0);
     }
 };

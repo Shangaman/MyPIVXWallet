@@ -134,7 +134,8 @@ var sendTransaction = function(hex, msg = '') {
             domAddress1s.value = '';
             domValue1s.innerHTML = '';
             createAlert('success', msg || 'Transaction sent!', msg ? (1250 + (msg.length * 50)) : 1500);
-
+            getBalance(true);
+            getStakingBalance(true);
             // If allowed by settings: submit a simple 'tx' ping to Labs Analytics
             submitAnalytics('transaction');
         } else {
@@ -259,7 +260,7 @@ var getUTXOsHeavy = async function() {
 	      // We will only use the first key
 	      'path': getDerivationPath(masterKey.isHardwareWallet),
             });
-
+            mempool.addUTXO(cTx.txid,getDerivationPath(masterKey.isHardwareWallet),parseInt(cOut.value),cOut.hex,cOut.n,cTx.blockHeight,Mempool.DELEGATE);
           }
           // Otherwise, an address matches one of ours
           else if (paths.length > 0) {

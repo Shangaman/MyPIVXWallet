@@ -1012,8 +1012,8 @@
     }
 
     function getStakingBalance(updateGUI = false) {
-      const nBalance = arrDelegatedUTXOs.reduce((a, b) => a + b.sats, 0);
-
+      const nBalance = mempool.getDelegatedBalance();
+      
       if (updateGUI) {
         // Set the balance, and adjust font-size for large balance strings
         domGuiBalanceStaking.innerText = Math.floor(nBalance / COIN);
@@ -1737,8 +1737,19 @@
         // Broadcast the Hardware (Ledger) tx
         sendTransaction(strSerialisedTx, "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
       } else {
+        
+        const sign= await cTx.sign(masterKey, 1);
+        //ADD THE PENDING CHANGE
+        if(nChange>0){
+          const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
+          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.D_PENDING)
+        }else{
+          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.D_PENDING)
+        }
+    
         // Broadcast the software TX
-        sendTransaction(await cTx.sign(masterKey, 1), "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
+        sendTransaction(sign, "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
       }
       domGenIt.innerHTML = "Continue";
     }
@@ -1880,7 +1891,7 @@
         //ADD THE CHANGE AS A PENDING UTXO
         if(nChange>0){
           const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
         }
         sendTransaction(sign);
       } else {
