@@ -4,13 +4,14 @@
 /** An Unspent Transaction Output, used as Inputs of future transactions */
 class UTXO {
     /**
-     * @param {string} id - Transaction ID
-     * @param {string} path - If applicable, the HD Path of the owning address
-     * @param {number} sats - The satoshi value in this UTXO
-     * @param {string} script - The HEX encoded spending script
-     * @param {number} vout - The output position of this transaction
-     * @param {number} height - The block height of the UTXO
-     * @param {number} status - The UTXO status enum state
+     * @param {Object} UTXO
+     * @param {String} UTXO.id - Transaction ID
+     * @param {String} UTXO.path - If applicable, the HD Path of the owning address
+     * @param {Number} UTXO.sats - The satoshi value in this UTXO
+     * @param {String} UTXO.script - The HEX encoded spending script
+     * @param {Number} UTXO.vout - The output position of this transaction
+     * @param {Number} UTXO.height - The block height of the UTXO
+     * @param {Number} UTXO.status - The UTXO status enum state
      */
     constructor({id, path, sats, script, vout, height, status} = {}) {
         this.id = id;
@@ -33,17 +34,19 @@ class Mempool {
         this.UTXOs = [];
     }
 
-    /** The OK state (UTXO is spendable) */
+    /** The CONFIRMED state (UTXO is spendable) */
     static OK = 0;
 
     /** The REMOVED state (UTXO was spent and will be removed soon) */
     static REMOVED = 1;
 
-    /** The PENDING state (UTXO is in mempool, pending confirmation) */
+    /** The PENDING state (standard UTXO is in mempool, pending confirmation) */
     static T_PENDING = 2;
 
+    /** The DELEGATED PENDING state (cold UTXO is in mempool, pending confirmation) */
     static D_PENDING = 3;
 
+    /** The CONFIRMED DELEGATED state (UTXO is in mempool, pending confirmation) */
     static DELEGATE = 4;
 
     /**
@@ -72,7 +75,7 @@ class Mempool {
 
     /**
      * Fetches an array of UTXOs filtered by their state
-     * @param {number} nState - The UTXO state
+     * @param {Number} nState - The UTXO state
      * @returns {Array<UTXO>} `array` - An array of UTXOs
      */
     getUTXOsByState(nState) {
@@ -82,6 +85,7 @@ class Mempool {
     /**
      * Removes a pending UTXO
      * @param {UTXO} cNewUTXO - The pending UTXO to remove
+     * @param {Number}
      */
     resolvesPending(cNewUTXO, nType) {
         const arrPendingUTXOs = this.getUTXOsByState(nType);
@@ -98,13 +102,13 @@ class Mempool {
 
     /**
      * Add a new UTXO to the wallet
-     * @param {string} id - Transaction ID
-     * @param {string} path - If applicable, the HD Path of the owning address
-     * @param {number} sats - The satoshi value in this UTXO
-     * @param {string} script - The HEX encoded spending script
-     * @param {number} vout - The output position of this transaction
-     * @param {number} height - The block height of the UTXO
-     * @param {number} status - The UTXO status enum state
+     * @param {String} id - Transaction ID
+     * @param {String} path - If applicable, the HD Path of the owning address
+     * @param {Number} sats - The satoshi value in this UTXO
+     * @param {String} script - The HEX encoded spending script
+     * @param {Number} vout - The output position of this transaction
+     * @param {Number} height - The block height of the UTXO
+     * @param {Number} status - The UTXO status enum state
      */
     addUTXO(id, path, sats, script, vout, height, status) {
         const newUTXO = new UTXO({id, path, sats, script, vout, height, status});
