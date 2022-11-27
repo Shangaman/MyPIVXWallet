@@ -1205,11 +1205,12 @@
       // Sign and broadcast!
       if (!masterKey.isHardwareWallet) {
         const sign = await cTx.sign(masterKey, 1);
-        const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
-  
-        mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
-        mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING)
-        sendTransaction(sign);
+        const result = await sendTransaction(sign);
+        if(result){
+          const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
+          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING)
+        }
       } else {
         // Format the inputs how the Ledger SDK prefers
         const arrInputs = [];
@@ -1237,12 +1238,13 @@
           }
         );
 
-        const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
-  
-        mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
-        mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING)
         // Broadcast the Hardware (Ledger) TX
-        sendTransaction(strSerialisedTx);
+        const result = await sendTransaction(strSerialisedTx);
+        if(result){
+          const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING);
+          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING);
+        }
         
       }
       if(fGeneratePrivkey){
@@ -1647,30 +1649,34 @@
         const arrPubkeyWithScript = addExtraBytes(arrPubkeyWithScriptLen, arrPubkey, nInputLen);
 
         const strSerialisedTx = Crypto.util.bytesToHex(arrPubkeyWithScript);
-         //ADD THE PENDING CHANGE
-        const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
-        if(fReDelegateChange){
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING_COLD)
-          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING)
-        }else{
-          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING)
-        }
+
         // Broadcast the Hardware (Ledger) TX
-        sendTransaction(strSerialisedTx, "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
+        const result = await sendTransaction(strSerialisedTx, "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
+        if(result){
+          //ADD THE PENDING CHANGE
+          const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
+          if(fReDelegateChange){
+            mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING_COLD);
+            mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING);
+          }else{
+            mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING);
+          }
+        }
       } else {
          let sign= await cTx.sign(masterKey, 1, 'coldstake');
-         //ADD THE PENDING CHANGE
-         const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
-        if(fReDelegateChange){
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING_COLD)
-          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING)
-        }else{
-          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING)
-        }
-
         // Broadcast the software TX
-       
-        sendTransaction(sign, "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
+  
+        const result = await sendTransaction(sign, "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
+        if(result){
+          //ADD THE PENDING CHANGE
+          const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+          if(fReDelegateChange){
+            mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING_COLD);
+            mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING);
+          }else{
+            mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING);
+          }
+        }
       }
 
       domGenIt.innerHTML = "Continue";
@@ -1756,31 +1762,38 @@
           associatedKeysets: arrAssociatedKeysets,
           outputScriptHex: strOutputScriptHex,
         });
-        const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
         
-        if(nChange>0){
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
-          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING_COLD)
-        }else{
-          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING_COLD)
-        }
+     
         // Broadcast the Hardware (Ledger) tx
-        sendTransaction(strSerialisedTx, "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
+        const result = await sendTransaction(strSerialisedTx, "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
+        if(result){
+          const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
+      
+          if(nChange>0){
+            mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING);
+            mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING_COLD);
+          }else{
+            mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING_COLD);
+          }
+        }
+      
       } else {
         
         const sign= await cTx.sign(masterKey, 1);
-        //ADD THE PENDING CHANGE
-        const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
-          
-        if(nChange>0){
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
-          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING_COLD)
-        }else{
-          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING_COLD)
-        }
     
         // Broadcast the software TX
-        sendTransaction(sign, "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
+        const result = await sendTransaction(sign, "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
+        if(result){
+          //ADD THE PENDING CHANGE
+          const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+          if(nChange>0){
+            mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING);
+            mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING_COLD);
+          }else{
+            mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING_COLD);
+          }
+        }
+        
       }
       domGenIt.innerHTML = "Continue";
     }
@@ -1927,12 +1940,15 @@
       // Sign and broadcast!
       if (!masterKey.isHardwareWallet) {
         const sign = await cTx.sign(masterKey, 1);
+      
+        const result= await sendTransaction(sign);
         //ADD THE CHANGE AS A PENDING UTXO
-        if(nChange>0){
-          const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
+        if(result){
+          if(nChange>0){
+            const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+            mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING);
+          }
         }
-        sendTransaction(sign);
       } else {
         // Format the inputs how the Ledger SDK prefers
         const arrInputs = [];
@@ -1960,13 +1976,16 @@
           }
         );
 
+       
+        // Broadcast the Hardware (Ledger) TX
+        const result= await sendTransaction(strSerialisedTx);
+        if(result){
          //ADD THE CHANGE AS A PENDING UTXO
          if(nChange>0){
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING);
+         }
         }
-        // Broadcast the Hardware (Ledger) TX
-        sendTransaction(strSerialisedTx);
       }
       domGenIt.innerHTML = "Continue";
     }

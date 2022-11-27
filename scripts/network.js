@@ -118,29 +118,31 @@ if (networkEnabled) {
     request.send();
   }
 
-var sendTransaction = function(hex, msg = '') {
-    const request = new XMLHttpRequest();
-    request.open('POST', cExplorer.url + "/api/v2/sendtx/", true);
-    request.onerror = networkError;
-    request.onreadystatechange = function () {
+ var sendTransaction = async function(hex, msg = '') {
+    return new Promise(function (resolve, reject) {
+      const request = new XMLHttpRequest();
+      request.open('POST', cExplorer.url + "/api/v2/sendtx/", true);
+      request.onerror = networkError;
+      request.onreadystatechange = function () {
         if (!this.response || (!this.status === 200 && !this.status === 400)) return;
-        if (this.readyState !== 4) return;
-        const data = JSON.parse(this.response);
-        if (data.result && data.result.length === 64) {
+          if (this.readyState !== 4) return;
+          const data = JSON.parse(this.response);
+          if (data.result && data.result.length === 64) {
             console.log('Transaction sent! ' + data.result);
             if (domAddress1s.value !== donationAddress)
                 domTxOutput.innerHTML = ('<h4 style="color:green; font-family:mono !important;">' + data.result + '</h4>');
             else
                 domTxOutput.innerHTML = ('<h4 style="color:green">Thank you for supporting MyPIVXWallet! 💜💜💜<br><span style="font-family:mono !important">' + data.result + '</span></h4>');
-            domSimpleTXs.style.display = 'none';
-            domAddress1s.value = '';
-            domValue1s.innerHTML = '';
-            createAlert('success', msg || 'Transaction sent!', msg ? (1250 + (msg.length * 50)) : 1500);
-            getBalance(true);
-            getStakingBalance(true);
-            // If allowed by settings: submit a simple 'tx' ping to Labs Analytics
-            submitAnalytics('transaction');
-        } else {
+              domSimpleTXs.style.display = 'none';
+              domAddress1s.value = '';
+              domValue1s.innerHTML = '';
+              createAlert('success', msg || 'Transaction sent!', msg ? (1250 + (msg.length * 50)) : 1500);
+              getBalance(true);
+              getStakingBalance(true);
+              // If allowed by settings: submit a simple 'tx' ping to Labs Analytics
+              submitAnalytics('transaction');
+              return resolve(true);
+          } else {
             console.log('Error sending transaction: ' + data.result);
             createAlert('warning', 'Transaction Failed!', 1250);
             // Attempt to parse and prettify JSON (if any), otherwise, display the raw output.
@@ -150,9 +152,11 @@ var sendTransaction = function(hex, msg = '') {
                 console.log('parsed');
             } catch(e){console.log('no parse!'); console.log(e);}
             domTxOutput.innerHTML = '<h4 style="color:red;font-family:mono !important;"><pre style="color: inherit;">' + strError + "</pre></h4>";
-        }
+            return resolve(false);
+          }
     }
     request.send(hex);
+  });
 }
 
   var getFee = function (bytes) {
