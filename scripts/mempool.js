@@ -96,6 +96,21 @@ class Mempool {
         return false;
     }
 
+        /**
+     * Check if an exact UTXO match can be found in our wallet
+     * @param {id,path,vout} - txid path and vout of the UTXO
+     * @returns {Boolean} `true` or `false`
+     */
+         isAlreadyStored({id,path,vout}) {
+            console.log("chiamata")
+            for (const cUTXO of this.UTXOs) {
+                if (cUTXO.id === id && cUTXO.path===path && cUTXO.vout===vout) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
     /**
      * Fetches an array of UTXOs filtered by their state
      * @param {Number} nState - Specific UTXO state
@@ -148,7 +163,7 @@ class Mempool {
         if (this.isAlreadyStored(newUTXO)) return;
 
         // Ensure the new UTXO doesn't have a REMOVED status
-        if (this.isAlreadyStored(new UTXO({id, path, sats, script, vout, height, status: Mempool.REMOVED}))) return;
+        if (this.isAlreadyStored({id: id,path: path,vout: vout})) return;
         
         // Remove any pending versions of this UTXO
         this.removeFromState(newUTXO, Mempool.PENDING);
@@ -169,9 +184,26 @@ class Mempool {
     removeUTXO(cUTXO) {
         this.UTXOs = this.UTXOs.filter(utxo => JSON.stringify(utxo) !== JSON.stringify(cUTXO));
     }
-
+    
     /**
-     * Remove many UTXOs completely from our wallet, with a 2 minute delay
+     * Remove a UTXO completely from our wallet, with a 12 minute delay given his id, path and vout
+     * @param {Array<UTXO>} arrUTXOs - UTXOs to remove
+     */
+    autoRemoveUTXO({id,path,vout}){
+            for (const cUTXO of this.UTXOs) {
+                // Loop given + internal UTXOs to find a match, then start the delayed removal
+                if (cUTXO.id === id && cUTXO.path===path && cUTXO.vout===vout) {
+                    cUTXO.status = Mempool.REMOVED;
+                    console.log("FOUND",cUTXO.status===Mempool.REMOVED,cUTXO)
+                    this.removeWithDelay(12, cUTXO);
+                    return;
+                }
+            }   
+            console.log("NOT FOUND VERY BIG PROBLEM,") 
+        }
+    
+    /**
+     * Remove many UTXOs completely from our wallet, with a 12 minute delay
      * @param {Array<UTXO>} arrUTXOs - UTXOs to remove
      */
     autoRemoveUTXOs(arrUTXOs) {
@@ -180,7 +212,7 @@ class Mempool {
                 // Loop given + internal UTXOs to find a match, then start the delayed removal
                 if (JSON.stringify(cUTXO) === JSON.stringify(cNewUTXO)) {
                     cUTXO.status = Mempool.REMOVED;
-                    this.removeWithDelay(2, cUTXO);
+                    this.removeWithDelay(12, cUTXO);
                     break;
                 }
             }    
@@ -203,7 +235,7 @@ class Mempool {
                 cUTXO.status = newStatus;
                 // If the new status is REMOVED, start the delayed removal
                 if (newStatus === Mempool.REMOVED) {
-                    this.removeWithDelay(2, cUTXO);
+                    this.removeWithDelay(12, cUTXO);
                 }
                 return;
             }

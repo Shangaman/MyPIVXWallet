@@ -44,6 +44,7 @@ if (networkEnabled) {
     request.onload = function() {
       // Fetch the single output of the UTXO
       const cVout = JSON.parse(this.response).vout[arrUTXOsToValidate[0].vout];
+      
       console.log(arrUTXOsToValidate[0]);
       let path;
       if(arrUTXOsToValidate[0].path) {

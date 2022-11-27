@@ -1214,6 +1214,9 @@
         const sign = await cTx.sign(masterKey, 1);
         const result = await sendTransaction(sign);
         if(result){
+          for(const tx of cTx.inputs){
+            mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
+          }
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,vout: 0,script:Crypto.util.bytesToHex(cTx.outputs[0].script),status: Mempool.PENDING})
           mempool.addUTXO({id: futureTxid,path: strAddressPath,script:Crypto.util.bytesToHex(cTx.outputs[1].script),sats: nValue,vout: 1,status: Mempool.PENDING})
@@ -1248,6 +1251,9 @@
         // Broadcast the Hardware (Ledger) TX
         const result = await sendTransaction(strSerialisedTx);
         if(result){
+          for(const tx of cTx.inputs){
+            mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
+          }
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
           mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,vout: 0,script:Crypto.util.bytesToHex(cTx.outputs[0].script),status: Mempool.PENDING});
           mempool.addUTXO({id: futureTxid,path: strAddressPath,script:Crypto.util.bytesToHex(cTx.outputs[1].script),sats: nValue,vout: 1,status: Mempool.PENDING});
@@ -1606,10 +1612,8 @@
           askForCSAddr(true);
         }
         // The re-delegated change output
-        const [reDelegateAddress1,reDelegateAddressPath1] = await getNewAddress();
-        reDelegateAddress=reDelegateAddress1;
-        reDelegateAddressPath=reDelegateAddressPath1;
-        cTx.addcoldstakingoutput(reDelegateAddress1, cachedColdStakeAddr, nChange / COIN);
+        [reDelegateAddress,reDelegateAddressPath] = await getNewAddress();
+        cTx.addcoldstakingoutput(reDelegateAddress, cachedColdStakeAddr, nChange / COIN);
         console.log('Re-delegated delegation spend change!');
       } else {
         // Not enough change to cold stake, so we'll just unstake everything (and deduct the fee from the value)
@@ -1660,6 +1664,9 @@
         // Broadcast the Hardware (Ledger) TX
         const result = await sendTransaction(strSerialisedTx, "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
         if(result){
+          for(const tx of cTx.inputs){
+            mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
+          }
           //ADD THE PENDING CHANGE
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
           if(fReDelegateChange){
@@ -1675,6 +1682,9 @@
   
         const result = await sendTransaction(sign, "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
         if(result){
+          for(const tx of cTx.inputs){
+            mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
+          }
           //ADD THE PENDING CHANGE
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           if(fReDelegateChange){
@@ -1773,6 +1783,9 @@
         // Broadcast the Hardware (Ledger) tx
         const result = await sendTransaction(strSerialisedTx, "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
         if(result){
+          for(const tx of cTx.inputs){
+            mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
+          }
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
       
           if(nChange>0){
@@ -1790,6 +1803,9 @@
         // Broadcast the software TX
         const result = await sendTransaction(sign, "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
         if(result){
+          for(const tx of cTx.inputs){
+            mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
+          }
           //ADD THE PENDING CHANGE
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           if(nChange>0){
@@ -1840,8 +1856,6 @@
           console.log("Coin Control: TX Constructed! Selected " + cCoinControl.arrSelectedUTXOs.length + " input(s) (" + (cCoinControl.nValue / COIN) + " " + cChainParams.current.TICKER + ")");
           break;
         }
-        console.log("madonna troia")
-        console.log(cUTXO)
 
         // Does the UTXO meet size requirements?
         if (cUTXO.sats < nMinInputSize) continue;
@@ -1866,7 +1880,8 @@
 
       // Reaching here: we have sufficient UTXOs, calc final misc data and return!
       cCoinControl.nChange = nTotalSatsRequired - cCoinControl.nValue;
-      mempool.autoRemoveUTXOs(spent);
+      console.log(spent)
+      //mempool.autoRemoveUTXOs(spent);
       return ccSuccess(cCoinControl);
     }
 
@@ -1922,7 +1937,7 @@
       // Compute change (or lack thereof)
       const nChange = cCoinControl.nValue - (nFee + nValue);
       const [changeAddress,changeAddressPath] = await getNewAddress({verify: masterKey.isHardwareWallet});
-      console.log(changeAddress,changeAddressPath)
+
       const outputs = [];
       if (nChange > 0) {
         // Change output
@@ -1943,15 +1958,19 @@
       for (const output of outputs) {
         cTx.addoutput(output[0], output[1]);
       }
-      console.log(cTx)
+  
 
       // Sign and broadcast!
       if (!masterKey.isHardwareWallet) {
         const sign = await cTx.sign(masterKey, 1);
-      
+
         const result= await sendTransaction(sign);
         //ADD THE CHANGE AS A PENDING UTXO
         if(result){
+          for(const tx of cTx.inputs){
+            console.log(tx.outpoint.hash,tx.path,Crypto.util.bytesToHex(tx.script),tx.outpoint.index)
+            mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
+          }
           if(nChange>0){
             const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
             mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,script:Crypto.util.bytesToHex(cTx.outputs[0].script) ,vout: 0,status: Mempool.PENDING});
@@ -1988,6 +2007,9 @@
         // Broadcast the Hardware (Ledger) TX
         const result= await sendTransaction(strSerialisedTx);
         if(result){
+          for(const tx of cTx.inputs){
+            mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
+          }
          //ADD THE CHANGE AS A PENDING UTXO
          if(nChange>0){
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
