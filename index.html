@@ -1945,7 +1945,10 @@
         //ADD THE CHANGE AS A PENDING UTXO
         if(result){
           if(nChange>0){
+            console.log(sign)
             const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+            console.log("txid")
+            console.log(futureTxid)
             mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING);
           }
         }

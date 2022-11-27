@@ -214,13 +214,13 @@ async function hash(byteArray) {
  */
 const swapHEXEndian = (HEX) => {
     const result = [];
-    let len = HEX.length - 2;
+    let len = HEX.length;
     while (len >= 0) {
-      result.push(HEX.substring(len, 2));
-      len -= 2;
+        result.push(HEX.substring(len, len-2));
+        len -= 2;
     }
     return result.join('');
-}
+    }
 
 function sanitizeHTML(text) {
   const element = document.createElement('div');
