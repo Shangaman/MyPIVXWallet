@@ -71,10 +71,6 @@ class Mempool {
     /** The REWARD state (UTXO is a reward from a stake or masternode) */
     static REWARD = 5;
 
-    /** The block count, updated automatically by the network sync module
-     * @type {Number}
-     */
-    static blockCount;
 
     /**
      * Remove a UTXO after a set amount of time
