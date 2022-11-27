@@ -24,7 +24,6 @@ if (networkEnabled) {
         getStakingRewards();
       }
       cachedBlockCount = data.backend.blocks;
-      Mempool.blockCount=data.backend.blocks;
     }
     request.send();
   }

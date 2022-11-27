@@ -235,7 +235,7 @@ class Mempool {
      * @returns {Boolean} `true` if the reward UTXO is spendable, `false` if not
      */
     static isValidReward(cUTXO) {
-        return Mempool.blockCount - cUTXO.height > 100;
+        return cachedBlockCount - cUTXO.height > 100;
     }
 
     /**
