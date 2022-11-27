@@ -1170,7 +1170,7 @@
       if (localStorage.getItem("masternode")) {
         localStorage.removeItem("masternode");
         createAlert('success', '<b>Masternode destroyed!</b><br>Your coins are now spendable.', 5000);
-	updateMasternodeTab();
+        updateMasternodeTab();
       }
     }
 
@@ -1430,6 +1430,7 @@
     }
     
     let addressIndex = 0;
+
     async function getNewAddress({updateGUI = false, verify = false} = {}) {
       const last = lastWallet || 0;
       addressIndex = addressIndex > last ? addressIndex : last + 1;
@@ -1605,7 +1606,7 @@
           askForCSAddr(true);
         }
         // The re-delegated change output
-        const [reDelegateAddress1,reDelegateAddressPath1]= await getNewAddress();
+        const [reDelegateAddress1,reDelegateAddressPath1] = await getNewAddress();
         reDelegateAddress=reDelegateAddress1;
         reDelegateAddressPath=reDelegateAddressPath1;
         cTx.addcoldstakingoutput(reDelegateAddress1, cachedColdStakeAddr, nChange / COIN);

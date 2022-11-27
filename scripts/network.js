@@ -59,7 +59,7 @@ if (networkEnabled) {
         'vout': cVout.n,
         'sats': Math.round(cVout.value * COIN),
         'script': cVout.scriptPubKey.hex,
-	path,
+	      path,
       }
 
       // Determine the UTXO type, and use it accordingly
