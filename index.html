@@ -86,8 +86,11 @@
               ],
 	      Nodes: [
 		  { name: "duddino", url: "https://rpc.duddino.com/mainnet"}
-	      ]
-
+	      ],
+	      Consensus         : {
+                  // Network upgrades
+                  UPGRADE_V6_0  : undefined
+              },
           },
           testnet: {
 	      collateralInSats   : 10000 * COIN,
@@ -107,7 +110,11 @@
               ],
 	      Nodes: [
 		  { name: "duddino", url: "https://rpc.duddino.com/testnet"}
-	      ]
+	      ],
+	      Consensus         : {
+                  // Network upgrades
+                  UPGRADE_V6_0  : undefined
+              },
           }
       }
       // Set default chain
@@ -1726,9 +1733,7 @@
       }
 
       // The primary Standard-to-Cold output
-      // Until we can get blockbook to tell us which address are involved in cold staking
-      // We will only use the first key
-      cTx.addcoldstakingoutput(await masterKey.getAddress(getDerivationPath(masterKey.isHardwareWallet)), coldAddr, nValue / COIN);
+      cTx.addcoldstakingoutput(await getNewAddress(), coldAddr, nValue / COIN);
 
       // Debug-only verbose response
       if (debug) domHumanReadable.innerHTML = "Balance: " + (nBalance / COIN) + "<br>Fee: " + (nFee / COIN) + "<br>To: " + coldAddr + "<br>Sent: " + (nValue / COIN) + (nChange > 0 ? "<br>Change Address: " + changeAddress + "<br>Change: " + (nChange / COIN) : "");
