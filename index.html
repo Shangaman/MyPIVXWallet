@@ -1733,7 +1733,8 @@
       }
 
       // The primary Standard-to-Cold output
-      cTx.addcoldstakingoutput(await getNewAddress(), coldAddr, nValue / COIN);
+      const [primaryAddress, primaryAddressPath]= await getNewAddress();
+      cTx.addcoldstakingoutput(primaryAddress, coldAddr, nValue / COIN);
 
       // Debug-only verbose response
       if (debug) domHumanReadable.innerHTML = "Balance: " + (nBalance / COIN) + "<br>Fee: " + (nFee / COIN) + "<br>To: " + coldAddr + "<br>Sent: " + (nValue / COIN) + (nChange > 0 ? "<br>Change Address: " + changeAddress + "<br>Change: " + (nChange / COIN) : "");
@@ -1771,9 +1772,9 @@
       
           if(nChange>0){
             mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,script:Crypto.util.bytesToHex(cTx.outputs[0].script),vout: 0,status: Mempool.PENDING});
-            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING_COLD});
+            mempool.addUTXO({id: futureTxid,path: primaryAddressPath,sats: nValue,vout: 1,script:Crypto.util.bytesToHex(cTx.outputs[1].script),status: Mempool.PENDING_COLD});
           }else{
-            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 0,status: Mempool.PENDING_COLD});
+            mempool.addUTXO({id: futureTxid,path: primaryAddressPath,script: Crypto.util.bytesToHex(cTx.outputs[0].script),sats: nValue,vout: 0,status: Mempool.PENDING_COLD});
           }
         }
       
