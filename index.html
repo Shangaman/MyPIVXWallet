@@ -1169,7 +1169,7 @@
 
     async function createMasternode() {
       const fGeneratePrivkey = domMnCreateType.value === "VPS";
-      const strAddress = await getNewAddress();
+      const [strAddress,strAddressPath] = await getNewAddress();
       const nValue = cChainParams.current.collateralInSats;
     
       const nBalance = getBalance();
@@ -1182,7 +1182,7 @@
       
       // Compute change (or lack thereof)
       const nChange = cCoinControl.nValue - (nFee + nValue);
-      const changeAddress = await getNewAddress({verify: masterKey.isHardwareWallet});
+      const [changeAddress,changeAddressPath] = await getNewAddress({verify: masterKey.isHardwareWallet});
       const outputs = [];
       if (nChange > 0) {
         // Change output
@@ -1208,8 +1208,8 @@
         const result = await sendTransaction(sign);
         if(result){
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
-          mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING})
-          mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING})
+          mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,vout: 0,script:Crypto.util.bytesToHex(cTx.outputs[0].script),status: Mempool.PENDING})
+          mempool.addUTXO({id: futureTxid,path: strAddressPath,script:Crypto.util.bytesToHex(cTx.outputs[1].script),sats: nValue,vout: 1,status: Mempool.PENDING})
         }
       } else {
         // Format the inputs how the Ledger SDK prefers
@@ -1242,8 +1242,8 @@
         const result = await sendTransaction(strSerialisedTx);
         if(result){
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
-          mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING})
-          mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING});
+          mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,vout: 0,script:Crypto.util.bytesToHex(cTx.outputs[0].script),status: Mempool.PENDING});
+          mempool.addUTXO({id: futureTxid,path: strAddressPath,script:Crypto.util.bytesToHex(cTx.outputs[1].script),sats: nValue,vout: 1,status: Mempool.PENDING});
         }
         
       }
@@ -1455,7 +1455,7 @@
         document.getElementById('clipboard').value = address;
       }
       addressIndex++;
-      return address;
+      return [address,path];
     }
 
     function checkVanity() {
@@ -1605,7 +1605,7 @@
         console.log('Spent all CS dust into redeem address!');
       }
 
-      const outputKey = await getNewAddress();
+      const [outputKey,outputKeyPath] = await getNewAddress();
       // The primary Cold-to-Public output
       cTx.addoutput(outputKey, nValue / COIN);
 
@@ -1652,7 +1652,7 @@
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
           if(fReDelegateChange){
             mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING_COLD});
-            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING});
+            mempool.addUTXO({id: futureTxid,path: outputKeyPath,script:Crypto.util.bytesToHex(cTx.outputs[1].script) ,sats: nValue,vout: 1,status: Mempool.PENDING});
           }else{
             mempool.addUTXO({id: futureTxid,sats: nValue,vout: 0,status: Mempool.PENDING});
           }
@@ -1667,7 +1667,7 @@
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           if(fReDelegateChange){
             mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING_COLD});
-            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING});
+            mempool.addUTXO({id: futureTxid,path: outputKeyPath,script:Crypto.util.bytesToHex(cTx.outputs[1].script) ,sats: nValue,vout: 1,status: Mempool.PENDING});
           }else{
             mempool.addUTXO({id: futureTxid,sats: nValue,vout: 0,status: Mempool.PENDING});
           }
@@ -1716,7 +1716,7 @@
       // Compute fee and change (or lack thereof)
       const nFee = getFee(cTx.serialize().length);
       const nChange = cCoinControl.nValue - (nFee + nValue);
-      const changeAddress = await getNewAddress();
+      const [changeAddress,changeAddressPath]= await getNewAddress();
       if (nChange > 0) {
         // Change output
         cTx.addoutput(changeAddress, nChange / COIN);
@@ -1765,7 +1765,7 @@
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
       
           if(nChange>0){
-            mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING});
+            mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,script:Crypto.util.bytesToHex(cTx.outputs[0].script),vout: 0,status: Mempool.PENDING});
             mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING_COLD});
           }else{
             mempool.addUTXO({id: futureTxid,sats: nValue,vout: 0,status: Mempool.PENDING_COLD});
@@ -1782,7 +1782,7 @@
           //ADD THE PENDING CHANGE
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           if(nChange>0){
-            mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING});
+            mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,script:Crypto.util.bytesToHex(cTx.outputs[0].script),vout: 0,status: Mempool.PENDING});
             mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING_COLD});
           }else{
             mempool.addUTXO({id: futureTxid,sats: nValue,vout: 0,status: Mempool.PENDING_COLD});
@@ -1812,7 +1812,7 @@
       for(let i=0; i< arrUTXOs.length;i++){
         const cUTXO= arrUTXOs[i]
         if(!fColdOnly){
-          if(cUTXO.status!==Mempool.CONFIRMED && cUTXO.status!==Mempool.REWARD){
+          if(cUTXO.status!==Mempool.CONFIRMED && cUTXO.status!==Mempool.REWARD && cUTXO.status!==Mempool.PENDING){
             continue;
           }
           if(cUTXO.status===Mempool.REWARD && !Mempool.isValidReward(cUTXO)){
@@ -1910,7 +1910,8 @@
       
       // Compute change (or lack thereof)
       const nChange = cCoinControl.nValue - (nFee + nValue);
-      const changeAddress = await getNewAddress({verify: masterKey.isHardwareWallet});
+      const [changeAddress,changeAddressPath] = await getNewAddress({verify: masterKey.isHardwareWallet});
+      console.log(changeAddress,changeAddressPath)
       const outputs = [];
       if (nChange > 0) {
         // Change output
@@ -1931,6 +1932,7 @@
       for (const output of outputs) {
         cTx.addoutput(output[0], output[1]);
       }
+      console.log(cTx)
 
       // Sign and broadcast!
       if (!masterKey.isHardwareWallet) {
@@ -1941,9 +1943,9 @@
         if(result){
           if(nChange>0){
             const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
-            mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING});
+            mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,script:Crypto.util.bytesToHex(cTx.outputs[0].script) ,vout: 0,status: Mempool.PENDING});
           }
-        }
+        }  
       } else {
         // Format the inputs how the Ledger SDK prefers
         const arrInputs = [];
@@ -1978,7 +1980,7 @@
          //ADD THE CHANGE AS A PENDING UTXO
          if(nChange>0){
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
-          mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING});
+          mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,script:Crypto.util.bytesToHex(cTx.outputs[0].script) ,vout: 0,status: Mempool.PENDING});        
          }
         }
       }
