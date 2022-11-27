@@ -1578,15 +1578,7 @@
 
     async function undelegate(nValue) {
       if (!hasWalletUnlocked(true)) return;
-      // Ensure the user has an address set - if not, request one!
-      if (!askForCSAddr()) return; 
-
-      // Sanity
-      if (cachedColdStakeAddr.length !== 34 || !cachedColdStakeAddr.startsWith(cChainParams.current.STAKING_PREFIX)) {
-        askForCSAddr(true);
-        return createAlert('success', '<b>Staking Address set!</b><br>Now go ahead and unstake!');
-      }
-
+      
       // Construct a TX and fetch Cold inputs
       const nBalance = getStakingBalance();
       const cTx = bitjs.transaction();
@@ -1599,7 +1591,11 @@
       const fReDelegateChange = nChange > 1.01 * COIN;
       if (fReDelegateChange) {
         // Enough change to resume cold staking, so we'll re-delegate change to the cold staking address
-      
+         // Ensure the user has an address set - if not, request one!, Sanity
+        if (!cachedColdStakeAddr || cachedColdStakeAddr.length !== 34 || !cachedColdStakeAddr.startsWith(cChainParams.current.STAKING_PREFIX)) {
+          askForCSAddr(true);
+          return createAlert('success', '<b>Staking Address set!</b><br>Now go ahead and unstake!');
+        }
         // The re-delegated change output
         //cTx.addcoldstakingoutput(await getNewAddress(), cachedColdStakeAddr, nChange / COIN);
         cTx.addcoldstakingoutput(await masterKey.getAddress(getDerivationPath(masterKey.isHardwareWallet)), cachedColdStakeAddr, nChange / COIN);
