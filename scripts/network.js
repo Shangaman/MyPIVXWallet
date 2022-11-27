@@ -66,7 +66,6 @@ if (networkEnabled) {
       if (cVout.scriptPubKey.type === 'pubkeyhash') {
         // P2PKH type (Pay-To-Pub-Key-Hash)
         cachedUTXOs.push(cUTXO);
-        mempool.addUTXO(cUTXO.id,path,cUTXO.sats,cUTXO.script,cUTXO.vout)
       } else
       if (cVout.scriptPubKey.type === 'coldstake') {
         // Cold Stake type
@@ -265,7 +264,7 @@ var getUTXOsHeavy = async function() {
 	      // We will only use the first key
 	      'path': getDerivationPath(masterKey.isHardwareWallet),
             });
-            mempool.addUTXO(cTx.txid, getDerivationPath(masterKey.isHardwareWallet), parseInt(cOut.value), cOut.hex, cOut.n, cTx.blockHeight, Mempool.DELEGATE);
+            mempool.addUTXO({id: cTx.txid, path: getDerivationPath(masterKey.isHardwareWallet),sats: parseInt(cOut.value), script: cOut.hex, vout: cOut.n,height: cTx.blockHeight,status: Mempool.DELEGATE});
           }
           // Otherwise, an address matches one of ours
           else if (paths.length > 0) {
@@ -282,7 +281,7 @@ var getUTXOsHeavy = async function() {
             });
 
             // Add UTXO to our wallet
-            mempool.addUTXO(cTx.txid,path.join("/"), parseInt(cOut.value), cOut.hex, cOut.n, cTx.blockHeight, !fCoinstake ? Mempool.CONFIRMED : Mempool.REWARD);
+            mempool.addUTXO({id: cTx.txid,path: path.join("/"),sats: parseInt(cOut.value), script: cOut.hex,vout: cOut.n,height: cTx.blockHeight, status: !fCoinstake ? Mempool.CONFIRMED : Mempool.REWARD});
           }
         }
       }

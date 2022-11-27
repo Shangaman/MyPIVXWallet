@@ -141,7 +141,8 @@ class Mempool {
      * @param {Number} height - Block height of the UTXO
      * @param {Number} status - UTXO status enum state
      */
-    addUTXO(id, path, sats, script, vout, height, status) {
+     
+    addUTXO({id,path,sats,script,vout,height,status}) {
         const newUTXO = new UTXO({id, path, sats, script, vout, height, status});
         // Ensure the new UTXO doesn't have the same status
         if (this.isAlreadyStored(newUTXO)) return;

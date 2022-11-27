@@ -1208,8 +1208,8 @@
         const result = await sendTransaction(sign);
         if(result){
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
-          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING)
+          mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING})
+          mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING})
         }
       } else {
         // Format the inputs how the Ledger SDK prefers
@@ -1242,8 +1242,8 @@
         const result = await sendTransaction(strSerialisedTx);
         if(result){
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING);
-          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING);
+          mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING})
+          mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING});
         }
         
       }
@@ -1656,10 +1656,10 @@
           //ADD THE PENDING CHANGE
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
           if(fReDelegateChange){
-            mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING_COLD);
-            mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING);
+            mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING_COLD});
+            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING});
           }else{
-            mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING);
+            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 0,status: Mempool.PENDING});
           }
         }
       } else {
@@ -1671,10 +1671,10 @@
           //ADD THE PENDING CHANGE
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           if(fReDelegateChange){
-            mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING_COLD);
-            mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING);
+            mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING_COLD});
+            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING});
           }else{
-            mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING);
+            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 0,status: Mempool.PENDING});
           }
         }
       }
@@ -1770,10 +1770,10 @@
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
       
           if(nChange>0){
-            mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING);
-            mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING_COLD);
+            mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING});
+            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING_COLD});
           }else{
-            mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING_COLD);
+            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 0,status: Mempool.PENDING_COLD});
           }
         }
       
@@ -1787,10 +1787,10 @@
           //ADD THE PENDING CHANGE
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           if(nChange>0){
-            mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING);
-            mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING_COLD);
+            mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING});
+            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING_COLD});
           }else{
-            mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING_COLD);
+            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 0,status: Mempool.PENDING_COLD});
           }
         }
         
@@ -1946,7 +1946,7 @@
         if(result){
           if(nChange>0){
             const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
-            mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING);
+            mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING});
           }
         }
       } else {
@@ -1983,7 +1983,7 @@
          //ADD THE CHANGE AS A PENDING UTXO
          if(nChange>0){
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING);
+          mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING});
          }
         }
       }
