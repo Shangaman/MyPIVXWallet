@@ -207,12 +207,16 @@ async function hash(byteArray) {
     return hashHex;
   }
 
-//change endian
-const changeEndianness = (string) => {
+/**
+ * Swaps the endianness of a HEX string
+ * @param {String} HEX - HEX string to swap the endianness of
+ * @returns {String} Swapped Endian HEX
+ */
+const swapHEXEndian = (HEX) => {
     const result = [];
-    let len = string.length - 2;
+    let len = HEX.length - 2;
     while (len >= 0) {
-      result.push(string.substr(len, 2));
+      result.push(HEX.substring(len, 2));
       len -= 2;
     }
     return result.join('');

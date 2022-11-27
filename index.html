@@ -1205,10 +1205,10 @@
       // Sign and broadcast!
       if (!masterKey.isHardwareWallet) {
         const sign = await cTx.sign(masterKey, 1);
-        const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+        const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
   
-        mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
-        mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.T_PENDING)
+        mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
+        mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING)
         sendTransaction(sign);
       } else {
         // Format the inputs how the Ledger SDK prefers
@@ -1237,10 +1237,10 @@
           }
         );
 
-        const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
+        const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
   
-        mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
-        mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.T_PENDING)
+        mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
+        mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING)
         // Broadcast the Hardware (Ledger) TX
         sendTransaction(strSerialisedTx);
         
@@ -1275,7 +1275,7 @@
       
       if (!masterKey.isHD) {
         // Find the first UTXO matching the expected collateral size
-	const cCollaUTXO = mempool.getUTXOsByState(Mempool.OK).find(cUTXO => cUTXO.sats === cChainParams.current.collateralInSats);
+        const cCollaUTXO = mempool.getConfirmed().find(cUTXO => cUTXO.sats === cChainParams.current.collateralInSats);
 
         // If there's no valid UTXO, exit with a contextual message
         if (!cCollaUTXO) {
@@ -1295,7 +1295,7 @@
         collateralPrivKeyPath = "legacy";
       } else {
         const path = domMnTxId.value;
-        const masterUtxo = mempool.getUTXOsByState(Mempool.OK).findLast(u=>u.path === path); // first UTXO for each address in HD
+        const masterUtxo = mempool.getConfirmed().findLast(u=>u.path === path); // first UTXO for each address in HD
         // sanity check:
         if (masterUtxo.sats !== cChainParams.current.collateralInSats) {
           return createAlert("warning", "This is not a suitable UTXO for a Masternode", 10000);
@@ -1648,24 +1648,24 @@
 
         const strSerialisedTx = Crypto.util.bytesToHex(arrPubkeyWithScript);
          //ADD THE PENDING CHANGE
-        const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
+        const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
         if(fReDelegateChange){
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.D_PENDING)
-          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.T_PENDING)
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING_COLD)
+          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING)
         }else{
-          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.T_PENDING)
+          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING)
         }
         // Broadcast the Hardware (Ledger) TX
         sendTransaction(strSerialisedTx, "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
       } else {
          let sign= await cTx.sign(masterKey, 1, 'coldstake');
          //ADD THE PENDING CHANGE
-         const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+         const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
         if(fReDelegateChange){
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.D_PENDING)
-          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.T_PENDING)
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING_COLD)
+          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING)
         }else{
-          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.T_PENDING)
+          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING)
         }
 
         // Broadcast the software TX
@@ -1756,13 +1756,13 @@
           associatedKeysets: arrAssociatedKeysets,
           outputScriptHex: strOutputScriptHex,
         });
-        const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
+        const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
         
         if(nChange>0){
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
-          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.D_PENDING)
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
+          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING_COLD)
         }else{
-          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.D_PENDING)
+          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING_COLD)
         }
         // Broadcast the Hardware (Ledger) tx
         sendTransaction(strSerialisedTx, "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
@@ -1770,13 +1770,13 @@
         
         const sign= await cTx.sign(masterKey, 1);
         //ADD THE PENDING CHANGE
-        const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+        const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           
         if(nChange>0){
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
-          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.D_PENDING)
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
+          mempool.addUTXO(futureTxid,"",nValue,"",1,"",Mempool.PENDING_COLD)
         }else{
-          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.D_PENDING)
+          mempool.addUTXO(futureTxid,"",nValue,"",0,"",Mempool.PENDING_COLD)
         }
     
         // Broadcast the software TX
@@ -1804,7 +1804,7 @@
       for(let i=0; i< arrUTXOs.length;i++){
         const cUTXO= arrUTXOs[i]
         if(!fColdOnly){
-          if(cUTXO.status!==Mempool.OK && cUTXO.status!==Mempool.REWARD){
+          if(cUTXO.status!==Mempool.CONFIRMED && cUTXO.status!==Mempool.REWARD){
             continue;
           }
           if(cUTXO.status===Mempool.REWARD && !Mempool.isValidReward(cUTXO)){
@@ -1929,8 +1929,8 @@
         const sign = await cTx.sign(masterKey, 1);
         //ADD THE CHANGE AS A PENDING UTXO
         if(nChange>0){
-          const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
+          const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
         }
         sendTransaction(sign);
       } else {
@@ -1962,8 +1962,8 @@
 
          //ADD THE CHANGE AS A PENDING UTXO
          if(nChange>0){
-          const futureTxid=changeEndianness(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
-          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.T_PENDING)
+          const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
+          mempool.addUTXO(futureTxid,"",nChange,"",0,"",Mempool.PENDING)
         }
         // Broadcast the Hardware (Ledger) TX
         sendTransaction(strSerialisedTx);
@@ -2149,7 +2149,7 @@
       return;
     }
 
-    if(!mempool.getUTXOsByState(Mempool.OK).length) {
+    if(!mempool.getConfirmed().length) {
       domMnTextErrors.innerHTML = "Your wallet is empty or still loading, re-open the tab in a few seconds!";
       return;
     }
@@ -2158,7 +2158,7 @@
     // If the collateral is missing (spent, or switched wallet) then remove the current MN
     if (strMasternodeJSON) {
       const cMasternode = JSON.parse(strMasternodeJSON);
-      if (!mempool.getUTXOsByState(Mempool.OK).find(utxo => isMasternodeUTXO(utxo, cMasternode))) {
+      if (!mempool.getConfirmed().find(utxo => isMasternodeUTXO(utxo, cMasternode))) {
         localStorage.removeItem("masternode");
 	strMasternodeJSON = null;
       }
@@ -2171,7 +2171,7 @@
       domMnAccessMasternodeText.innerHTML = masternodeLegacyAccessText;
       domMnTxId.style.display = "none";
       // Find the first UTXO matching the expected collateral size
-      const cCollaUTXO = mempool.getUTXOsByState(Mempool.OK).find(cUTXO => cUTXO.sats === cChainParams.current.collateralInSats);
+      const cCollaUTXO = mempool.getConfirmed().find(cUTXO => cUTXO.sats === cChainParams.current.collateralInSats);
       const balance = getBalance(false);
       if (cCollaUTXO) {
 	if (strMasternodeJSON) {
@@ -2200,7 +2200,7 @@
       const mapCollateralAddresses = new Map();
       
       // Aggregate all valid Masternode collaterals into a map of Address <--> Collateral
-      for (const cUTXO of mempool.getUTXOsByState(Mempool.OK)) {
+      for (const cUTXO of mempool.getConfirmed()) {
         if (cUTXO.sats !== cChainParams.current.collateralInSats) continue;
         mapCollateralAddresses.set(cUTXO.path, cUTXO);
       }

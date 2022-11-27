@@ -249,7 +249,7 @@ var getUTXOsHeavy = async function() {
     if (cData && cData.transactions) {
       cachedUTXOs = []; arrDelegatedUTXOs = [];
       for (const cTx of cData.transactions) {
-        const isCoinstake = cTx.vout[0].addresses[0] === "CoinStake TX"
+        const fCoinstake = cTx.vout[0].addresses[0] === "CoinStake TX";
         for (const cOut of cTx.vout) {
           if (cOut.spent) continue; // We don't care about spent outputs
           const paths = cOut.addresses.map(strAddr => mapPaths.get(strAddr)).filter(v => v);
@@ -264,7 +264,7 @@ var getUTXOsHeavy = async function() {
 	      // We will only use the first key
 	      'path': getDerivationPath(masterKey.isHardwareWallet),
             });
-            mempool.addUTXO(cTx.txid,getDerivationPath(masterKey.isHardwareWallet),parseInt(cOut.value),cOut.hex,cOut.n,cTx.blockHeight,Mempool.DELEGATE);
+            mempool.addUTXO(cTx.txid, getDerivationPath(masterKey.isHardwareWallet), parseInt(cOut.value), cOut.hex, cOut.n, cTx.blockHeight, Mempool.DELEGATE);
           }
           // Otherwise, an address matches one of ours
           else if (paths.length > 0) {
@@ -279,12 +279,9 @@ var getUTXOsHeavy = async function() {
               'script': cOut.hex,
               'path': path.join("/"),
             });
-            //console.log(cTx,cOut) TODO ADD BLOCKHEIGHT IN OTHER CASE
-            if(!isCoinstake){
-              mempool.addUTXO(cTx.txid,path.join("/"),parseInt(cOut.value),cOut.hex,cOut.n,cTx.blockHeight,Mempool.OK)
-            }else{
-              mempool.addUTXO(cTx.txid,path.join("/"),parseInt(cOut.value),cOut.hex,cOut.n,cTx.blockHeight,Mempool.REWARD);
-            }
+
+            // Add UTXO to our wallet
+            mempool.addUTXO(cTx.txid,path.join("/"), parseInt(cOut.value), cOut.hex, cOut.n, cTx.blockHeight, !fCoinstake ? Mempool.CONFIRMED : Mempool.REWARD);
           }
         }
       }

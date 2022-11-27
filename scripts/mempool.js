@@ -1,5 +1,4 @@
 "use strict";
-//STATUS: OK, REMOVED, REWARD, INCOMING, LOCKED
 
 /** An Unspent Transaction Output, used as Inputs of future transactions */
 class UTXO {
@@ -7,19 +6,39 @@ class UTXO {
      * @param {Object} UTXO
      * @param {String} UTXO.id - Transaction ID
      * @param {String} UTXO.path - If applicable, the HD Path of the owning address
-     * @param {Number} UTXO.sats - The satoshi value in this UTXO
-     * @param {String} UTXO.script - The HEX encoded spending script
-     * @param {Number} UTXO.vout - The output position of this transaction
-     * @param {Number} UTXO.height - The block height of the UTXO
-     * @param {Number} UTXO.status - The UTXO status enum state
+     * @param {Number} UTXO.sats - Satoshi value in this UTXO
+     * @param {String} UTXO.script - HEX encoded spending script
+     * @param {Number} UTXO.vout - Output position of this transaction
+     * @param {Number} UTXO.height - Block height of the UTXO
+     * @param {Number} UTXO.status - UTXO status enum state
      */
     constructor({id, path, sats, script, vout, height, status} = {}) {
+        /** Transaction ID
+         * @type {String} */
         this.id = id;
+
+        /** HD Path of the owning address
+         *  @type {String} */
         this.path = path;
+
+        /** Satoshi value in this UTXO
+         *  @type {Number} */
         this.sats = sats;
+
+        /** HEX encoded spending script
+         *  @type {String} */
         this.script = script;
+
+        /** Output position of this transaction
+         *  @type {Number} */
         this.vout = vout;
+
+        /** Block height of the UTXO
+         *  @type {Number} */
         this.height = height;
+
+        /** UTXO status enum state
+         *  @type {Number} */
         this.status = status;
     }
 };
@@ -35,37 +54,41 @@ class Mempool {
     }
 
     /** The CONFIRMED state (UTXO is spendable) */
-    static OK = 0;
+    static CONFIRMED = 0;
 
     /** The REMOVED state (UTXO was spent and will be removed soon) */
     static REMOVED = 1;
 
     /** The PENDING state (standard UTXO is in mempool, pending confirmation) */
-    static T_PENDING = 2;
+    static PENDING = 2;
 
     /** The DELEGATED PENDING state (cold UTXO is in mempool, pending confirmation) */
-    static D_PENDING = 3;
+    static PENDING_COLD = 3;
 
-    /** The CONFIRMED DELEGATED state (UTXO is in mempool, pending confirmation) */
+    /** The CONFIRMED DELEGATED state (cold UTXO is spendable) */
     static DELEGATE = 4;
 
-    /** The REWARD state (UTXO is a reward either cold stake or masternode) */
-    static REWARD=5;
+    /** The REWARD state (UTXO is a reward from a stake or masternode) */
+    static REWARD = 5;
 
+    /** The block count, updated automatically by the network sync module
+     * @type {Number}
+     */
     static blockCount;
+
     /**
      * Remove a UTXO after a set amount of time
      * @param {Number} nBlocks - Estimated blocks to wait
      * @param {UTXO} cUTXO - UTXO to remove
      */
-     async autoRemove(nBlocks, cUTXO) {
+     async removeWithDelay(nBlocks, cUTXO) {
         await sleep(nBlocks * 60 * 1000);
         this.removeUTXO(cUTXO);
     }
 
     /**
      * Check if an exact UTXO match can be found in our wallet
-     * @param {UTXO} cNewUTXO 
+     * @param {UTXO} cNewUTXO - UTXO to search for
      * @returns {Boolean} `true` or `false`
      */
     isAlreadyStored(cNewUTXO) {
@@ -79,7 +102,7 @@ class Mempool {
 
     /**
      * Fetches an array of UTXOs filtered by their state
-     * @param {Number} nState - The UTXO state
+     * @param {Number} nState - Specific UTXO state
      * @returns {Array<UTXO>} `array` - An array of UTXOs
      */
     getUTXOsByState(nState) {
@@ -87,12 +110,20 @@ class Mempool {
     }
 
     /**
-     * Removes a pending UTXO
-     * @param {UTXO} cNewUTXO - The pending UTXO to remove
-     * @param {Number}
+     * Fetches an array of confirmed UTXOs, an easier alias to {@link getUTXOsByState}
+     * @returns {Array<UTXO>} `array` - An array of UTXOs
      */
-    resolvesPending(cNewUTXO, nType) {
-        const arrPendingUTXOs = this.getUTXOsByState(nType);
+    getConfirmed() {
+        return this.getUTXOsByState(Mempool.CONFIRMED);
+    }
+
+    /**
+     * Removes a UTXO from a specific state
+     * @param {UTXO} cNewUTXO - Pending UTXO to remove
+     * @param {Number} nState - Specific state of this UTXO to search for
+     */
+    removeFromState(cNewUTXO, nState) {
+        const arrPendingUTXOs = this.getUTXOsByState(nState);
         // Loop each pending UTXO
         for (const cUTXO of arrPendingUTXOs) {
             // Search for matching ID + output number
@@ -108,11 +139,11 @@ class Mempool {
      * Add a new UTXO to the wallet
      * @param {String} id - Transaction ID
      * @param {String} path - If applicable, the HD Path of the owning address
-     * @param {Number} sats - The satoshi value in this UTXO
-     * @param {String} script - The HEX encoded spending script
-     * @param {Number} vout - The output position of this transaction
-     * @param {Number} height - The block height of the UTXO
-     * @param {Number} status - The UTXO status enum state
+     * @param {Number} sats - Satoshi value in this UTXO
+     * @param {String} script - HEX encoded spending script
+     * @param {Number} vout - Output position of this transaction
+     * @param {Number} height - Block height of the UTXO
+     * @param {Number} status - UTXO status enum state
      */
     addUTXO(id, path, sats, script, vout, height, status) {
         const newUTXO = new UTXO({id, path, sats, script, vout, height, status});
@@ -123,10 +154,10 @@ class Mempool {
         if (this.isAlreadyStored(new UTXO({id, path, sats, script, vout, height, status: Mempool.REMOVED}))) return;
         
         // Remove any pending versions of this UTXO
-        this.resolvesPending(newUTXO, Mempool.T_PENDING);
+        this.removeFromState(newUTXO, Mempool.PENDING);
 
         // If delegated, remove pending versions of that too
-        if (status === Mempool.DELEGATE) this.resolvesPending(newUTXO, Mempool.D_PENDING);
+        if (status === Mempool.DELEGATE) this.removeFromState(newUTXO, Mempool.PENDING_COLD);
 
         // Add to list
         this.UTXOs.push(newUTXO);
@@ -134,47 +165,82 @@ class Mempool {
 
     /**
      * Remove a UTXO completely from our wallet
-     * @param {UTXO} cUTXO
+     * @param {UTXO} cUTXO - UTXO to remove
      */
     removeUTXO(cUTXO) {
         this.UTXOs = this.UTXOs.filter(utxo => JSON.stringify(utxo) !== JSON.stringify(cUTXO));
     }
 
-    autoRemoveUTXOs(utxos){
-        for(let new_utxo of utxos){
-            for(let utxo of this.UTXOs){
-                if(JSON.stringify(utxo)===JSON.stringify(new_utxo)){
-                    utxo.status=Mempool.REMOVED;
-                    this.autoRemove(2,utxo);
-                    break
+    /**
+     * Remove many UTXOs completely from our wallet, with a 2 minute delay
+     * @param {Array<UTXO>} arrUTXOs - UTXOs to remove
+     */
+    autoRemoveUTXOs(arrUTXOs) {
+        for (const cNewUTXO of arrUTXOs) {
+            for (const cUTXO of this.UTXOs) {
+                // Loop given + internal UTXOs to find a match, then start the delayed removal
+                if (JSON.stringify(cUTXO) === JSON.stringify(cNewUTXO)) {
+                    cUTXO.status = Mempool.REMOVED;
+                    this.removeWithDelay(2, cUTXO);
+                    break;
                 }
             }    
         }
     }
-    changeUTXOstatus(id,path,sats,script,vout,newStatus){
-        for (let i = 0; i < this.UTXOs.length; i++) {
-            const utxo= this.UTXOs[i];
-            if(utxo.id===id && utxo.path===path && utxo.sats===sats && utxo.script===script && utxo.vout===vout){
-                this.UTXOs[i].status=newStatus;
-                if(newStatus===Mempool.REMOVED){
-                    this.autoRemove(2,this.UTXOs[i]);
+
+    /**
+     * Change the status of a UTXO, matched by it's properties
+     * @param {String} id - Transaction ID
+     * @param {String} path - If applicable, the HD Path of the owning address
+     * @param {Number} sats - Satoshi value in this UTXO
+     * @param {String} script - The HEX encoded spending script
+     * @param {Number} vout - Output position of this transaction
+     * @param {Number} newStatus - New mempool status to apply to the UTXO
+     * @returns {Boolean} `true` if successful, `false` if UTXO not found
+     */
+    changeUTXOstatus(id, path, sats, script, vout, newStatus) {
+        for (const cUTXO of this.UTXOs) {
+            if (cUTXO.id === id && cUTXO.path === path && cUTXO.sats === sats && cUTXO.script === script && cUTXO.vout === vout) {
+                cUTXO.status = newStatus;
+                // If the new status is REMOVED, start the delayed removal
+                if (newStatus === Mempool.REMOVED) {
+                    this.removeWithDelay(2, cUTXO);
                 }
                 return;
             }
         }
         console.log("mempool error: UTXO NOT FOUND");
     }
-    getBalance(){
-        const firstAddend=this.UTXOs.filter(utxo => (utxo.status===Mempool.OK ||utxo.status===Mempool.T_PENDING)).filter(utxo => !isMasternodeUTXO(utxo)).reduce((a,b)=> a+b.sats,0);
-        const secondAddend=this.UTXOs.filter(utxo => utxo.status===Mempool.REWARD).filter(utxo => Mempool.blockCount-utxo.height>100).reduce((a,b)=> a+b.sats,0);
-        return firstAddend+secondAddend;
+
+    /**
+     * Returns the real-time balance of the wallet (all addresses)
+     * @returns {Number} Balance in satoshis
+     */
+    getBalance() {
+        // Fetch 'standard' balances: the sum of all Confirmed or Unconfirmed transactions (excluding Masternode collaterals)
+        const nStandardBalance = this.UTXOs.filter(cUTXO => (cUTXO.status === Mempool.CONFIRMED || cUTXO.status === Mempool.PENDING) && !isMasternodeUTXO(cUTXO)).reduce((a, b) => a + b.sats, 0);
+        
+        // Fetch 'staked' balances: the sum of all Confirmed Rewards (excluding rewards not yet 'matured')
+        const nStakedBalance = this.UTXOs.filter(cUTXO => cUTXO.status === Mempool.REWARD).filter(cUTXO => Mempool.isValidReward(cUTXO)).reduce((a, b) => a + b.sats, 0);
+
+        // Combine and return total satoshis
+        return nStandardBalance + nStakedBalance;
     }
 
-    static isValidReward(utxo){
-        return(Mempool.blockCount-utxo.height>100);
+    /**
+     * Returns if a reward is fully confirmed, matured and spendable
+     * @param {UTXO} cUTXO - Reward UTXO
+     * @returns {Boolean} `true` if the reward UTXO is spendable, `false` if not
+     */
+    static isValidReward(cUTXO) {
+        return Mempool.blockCount - cUTXO.height > 100;
     }
 
-    getDelegatedBalance(){
-        return this.UTXOs.filter(utxo => (utxo.status===Mempool.DELEGATE ||utxo.status===Mempool.D_PENDING)).reduce((a,b)=> a+b.sats,0);
+    /**
+     * Returns the real-time delegated balance of the wallet (all addresses)
+     * @returns {Number} Delegated balance in satoshis
+     */
+    getDelegatedBalance() {
+        return this.UTXOs.filter(cUTXO => cUTXO.status === Mempool.DELEGATE || cUTXO.status === Mempool.PENDING_COLD).reduce((a, b) => a + b.sats, 0);
     }
 };
