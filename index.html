@@ -1596,6 +1596,8 @@
       const nFee = getFee(cTx.serialize().length);
       const nChange = cCoinControl.nValue - (nFee + nValue);
       const fReDelegateChange = nChange > 1.01 * COIN;
+      let reDelegateAddress;
+      let reDelegateAddressPath;
       if (fReDelegateChange) {
         // Enough change to resume cold staking, so we'll re-delegate change to the cold staking address
          // Ensure the user has an address set - if not, request one!, Sanity
@@ -1603,8 +1605,10 @@
           askForCSAddr(true);
         }
         // The re-delegated change output
-        //cTx.addcoldstakingoutput(await getNewAddress(), cachedColdStakeAddr, nChange / COIN);
-        cTx.addcoldstakingoutput(await masterKey.getAddress(getDerivationPath(masterKey.isHardwareWallet)), cachedColdStakeAddr, nChange / COIN);
+        const [reDelegateAddress1,reDelegateAddressPath1]= await getNewAddress();
+        reDelegateAddress=reDelegateAddress1;
+        reDelegateAddressPath=reDelegateAddressPath1;
+        cTx.addcoldstakingoutput(reDelegateAddress1, cachedColdStakeAddr, nChange / COIN);
         console.log('Re-delegated delegation spend change!');
       } else {
         // Not enough change to cold stake, so we'll just unstake everything (and deduct the fee from the value)
@@ -1658,10 +1662,10 @@
           //ADD THE PENDING CHANGE
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
           if(fReDelegateChange){
-            mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING_COLD});
+            mempool.addUTXO({id: futureTxid,path: reDelegateAddressPath,script:Crypto.util.bytesToHex(cTx.outputs[0].script) ,sats: nChange,vout: 0,status: Mempool.PENDING_COLD});
             mempool.addUTXO({id: futureTxid,path: outputKeyPath,script:Crypto.util.bytesToHex(cTx.outputs[1].script) ,sats: nValue,vout: 1,status: Mempool.PENDING});
           }else{
-            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 0,status: Mempool.PENDING});
+            mempool.addUTXO({id: futureTxid,path: outputKeyPath,sats: nValue,script:Crypto.util.bytesToHex(cTx.outputs[0].script),vout: 0,status: Mempool.PENDING});
           }
         }
       } else {
@@ -1673,10 +1677,10 @@
           //ADD THE PENDING CHANGE
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           if(fReDelegateChange){
-            mempool.addUTXO({id: futureTxid,sats: nChange,vout: 0,status: Mempool.PENDING_COLD});
+            mempool.addUTXO({id: futureTxid,path:reDelegateAddressPath,script:Crypto.util.bytesToHex(cTx.outputs[0].script) ,sats: nChange,vout: 0,status: Mempool.PENDING_COLD});
             mempool.addUTXO({id: futureTxid,path: outputKeyPath,script:Crypto.util.bytesToHex(cTx.outputs[1].script) ,sats: nValue,vout: 1,status: Mempool.PENDING});
           }else{
-            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 0,status: Mempool.PENDING});
+            mempool.addUTXO({id: futureTxid,path: outputKeyPath,sats: nValue,script:Crypto.util.bytesToHex(cTx.outputs[0].script),vout: 0,status: Mempool.PENDING});
           }
         }
       }
@@ -1789,9 +1793,9 @@
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           if(nChange>0){
             mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,script:Crypto.util.bytesToHex(cTx.outputs[0].script),vout: 0,status: Mempool.PENDING});
-            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 1,status: Mempool.PENDING_COLD});
+            mempool.addUTXO({id: futureTxid,path: primaryAddressPath,sats: nValue,vout: 1,script:Crypto.util.bytesToHex(cTx.outputs[1].script),status: Mempool.PENDING_COLD});
           }else{
-            mempool.addUTXO({id: futureTxid,sats: nValue,vout: 0,status: Mempool.PENDING_COLD});
+            mempool.addUTXO({id: futureTxid,path: primaryAddressPath,script: Crypto.util.bytesToHex(cTx.outputs[0].script),sats: nValue,vout: 0,status: Mempool.PENDING_COLD});
           }
         }
         
@@ -1825,7 +1829,7 @@
             continue
           }
         }
-        if(fColdOnly && cUTXO.status!==Mempool.DELEGATE) continue;
+        if(fColdOnly && cUTXO.status!==Mempool.DELEGATE && cUTXO.status!==Mempool.PENDING_COLD) continue;
         // Don't spend locked Masternode collaterals
         if (isMasternodeUTXO(cUTXO)) continue; //CHANGE THIS
 

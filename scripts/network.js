@@ -251,24 +251,17 @@ var getUTXOsHeavy = async function() {
         for (const cOut of cTx.vout) {
           if (cOut.spent) continue; // We don't care about spent outputs
           const paths = cOut.addresses.map(strAddr => mapPaths.get(strAddr)).filter(v => v);
-	  // No addresses match ours
-	  if (!paths.length) continue;
-	  const isDelegate = cOut.addresses.some(strAddr => strAddr.startsWith(cChainParams.current.STAKING_PREFIX));
-	  // Blockbook still returns 119' as the coinType, even in testnet
-	  let path = paths[0].split("/");
-	  path[2] = (masterKey.isHardwareWallet ? cChainParams.current.BIP44_TYPE_LEDGER : cChainParams.current.BIP44_TYPE) + "'";
-    if(isDelegate){
-      mempool.addUTXO({id: cTx.txid,path: path.join("/"),sats: parseInt(cOut.value), script: cOut.hex,vout: cOut.n,height: cTx.blockHeight, status: Mempool.DELEGATE});
-    }else{
-      mempool.addUTXO({id: cTx.txid,path: path.join("/"),sats: parseInt(cOut.value), script: cOut.hex,vout: cOut.n,height: cTx.blockHeight, status: !fCoinstake ? Mempool.CONFIRMED : Mempool.REWARD});
-    }
-    arrToPush.push({
-            'id': cTx.txid,
-            'vout': cOut.n,
-            'sats': parseInt(cOut.value),
-            'script': cOut.hex,
-            'path': path.join("/"),
-          });
+	        // No addresses match ours
+	        if (!paths.length) continue;
+	          const isDelegate = cOut.addresses.some(strAddr => strAddr.startsWith(cChainParams.current.STAKING_PREFIX));
+	          // Blockbook still returns 119' as the coinType, even in testnet
+	          let path = paths[0].split("/");
+	          path[2] = (masterKey.isHardwareWallet ? cChainParams.current.BIP44_TYPE_LEDGER : cChainParams.current.BIP44_TYPE) + "'";
+            if(isDelegate){
+              mempool.addUTXO({id: cTx.txid,path: path.join("/"),sats: parseInt(cOut.value), script: cOut.hex,vout: cOut.n,height: cTx.blockHeight, status: Mempool.DELEGATE});
+            }else{
+              mempool.addUTXO({id: cTx.txid,path: path.join("/"),sats: parseInt(cOut.value), script: cOut.hex,vout: cOut.n,height: cTx.blockHeight, status: !fCoinstake ? Mempool.CONFIRMED : Mempool.REWARD});
+            }
         }
       }
       // Update UI
