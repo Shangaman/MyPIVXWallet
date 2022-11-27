@@ -137,8 +137,6 @@ if (networkEnabled) {
               domAddress1s.value = '';
               domValue1s.innerHTML = '';
               createAlert('success', msg || 'Transaction sent!', msg ? (1250 + (msg.length * 50)) : 1500);
-              getBalance(true);
-              getStakingBalance(true);
               // If allowed by settings: submit a simple 'tx' ping to Labs Analytics
               submitAnalytics('transaction');
               return resolve(true);

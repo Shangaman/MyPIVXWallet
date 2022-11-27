@@ -161,6 +161,8 @@ class Mempool {
 
         // Add to list
         this.UTXOs.push(newUTXO);
+        getBalance(true);
+        getStakingBalance(true);
     }
 
     /**
