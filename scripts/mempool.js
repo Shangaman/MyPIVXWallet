@@ -101,10 +101,9 @@ class Mempool {
      * @param {id,path,vout} - txid path and vout of the UTXO
      * @returns {Boolean} `true` or `false`
      */
-         isAlreadyStored({id,path,vout}) {
-            console.log("chiamata")
+         isAlreadyStored({id,path,vout,status}) {
             for (const cUTXO of this.UTXOs) {
-                if (cUTXO.id === id && cUTXO.path===path && cUTXO.vout===vout) {
+                if (cUTXO.id === id && cUTXO.path===path && cUTXO.vout===vout && cUTXO.status===status) {
                     return true;
                 }
             }
@@ -163,7 +162,7 @@ class Mempool {
         if (this.isAlreadyStored(newUTXO)) return;
 
         // Ensure the new UTXO doesn't have a REMOVED status
-        if (this.isAlreadyStored({id: id,path: path,vout: vout})) return;
+        if (this.isAlreadyStored({id: id,path: path,vout: vout,status: Mempool.REMOVED})) return;
         
         // Remove any pending versions of this UTXO
         this.removeFromState(newUTXO, Mempool.PENDING);
