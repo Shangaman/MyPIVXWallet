@@ -3,7 +3,6 @@
 // --- Default Settings
 var debug = false;            // A mode that emits verbose console info for internal MPW operations
 var networkEnabled = true;    // A lock which blocks ALL network requests in totality
-var fAlternativeSync = true;  // A more resource-intensive but deep UTXO set sync mode
 
 var cExplorer = cChainParams.current.Explorers[0];
 let cNode = cChainParams.current.Nodes[0];
@@ -38,7 +37,6 @@ var fWalletLoaded = false;
 // --- DOM Cache
 const domNetwork = document.getElementById('Network');
 const domDebug = document.getElementById('Debug');
-const domSyncMode = document.getElementById('SyncMode');
 const domTestnet = document.getElementById('Testnet');
 const domExplorerSelect = document.getElementById('explorer');
 const domNodeSelect = document.getElementById('node');
@@ -46,7 +44,6 @@ const domNodeSelect = document.getElementById('node');
 // Display the default settings directly in the UI
 domNetwork.innerHTML = '<b> Network:</b> ' + (networkEnabled ? 'Enabled' : 'Disabled');
 domDebug.innerHTML = debug                            ? '<b>DEBUG MODE ON</b>'            : '';
-domSyncMode.innerHTML = fAlternativeSync              ? '<b>Experimental Sync Active</b>' : '';
 domTestnet.innerHTML = cChainParams.current.isTestnet ? '<b>Testnet Mode On</b>'          : '';
 
 // --- Settings Functions
@@ -110,12 +107,6 @@ function toggleTestnet() {
     getBalance(true);
     getStakingBalance(true);
     updateStakingRewardsGUI();
-}
-
-function toggleSyncMode() {
-    fAlternativeSync = !fAlternativeSync;
-    domSyncMode.innerHTML = fAlternativeSync ? '<b>Experimental Sync Active</b>' : '';
-    createAlert('success', '<b>Switched sync mode!</b><br>Now using ' + (fAlternativeSync ? 'experimental' : 'stable') + ' sync', 3000);
 }
 
 function toggleDebug() {
