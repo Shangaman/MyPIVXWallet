@@ -1667,7 +1667,7 @@
           for(const tx of cTx.inputs){
             mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
           }
-          //ADD THE PENDING CHANGE
+          // Add our undelegation + change re-delegation (if any) to the local mempool
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
           if(fReDelegateChange){
             mempool.addUTXO({id: futureTxid,path: reDelegateAddressPath,script:Crypto.util.bytesToHex(cTx.outputs[0].script) ,sats: nChange,vout: 0,status: Mempool.PENDING_COLD});
@@ -1685,7 +1685,7 @@
           for(const tx of cTx.inputs){
             mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
           }
-          //ADD THE PENDING CHANGE
+          // Add our undelegation + change re-delegation (if any) to the local mempool
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           if(fReDelegateChange){
             mempool.addUTXO({id: futureTxid,path:reDelegateAddressPath,script:Crypto.util.bytesToHex(cTx.outputs[0].script) ,sats: nChange,vout: 0,status: Mempool.PENDING_COLD});
@@ -1806,7 +1806,7 @@
           for(const tx of cTx.inputs){
             mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
           }
-          //ADD THE PENDING CHANGE
+          // Add our delegation + change (if any) to the local mempool
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(sign)))))));
           if(nChange>0){
             mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,script:Crypto.util.bytesToHex(cTx.outputs[0].script),vout: 0,status: Mempool.PENDING});
@@ -1880,8 +1880,6 @@
 
       // Reaching here: we have sufficient UTXOs, calc final misc data and return!
       cCoinControl.nChange = nTotalSatsRequired - cCoinControl.nValue;
-      console.log(spent)
-      //mempool.autoRemoveUTXOs(spent);
       return ccSuccess(cCoinControl);
     }
 
@@ -1941,7 +1939,6 @@
       const outputs = [];
       if (nChange > 0) {
         // Change output
-        //SHOULD WE ADD THE CHANGE AS INCOMING UTXO???
         outputs.push([changeAddress, nChange / COIN]);
       } else {
         // We're sending alot! So we deduct the fee from the send amount. There's not enough change to pay it with!
@@ -1964,11 +1961,10 @@
       if (!masterKey.isHardwareWallet) {
         const sign = await cTx.sign(masterKey, 1);
 
-        const result= await sendTransaction(sign);
-        //ADD THE CHANGE AS A PENDING UTXO
+        const result = await sendTransaction(sign);
+        // Add our change (if any) to the local mempool
         if(result){
           for(const tx of cTx.inputs){
-            console.log(tx.outpoint.hash,tx.path,Crypto.util.bytesToHex(tx.script),tx.outpoint.index)
             mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
           }
           if(nChange>0){
@@ -2010,7 +2006,7 @@
           for(const tx of cTx.inputs){
             mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
           }
-         //ADD THE CHANGE AS A PENDING UTXO
+         // Add our change (if any) to the local mempool
          if(nChange>0){
           const futureTxid=swapHEXEndian(await hash(Crypto.util.hexToBytes((await hash((Crypto.util.hexToBytes(strSerialisedTx)))))));
           mempool.addUTXO({id: futureTxid,path: changeAddressPath,sats: nChange,script:Crypto.util.bytesToHex(cTx.outputs[0].script) ,vout: 0,status: Mempool.PENDING});        

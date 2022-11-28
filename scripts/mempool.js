@@ -147,16 +147,16 @@ class Mempool {
 
     /**
      * Add a new UTXO to the wallet
-     * @param {String} id - Transaction ID
-     * @param {String} path - If applicable, the HD Path of the owning address
-     * @param {Number} sats - Satoshi value in this UTXO
-     * @param {String} script - HEX encoded spending script
-     * @param {Number} vout - Output position of this transaction
-     * @param {Number} height - Block height of the UTXO
-     * @param {Number} status - UTXO status enum state
+     * @param {Object} UTXO
+     * @param {String} UTXO.id - Transaction ID
+     * @param {String} UTXO.path - If applicable, the HD Path of the owning address
+     * @param {Number} UTXO.sats - Satoshi value in this UTXO
+     * @param {String} UTXO.script - HEX encoded spending script
+     * @param {Number} UTXO.vout - Output position of this transaction
+     * @param {Number} UTXO.height - Block height of the UTXO
+     * @param {Number} UTXO.status - UTXO status enum state
      */
-     
-    addUTXO({id,path,sats,script,vout,height,status}) {
+    addUTXO({id, path, sats, script, vout, height, status}) {
         const newUTXO = new UTXO({id, path, sats, script, vout, height, status});
         // Ensure the new UTXO doesn't have the same status
         if (this.isAlreadyStored(newUTXO)) return;
@@ -193,12 +193,11 @@ class Mempool {
                 // Loop given + internal UTXOs to find a match, then start the delayed removal
                 if (cUTXO.id === id && cUTXO.path===path && cUTXO.vout===vout) {
                     cUTXO.status = Mempool.REMOVED;
-                    console.log("FOUND",cUTXO.status===Mempool.REMOVED,cUTXO)
                     this.removeWithDelay(12, cUTXO);
                     return;
                 }
-            }   
-            console.log("NOT FOUND VERY BIG PROBLEM,") 
+            }
+            console.error("Mempool: Failed to find UTXO " + id + " (" + vout + ") for auto-removal!");
         }
     
     /**
@@ -239,7 +238,7 @@ class Mempool {
                 return;
             }
         }
-        console.log("mempool error: UTXO NOT FOUND");
+        console.log("Mempool: Failed to find UTXO " + id + " (" + vout + ") for auto-removal!");
     }
 
     /**
