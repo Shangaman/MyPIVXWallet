@@ -66,11 +66,11 @@ if (networkEnabled) {
       // Determine the UTXO type, and use it accordingly
       if (cVout.scriptPubKey.type === 'pubkeyhash') {
         // P2PKH type (Pay-To-Pub-Key-Hash)
-        cachedUTXOs.push(cUTXO);
+        //mempool.addUTXO...
       } else
       if (cVout.scriptPubKey.type === 'coldstake') {
         // Cold Stake type
-        arrDelegatedUTXOs.push(cUTXO);
+        // mempool.addUTXO...
       }
 
       // Shift the queue and update the UI
@@ -108,7 +108,6 @@ if (networkEnabled) {
     request.onload = function() {
       arrUTXOsToValidate = JSON.parse(this.response);
       // Clear our UTXOs and begin accepting refreshed ones (TODO: build an efficient 'set merge' algo)
-      cachedUTXOs = []; arrDelegatedUTXOs = [];
       if (arrUTXOsToValidate.length) {
         nTimeSyncStart = Date.now() / 1000;
         acceptUTXO();
@@ -246,7 +245,6 @@ var getUTXOsHeavy = async function() {
       mapPaths.set(address, ":)");
     }
     if (cData && cData.transactions) {
-      cachedUTXOs = []; arrDelegatedUTXOs = [];
       for (const cTx of cData.transactions) {
         const fCoinstake = cTx.vout[0].addresses[0] === "CoinStake TX";
         for (const cOut of cTx.vout) {
