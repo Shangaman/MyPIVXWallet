@@ -570,7 +570,7 @@
 
             <div id="StakingTab" class="tabcontent">
               <!-- STAKING FEATURES -->
-              <p id="info" class="minor-notif-subtext"><b>New Feature!</b><br>Please be aware MPW Cold Staking is a new, slightly experimental feature, it may be unstable, and is currently slow. Please have patience when using this feature, and wait for block confirmations before actions and balances are shown on-screen.</p>
+              <p id="info" class="minor-notif-subtext"><b>New Feature!</b><br>Please be aware MPW Cold Staking is a new, slightly experimental feature, it may be unstable.</p>
               <div class="add-frame">
               <div class="staking-banner-top">
                 <div id="staking-rectangle" class="col-md-4">
@@ -1662,7 +1662,7 @@
         const strSerialisedTx = Crypto.util.bytesToHex(arrPubkeyWithScript);
 
         // Broadcast the Hardware (Ledger) TX
-        const result = await sendTransaction(strSerialisedTx, "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
+        const result = await sendTransaction(strSerialisedTx, "<b>Delegation successfully spent!</b>");
         if(result){
           for(const tx of cTx.inputs){
             mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
@@ -1680,7 +1680,7 @@
          let sign= await cTx.sign(masterKey, 1, 'coldstake');
         // Broadcast the software TX
   
-        const result = await sendTransaction(sign, "<b>Delegation successfully spent!</b><br>Please wait for confirmations.");
+        const result = await sendTransaction(sign, "<b>Delegation successfully spent!</b>");
         if(result){
           for(const tx of cTx.inputs){
             mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
@@ -1781,7 +1781,7 @@
         
      
         // Broadcast the Hardware (Ledger) tx
-        const result = await sendTransaction(strSerialisedTx, "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
+        const result = await sendTransaction(strSerialisedTx, "<b>Delegation successful!</b>");
         if(result){
           for(const tx of cTx.inputs){
             mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
@@ -1801,7 +1801,7 @@
         const sign= await cTx.sign(masterKey, 1);
     
         // Broadcast the software TX
-        const result = await sendTransaction(sign, "<b>Delegation successful!</b><br>Please wait for confirmations, enjoy your staking!");
+        const result = await sendTransaction(sign, "<b>Delegation successful!</b>");
         if(result){
           for(const tx of cTx.inputs){
             mempool.autoRemoveUTXO({id: tx.outpoint.hash,path: tx.path,vout: tx.outpoint.index})
