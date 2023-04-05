@@ -714,6 +714,8 @@ async function govVote(hash, voteCode) {
             const result = await cMasternode.vote(hash.toString(), voteCode); //1 yes 2 no
             if (result.includes('Voted successfully')) {
                 //good vote
+                cMasternode.storeVote(hash.toString(), voteCode);
+                await updateGovernanceTab();
                 createAlert('success', 'Vote submitted!', 6000);
             } else if (result.includes('Error voting :')) {
                 //If you already voted return an alert
@@ -1392,14 +1394,24 @@ function renderProposals(arrProposals, fContested) {
             };
             finalizeRow.appendChild(finalizeButton);
         } else {
+            const res = Masternode.getVote(cProposal.Hash);
+            let btnYesClass = 'pivx-button-big';
+            let btnNoClass = 'pivx-button-big';
+            if (res) {
+                if (res[1] === 1) {
+                    btnYesClass += ' pivx-button-big-yes-gov';
+                } else {
+                    btnNoClass += ' pivx-button-big-no-gov';
+                }
+            }
             const domVoteBtns = domRow.insertCell();
             const domNoBtn = document.createElement('button');
-            domNoBtn.className = 'pivx-button-big';
+            domNoBtn.className = btnNoClass;
             domNoBtn.innerText = 'No';
             domNoBtn.onclick = () => govVote(cProposal.Hash, 2);
 
             const domYesBtn = document.createElement('button');
-            domYesBtn.className = 'pivx-button-big';
+            domYesBtn.className = btnYesClass;
             domYesBtn.innerText = 'Yes';
             domYesBtn.onclick = () => govVote(cProposal.Hash, 1);
 

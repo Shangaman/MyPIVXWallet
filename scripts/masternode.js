@@ -349,7 +349,34 @@ export default class Masternode {
         );
         return Buffer.from([v + 27, ...signature]).toString('base64');
     }
-
+    /**
+     * @param {string} hash - the hash of the proposal you want to get the vote of
+     * @return {[string, number]} array of vote hash and corresponding vote
+     */
+    static getVote(hash) {
+        const votes = localStorage.getItem('votes')
+            ? JSON.parse(localStorage.getItem('votes'))
+            : [];
+        return votes.find(([vHash]) => vHash === hash);
+    }
+    /**
+     * Stores a vote inside the localStorage
+     * @param {string} hash - the hash of the proposal to vote
+     * @param {number} voteCode - the vote code. "Yes" is 1, "No" is 2
+     */
+    storeVote(hash, voteCode) {
+        const new_vote = [hash, voteCode];
+        let votes = localStorage.getItem('votes')
+            ? JSON.parse(localStorage.getItem('votes'))
+            : [];
+        const index = votes.findIndex(([vHash]) => vHash === hash);
+        if (index !== -1) {
+            votes[index] = new_vote;
+        } else {
+            votes.push(new_vote);
+        }
+        localStorage.setItem('votes', JSON.stringify(votes));
+    }
     /**
      * @param {string} hash - the hash of the proposal to vote
      * @param {number} voteCode - the vote code. "Yes" is 1, "No" is 2
