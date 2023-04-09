@@ -1275,8 +1275,8 @@ async function updateGovernanceTab() {
     );
 
     // Render Proposals
-    renderProposals(arrStandard, false);
-    renderProposals(arrContested, true);
+    await renderProposals(arrStandard, false);
+    await renderProposals(arrContested, true);
 }
 
 /**
@@ -1284,7 +1284,7 @@ async function updateGovernanceTab() {
  * @param {Array<object>} arrProposals - The proposals to render
  * @param {boolean} fContested - The proposal category
  */
-function renderProposals(arrProposals, fContested) {
+async function renderProposals(arrProposals, fContested) {
     // Select the table based on the proposal category
     const domTable = fContested
         ? doms.domGovProposalsContestedTableBody
@@ -1292,7 +1292,9 @@ function renderProposals(arrProposals, fContested) {
 
     // Render the proposals in the relevent table
     domTable.innerHTML = '';
-
+    const cMasternode = localStorage.getItem('masternode')
+        ? new Masternode(JSON.parse(localStorage.getItem('masternode')))
+        : null;
     if (!fContested) {
         const localProposals = JSON.parse(
             localStorage.getItem('localProposals') || '[]'
@@ -1394,11 +1396,13 @@ function renderProposals(arrProposals, fContested) {
             };
             finalizeRow.appendChild(finalizeButton);
         } else {
-            const res = Masternode.getVote(cProposal.Hash);
+            const res = cMasternode
+                ? await cMasternode.getVote(cProposal.Name, cProposal.Hash)
+                : null;
             let btnYesClass = 'pivx-button-big';
             let btnNoClass = 'pivx-button-big';
             if (res) {
-                if (res[1] === 1) {
+                if (res === 1) {
                     btnYesClass += ' pivx-button-big-yes-gov';
                 } else {
                     btnNoClass += ' pivx-button-big-no-gov';

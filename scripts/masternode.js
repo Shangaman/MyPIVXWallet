@@ -35,6 +35,10 @@ export default class Masternode {
         this.outidx = outidx;
         this.addr = addr;
     }
+    /**
+     * @type {[string, number]} array of vote hash and corresponding vote for the current session
+     */
+    static sessionVotes = [];
 
     async _getWalletPrivateKey() {
         return await masterKey.getPrivateKey(this.walletPrivateKeyPath);
@@ -350,32 +354,41 @@ export default class Masternode {
         return Buffer.from([v + 27, ...signature]).toString('base64');
     }
     /**
+     * @param {string} proposalName - the name of the proposal you want to get the vote of
      * @param {string} hash - the hash of the proposal you want to get the vote of
-     * @return {[string, number]} array of vote hash and corresponding vote
+     * @return {number} Vote code "Yes" is 1, "No" is 2
      */
-    static getVote(hash) {
-        const votes = localStorage.getItem('votes')
-            ? JSON.parse(localStorage.getItem('votes'))
-            : [];
-        return votes.find(([vHash]) => vHash === hash);
+    async getVote(proposalName, hash) {
+        //See if you already voted the proposal in the current session
+        const index = sessionVotes.findIndex(([vHash]) => vHash === hash);
+        if (index !== -1) {
+            //Found it! return the vote
+            return sessionVotes[index][1];
+        }
+        //Haven't voted yet, fetch the result from Duddino's node
+        const filter = `.[]%20%7C%20select(.mnId=="${this.collateralTxId}-${this.outidx}")`;
+        const url = `${cNode.url}/getbudgetvotes?params=${proposalName}&filter=${filter}`;
+        const text = await (await fetch(url)).text();
+        try {
+            return JSON.parse(text).Vote === 'YES' ? 1 : 2;
+        } catch (e) {
+            //Cannot parse JSON! This means that you did not vote hence return null
+            return null;
+        }
     }
     /**
-     * Stores a vote inside the localStorage
+     * Stores a vote for the current session
      * @param {string} hash - the hash of the proposal to vote
      * @param {number} voteCode - the vote code. "Yes" is 1, "No" is 2
      */
     storeVote(hash, voteCode) {
-        const new_vote = [hash, voteCode];
-        let votes = localStorage.getItem('votes')
-            ? JSON.parse(localStorage.getItem('votes'))
-            : [];
-        const index = votes.findIndex(([vHash]) => vHash === hash);
+        const newVote = [hash, voteCode];
+        const index = sessionVotes.findIndex(([vHash]) => vHash === hash);
         if (index !== -1) {
-            votes[index] = new_vote;
+            sessionVotes[index] = newVote;
         } else {
-            votes.push(new_vote);
+            sessionVotes.push(newVote);
         }
-        localStorage.setItem('votes', JSON.stringify(votes));
     }
     /**
      * @param {string} hash - the hash of the proposal to vote
