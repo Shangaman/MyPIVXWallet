@@ -360,10 +360,10 @@ export default class Masternode {
      */
     async getVote(proposalName, hash) {
         //See if you already voted the proposal in the current session
-        const index = sessionVotes.findIndex(([vHash]) => vHash === hash);
+        const index = Masternode.sessionVotes.findIndex(([vHash]) => vHash === hash);
         if (index !== -1) {
             //Found it! return the vote
-            return sessionVotes[index][1];
+            return Masternode.sessionVotes[index][1];
         }
         //Haven't voted yet, fetch the result from Duddino's node
         const filter = `.[]%20%7C%20select(.mnId=="${this.collateralTxId}-${this.outidx}")`;
@@ -383,11 +383,11 @@ export default class Masternode {
      */
     storeVote(hash, voteCode) {
         const newVote = [hash, voteCode];
-        const index = sessionVotes.findIndex(([vHash]) => vHash === hash);
+        const index = Masternode.sessionVotes.findIndex(([vHash]) => vHash === hash);
         if (index !== -1) {
-            sessionVotes[index] = newVote;
+            Masternode.sessionVotes[index] = newVote;
         } else {
-            sessionVotes.push(newVote);
+            Masternode.sessionVotes.push(newVote);
         }
     }
     /**
