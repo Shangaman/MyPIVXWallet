@@ -356,11 +356,13 @@ export default class Masternode {
     /**
      * @param {string} proposalName - the name of the proposal you want to get the vote of
      * @param {string} hash - the hash of the proposal you want to get the vote of
-     * @return {number} Vote code "Yes" is 1, "No" is 2
+     * @return {Promise<number>} Vote code "Yes" is 1, "No" is 2
      */
     async getVote(proposalName, hash) {
         //See if you already voted the proposal in the current session
-        const index = Masternode.sessionVotes.findIndex(([vHash]) => vHash === hash);
+        const index = Masternode.sessionVotes.findIndex(
+            ([vHash]) => vHash === hash
+        );
         if (index !== -1) {
             //Found it! return the vote
             return Masternode.sessionVotes[index][1];
@@ -383,7 +385,9 @@ export default class Masternode {
      */
     storeVote(hash, voteCode) {
         const newVote = [hash, voteCode];
-        const index = Masternode.sessionVotes.findIndex(([vHash]) => vHash === hash);
+        const index = Masternode.sessionVotes.findIndex(
+            ([vHash]) => vHash === hash
+        );
         if (index !== -1) {
             Masternode.sessionVotes[index] = newVote;
         } else {

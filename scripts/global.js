@@ -1314,6 +1314,17 @@ async function renderProposals(arrProposals, fContested) {
         });
         arrProposals = localProposals.concat(arrProposals);
     }
+    arrProposals = await Promise.all(
+        arrProposals.map(async (p) => {
+            return {
+                YourVote:
+                    cMasternode && p.Hash
+                        ? await cMasternode.getVote(p.Name, p.Hash)
+                        : null,
+                ...p,
+            };
+        })
+    );
     for (const cProposal of arrProposals) {
         const domRow = domTable.insertRow();
 
@@ -1396,13 +1407,10 @@ async function renderProposals(arrProposals, fContested) {
             };
             finalizeRow.appendChild(finalizeButton);
         } else {
-            const res = cMasternode
-                ? await cMasternode.getVote(cProposal.Name, cProposal.Hash)
-                : null;
             let btnYesClass = 'pivx-button-big';
             let btnNoClass = 'pivx-button-big';
-            if (res) {
-                if (res === 1) {
+            if (cProposal.YourVote) {
+                if (cProposal.YourVote === 1) {
                     btnYesClass += ' pivx-button-big-yes-gov';
                 } else {
                     btnNoClass += ' pivx-button-big-no-gov';
