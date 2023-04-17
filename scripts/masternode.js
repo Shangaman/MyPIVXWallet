@@ -375,9 +375,9 @@ export default class Masternode {
             `${encodeURI(filterString)}` +
             `${this.collateralTxId}-${this.outidx}")`;
         const url = `${cNode.url}/getbudgetvotes?params=${proposalName}&filter=${filter}`;
-        const vote = await (await fetch(url)).json();
+        const vote = await (await fetch(url)).text();
         try {
-            return vote.Vote === 'YES' ? 1 : 2;
+            return JSON.parse(vote).Vote === 'YES' ? 1 : 2;
         } catch (e) {
             //Cannot parse JSON! This means that you did not vote hence return null
             return null;
