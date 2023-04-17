@@ -227,7 +227,9 @@ export default class Masternode {
 
     async getWalletPublicKey() {
         if (masterKey.isHardwareWallet) {
-           return hexToBytes(await masterKey.getPublicKey(this.walletPrivateKeyPath));
+            return hexToBytes(
+                await masterKey.getPublicKey(this.walletPrivateKeyPath)
+            );
         } else {
             const walletPrivateKey = await this._getWalletPrivateKey();
             return hexToBytes(
@@ -368,11 +370,14 @@ export default class Masternode {
             return Masternode.sessionVotes[index][1];
         }
         //Haven't voted yet, fetch the result from Duddino's node
-        const filter = `.[]%20%7C%20select(.mnId=="${this.collateralTxId}-${this.outidx}")`;
+        const filterString = `.[] | select(.mnId=="`;
+        const filter =
+            `${encodeURI(filterString)}` +
+            `${this.collateralTxId}-${this.outidx}")`;
         const url = `${cNode.url}/getbudgetvotes?params=${proposalName}&filter=${filter}`;
-        const text = await (await fetch(url)).text();
+        const vote = await (await fetch(url)).json();
         try {
-            return JSON.parse(text).Vote === 'YES' ? 1 : 2;
+            return vote.Vote === 'YES' ? 1 : 2;
         } catch (e) {
             //Cannot parse JSON! This means that you did not vote hence return null
             return null;
