@@ -10,7 +10,7 @@ import { de_translation } from '../locale/de/translation.js';
 import { Database } from './database.js';
 import { fillAnalyticSelect, setTranslation } from './settings.js';
 import { renderActivityGUI, updateEncryptionGUI } from './global.js';
-import { masterKey } from './wallet.js';
+import { wallet } from './wallet.js';
 import { getNetwork } from './network.js';
 import { cReceiveType, guiToggleReceiveType } from './contacts-book.js';
 
@@ -55,13 +55,14 @@ export function switchTranslation(langName) {
 
         // Translate any dynamic elements necessary
         const cNet = getNetwork();
-        if (masterKey && cNet) {
+        if (wallet.isLoaded() && cNet) {
             updateEncryptionGUI();
             renderActivityGUI(cNet.arrTxHistory);
         }
         loadAlerts();
         fillAnalyticSelect();
-        if (masterKey) {
+        if (wallet.isLoaded()) {
+            console.log('aszz');
             guiToggleReceiveType(cReceiveType);
         }
         return true;
