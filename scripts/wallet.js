@@ -162,13 +162,6 @@ class Wallet {
 export const wallet = new Wallet();
 
 /**
- * Private key in Bytes and WIF formats
- * @typedef {Object} PrivateKey
- * @property {Uint8Array} pkBytes - The unprocessed Private Key bytes.
- * @property {string} strWIF - The WIF encoded private key string.
- */
-
-/**
  * Import a wallet (with it's private, public or encrypted data)
  * @param {object} options
  * @param {string | Array<number>} options.newWif - The import data (if omitted, the UI input is accessed)
@@ -198,14 +191,13 @@ export async function importWallet({
                     7500
                 );
             }
+            // Derive our hardware address and import!
+            await wallet.setMasterKey(new HardwareWalletMasterKey());
             const publicKey = await getHardwareWalletKeys(
                 wallet.getDerivationPath()
             );
             // Errors are handled within the above function, so there's no need for an 'else' here, just silent ignore.
             if (!publicKey) return;
-
-            // Derive our hardware address and import!
-            await wallet.setMasterKey(new HardwareWalletMasterKey());
 
             // Hide the 'export wallet' button, it's not relevant to hardware wallets
             doms.domExportWallet.hidden = true;
