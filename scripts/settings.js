@@ -273,7 +273,7 @@ export async function setExplorer(explorer, fSilent = false) {
     cExplorer = explorer;
 
     // Enable networking + notify if allowed
-    const network = new ExplorerNetwork(cExplorer.url, wallet.getMasterKey());
+    const network = new ExplorerNetwork(cExplorer.url, wallet);
     setNetwork(network);
 
     // Update the selector UI

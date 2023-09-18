@@ -37,7 +37,7 @@ export let fWalletLoaded = false;
  * it also remembers which addresses we generated.
  * in future PRs this class will manage balance, UTXOs, masternode etc...
  */
-class Wallet {
+export class Wallet {
     /**
      * @type {MasterKey}
      */
@@ -108,7 +108,7 @@ class Wallet {
     async setMasterKey(mk) {
         this.#masterKey = mk;
         // Update the network master key
-        await getNetwork().setMasterKey(this.#masterKey);
+        await getNetwork().setWallet(this);
     }
 
     /**
@@ -163,7 +163,7 @@ class Wallet {
 
         // Prepare to Add/Update an account in the DB
         const cAccount = new Account({
-            publicKey: await this.#masterKey.keyToExport,
+            publicKey: await this.getKeyToExport(),
             encWif: strEncWIF,
         });
 
@@ -226,7 +226,7 @@ class Wallet {
             }
         } else {
             const value =
-                address === (await this.#masterKey.keyToExport) ? ':)' : null;
+                address === (await this.getKeyToExport()) ? ':)' : null;
             this.#ownAddresses.set(address, value);
             return value;
         }
@@ -244,6 +244,10 @@ class Wallet {
             nReceiving,
             nIndex
         );
+    }
+
+    async getKeyToExport() {
+        return await this.#masterKey.getKeyToExport(this.#nAccount);
     }
 }
 

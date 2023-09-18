@@ -77,7 +77,7 @@ export class MasterKey {
      * @return {Promise<String>} public key to export. Only suitable for monitoring balance.
      * @abstract
      */
-    get keyToExport() {
+    getKeyToExport(nAccount) {
         throw new Error('Not implemented');
     }
 
@@ -170,15 +170,17 @@ export class HdMasterKey extends MasterKey {
     wipePrivateData() {
         if (this._isViewOnly) return;
 
-        this._hdKey = HDKey.fromExtendedKey(this.keyToExport);
+        this._hdKey = HDKey.fromExtendedKey(this.getKeyToExport(0));
         this._isViewOnly = true;
     }
-    //TODO: once network is refactored this function should take the parameter nAccount should be called only from wallet class
-    get keyToExport() {
+    getKeyToExport(nAccount) {
         if (this._isViewOnly) return this._hdKey.publicExtendedKey;
         // We need the xpub to point at the account level
         return this._hdKey.derive(
-            this.getDerivationPath(0, 0, 0).split('/').slice(0, 4).join('/')
+            this.getDerivationPath(nAccount, 0, 0)
+                .split('/')
+                .slice(0, 4)
+                .join('/')
         ).publicExtendedKey;
     }
 }
@@ -223,9 +225,8 @@ export class HardwareWalletMasterKey extends MasterKey {
     get isViewOnly() {
         return false;
     }
-    //TODO: once network is refactored this function should take the parameter nAccount should be called only from wallet class
-    get keyToExport() {
-        const derivationPath = this.getDerivationPath(0, 0, 0)
+    getKeyToExport(nAccount) {
+        const derivationPath = this.getDerivationPath(nAccount, 0, 0)
             .split('/')
             .slice(0, 4)
             .join('/');
@@ -247,7 +248,7 @@ export class LegacyMasterKey extends MasterKey {
         return this._address;
     }
 
-    get keyToExport() {
+    getKeyToExport() {
         return this._address;
     }
 

@@ -1581,7 +1581,7 @@ export async function guiImportWallet() {
             if (wallet.isLoaded()) {
                 // Prepare a new Account to add
                 const cAccount = new Account({
-                    publicKey: await wallet.getMasterKey().keyToExport,
+                    publicKey: await wallet.getKeyToExport(),
                     encWif: strPrivKey,
                 });
 
