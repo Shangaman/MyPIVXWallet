@@ -197,7 +197,10 @@ export async function importWallet({
                 wallet.getDerivationPath()
             );
             // Errors are handled within the above function, so there's no need for an 'else' here, just silent ignore.
-            if (!publicKey) return;
+            if (!publicKey) {
+                wallet.setMasterKey(null);
+                return;
+            }
 
             // Hide the 'export wallet' button, it's not relevant to hardware wallets
             doms.domExportWallet.hidden = true;
