@@ -61,7 +61,7 @@ export class MasterKey {
      * @return {void}
      * @abstract
      */
-    wipePrivateData() {
+    wipePrivateData(nAccount) {
         throw new Error('Not implemented');
     }
 
@@ -167,10 +167,10 @@ export class HdMasterKey extends MasterKey {
         return deriveAddress({ publicKey: bytesToHex(child.publicKey) });
     }
 
-    wipePrivateData() {
+    wipePrivateData(nAccount) {
         if (this._isViewOnly) return;
 
-        this._hdKey = HDKey.fromExtendedKey(this.getKeyToExport(0));
+        this._hdKey = HDKey.fromExtendedKey(this.getKeyToExport(nAccount));
         this._isViewOnly = true;
     }
     getKeyToExport(nAccount) {

@@ -1912,7 +1912,7 @@ export async function wipePrivateData() {
             html,
         })
     ) {
-        wallet.getMasterKey().wipePrivateData();
+        wallet.wipePrivateData();
         doms.domWipeWallet.hidden = true;
         if (isEncrypted) {
             doms.domRestoreWallet.hidden = false;

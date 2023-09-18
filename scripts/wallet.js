@@ -67,6 +67,10 @@ export class Wallet {
         return this.#nAccount;
     }
 
+    wipePrivateData() {
+        this.#masterKey.wipePrivateData(this.#nAccount);
+    }
+
     isViewOnly() {
         if (!this.#masterKey) return false;
         return this.#masterKey.isViewOnly;
