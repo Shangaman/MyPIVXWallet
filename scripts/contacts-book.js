@@ -343,9 +343,7 @@ export async function guiRenderReceiveModal(
             let strPubkey = '';
 
             // If HD: use xpub, otherwise we'll fallback to our single address
-            strPubkey = wallet.isHD()
-                ? await wallet.getXPub()
-                : await wallet.getAddress();
+            strPubkey = await wallet.getKeyToExport();
 
             // Construct the Contact Share URI
             const strContactURI = await localContactToURI(cAccount, strPubkey);
@@ -955,10 +953,7 @@ export async function localContactToURI(account, pubkey) {
     let strPubkey = pubkey || '';
 
     // If HD: use xpub, otherwise we'll fallback to our single address
-    if (!strPubkey)
-        strPubkey = wallet.isHD()
-            ? await wallet.getXPub()
-            : await wallet.getAddress();
+    if (!strPubkey) strPubkey = await wallet.getKeyToExport();
 
     // Construct the Contact URI Root
     const strURL = window.location.origin + window.location.pathname;

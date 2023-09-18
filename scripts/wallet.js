@@ -121,7 +121,7 @@ export class Wallet {
      *
      */
     async getCurrentAddress() {
-        return await this.getAddress(this.#nAccount, 0, this.#addressIndex);
+        return await this.getAddress(0, this.#addressIndex);
     }
 
     /**
