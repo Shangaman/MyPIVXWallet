@@ -90,6 +90,7 @@ export class HistoricalTx {
 
 /**
  * Virtual class rapresenting any network backend
+ * TODO: promote the masterKey to a wallet
  */
 export class Network {
     constructor(masterKey) {
@@ -255,7 +256,7 @@ export class ExplorerNetwork extends Network {
             // Derive our XPub, or fetch a single pubkey
             if (this.masterKey.isHD && !strAddress) {
                 const derivationPath = this.masterKey
-                    .getDerivationPath()
+                    .getDerivationPath(0, 0, 0)
                     .split('/')
                     .slice(0, 4)
                     .join('/');
@@ -381,7 +382,7 @@ export class ExplorerNetwork extends Network {
             // Form the API call using our wallet information
             const fHD = this.masterKey.isHD;
             const strDerivPath = this.masterKey
-                .getDerivationPath()
+                .getDerivationPath(0, 0, 0)
                 .split('/')
                 .slice(0, 4)
                 .join('/');
