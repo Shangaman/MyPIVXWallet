@@ -198,7 +198,7 @@ export async function importWallet({
             );
             // Errors are handled within the above function, so there's no need for an 'else' here, just silent ignore.
             if (!publicKey) {
-                wallet.setMasterKey(null);
+                await wallet.setMasterKey(null);
                 return;
             }
 
