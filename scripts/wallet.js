@@ -77,7 +77,7 @@ class Wallet {
 
     /**
      * Set or replace the active Master Key with a new Master Key
-     * @param {MasterKey} mk - The new Master Key to set active
+     * @param {Promise<MasterKey>} mk - The new Master Key to set active
      */
     async setMasterKey(mk) {
         this.#masterKey = mk;
@@ -90,7 +90,7 @@ class Wallet {
     }
 
     isLoaded() {
-        return this.#masterKey;
+        return !!this.#masterKey;
     }
 
     async encryptWallet(strPassword = '') {

@@ -10,7 +10,7 @@ import { deriveAddress, generateOrEncodePrivkey } from './encoding.js';
  * Abstract class masterkey
  * @abstract
  */
-class MasterKey {
+export class MasterKey {
     #addressIndex = 0;
     /**
      * Map our own address -> Path
