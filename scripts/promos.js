@@ -13,7 +13,7 @@ import { scanQRCode } from './scanner';
 import { createAndSendTransaction } from './transactions';
 import { wallet } from './wallet';
 import { LegacyMasterKey } from './masterkey';
-import { deriveAddress } from './cypher';
+import { deriveAddress } from './encoding';
 
 /** The fee in Sats to use for Creating or Redeeming PIVX Promos */
 export const PROMO_FEE = 10000;

@@ -1,7 +1,7 @@
 import { cNode, cExplorer } from './settings.js';
 import { cChainParams, COIN } from './chain_params.js';
 import { wallet } from './wallet.js';
-import { parseWIF, deriveAddress } from './cypher.js';
+import { parseWIF, deriveAddress } from './encoding.js';
 import { cHardwareWallet } from './ledger.js';
 import { dSHA256, bytesToHex, hexToBytes } from './utils.js';
 import { Buffer } from 'buffer';

@@ -4,7 +4,7 @@ import { bytesToHex } from './utils.js';
 import { getHardwareWalletKeys } from './ledger.js';
 import { cChainParams, MAX_ACCOUNT_GAP } from './chain_params.js';
 
-import { deriveAddress, generateOrEncodePrivkey } from './cypher.js';
+import { deriveAddress, generateOrEncodePrivkey } from './encoding.js';
 
 /**
  * Abstract class masterkey

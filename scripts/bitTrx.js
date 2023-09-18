@@ -4,7 +4,7 @@ import { BigInteger } from 'biginteger';
 import bs58 from 'bs58';
 import { OP } from './script.js';
 import { wallet } from './wallet.js';
-import { parseWIF, deriveAddress } from './cypher.js';
+import { parseWIF, deriveAddress } from './encoding.js';
 import { sha256 } from '@noble/hashes/sha256';
 import { getNetwork } from './network.js';
 import { cChainParams } from './chain_params.js';

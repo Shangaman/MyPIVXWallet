@@ -62,7 +62,6 @@ export function switchTranslation(langName) {
         loadAlerts();
         fillAnalyticSelect();
         if (wallet.isLoaded()) {
-            console.log('aszz');
             guiToggleReceiveType(cReceiveType);
         }
         return true;

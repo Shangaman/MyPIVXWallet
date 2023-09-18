@@ -1,4 +1,4 @@
-import { parseWIF } from './cypher.js';
+import { parseWIF } from './encoding.js';
 import { generateMnemonic, mnemonicToSeed, validateMnemonic } from 'bip39';
 import { doms, beforeUnloadListener } from './global.js';
 import { getNetwork } from './network.js';
@@ -8,7 +8,7 @@ import {
     HdMasterKey,
     HardwareWalletMasterKey,
 } from './masterkey';
-import { generateOrEncodePrivkey } from './cypher.js';
+import { generateOrEncodePrivkey } from './encoding.js';
 import {
     confirmPopup,
     createAlert,
