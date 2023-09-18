@@ -151,23 +151,8 @@ class Wallet {
     async isOwnAddress(address) {
         return await this.#masterKey.isOwnAddress(address);
     }
-    getDerivationPath(
-        nAccount = 0,
-        nReceiving = 0,
-        nIndex = 0,
-        /**
-         * When `true` will derive based on local wallet properties, when `false` it
-         * will default to only accept given params and ignore the local configuration
-         * @type {boolean}
-         */
-        fLocalWallet = true
-    ) {
-        return this.#masterKey.getDerivationPath(
-            nAccount,
-            nReceiving,
-            nIndex,
-            fLocalWallet
-        );
+    getDerivationPath(nAccount = 0, nReceiving = 0, nIndex = 0) {
+        return this.#masterKey.getDerivationPath(nAccount, nReceiving, nIndex);
     }
 }
 

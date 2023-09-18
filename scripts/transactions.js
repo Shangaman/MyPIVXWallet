@@ -104,10 +104,10 @@ export async function createTxGUI() {
 
         // Use the latest index plus one (or if the XPub is unused, then the second address)
         const nIndex = (cXPub.usedTokens || 0) + 1;
-        const strPath = wallet.getDerivationPath(0, 0, nIndex, false);
 
         // Create a receiver master-key
         const cReceiverWallet = new HdMasterKey({ xpub: strReceiverAddress });
+        const strPath = cReceiverWallet.getDerivationPath(0, 0, nIndex);
 
         // Set the 'receiver address' as the unused XPub-derived address
         strReceiverAddress = cReceiverWallet.getAddress(strPath);

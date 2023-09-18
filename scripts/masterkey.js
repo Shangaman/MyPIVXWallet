@@ -108,23 +108,12 @@ export class MasterKey {
     }
 
     // Construct a full BIP44 pubkey derivation path from it's parts
-    getDerivationPath(
-        nAccount = 0,
-        nReceiving = 0,
-        nIndex = 0,
-        /**
-         * When `true` will derive based on local wallet properties, when `false` it
-         * will default to only accept given params and ignore the local configuration
-         * @type {boolean}
-         */
-        fLocalWallet = true
-    ) {
+    getDerivationPath(nAccount = 0, nReceiving = 0, nIndex = 0) {
         // Coin-Type is different on Ledger, as such, for local wallets; we modify it if we're using a Ledger to derive a key
-        const strCoinType =
-            fLocalWallet && this.isHardwareWallet
-                ? cChainParams.current.BIP44_TYPE_LEDGER
-                : cChainParams.current.BIP44_TYPE;
-        if (fLocalWallet && !this.isHD && !this.isHardwareWallet) {
+        const strCoinType = this.isHardwareWallet
+            ? cChainParams.current.BIP44_TYPE_LEDGER
+            : cChainParams.current.BIP44_TYPE;
+        if (!this.isHD && !this.isHardwareWallet) {
             return `:)//${strCoinType}'`;
         }
         return `m/44'/${strCoinType}'/${nAccount}'/${nReceiving}/${nIndex}`;
@@ -251,10 +240,7 @@ export class HdMasterKey extends MasterKey {
         if (this._isViewOnly) return this._hdKey.publicExtendedKey;
         // We need the xpub to point at the account level
         return this._hdKey.derive(
-            this.getDerivationPath(0, 0, 0, false)
-                .split('/')
-                .slice(0, 4)
-                .join('/')
+            this.getDerivationPath(0, 0, 0).split('/').slice(0, 4).join('/')
         ).publicExtendedKey;
     }
 }
