@@ -4,12 +4,6 @@ import { sleep } from './misc.js';
 import { debug } from './settings.js';
 import { getEventEmitter } from './event_bus.js';
 
-/**
- * @typedef {Object} cIn - An input of a Tx
- * @property {string} txid - The transaction ID
- * @property {number} vout - The output index
- */
-
 /** An Unspent Transaction Output, used as Inputs of future transactions */
 export class UTXO {
     /**
@@ -18,7 +12,6 @@ export class UTXO {
      * @param {String} UTXO.path - If applicable, the HD Path of the owning address
      * @param {Number} UTXO.sats - Satoshi value in this UTXO
      * @param {String} UTXO.script - HEX encoded spending script
-     * @param {Array<cIn>?} UTXO.vin - The inputs of the transaction, if any
      * @param {Number} UTXO.vout - Output position of this transaction
      * @param {Number} UTXO.height - Block height of the UTXO
      * @param {Number} UTXO.status - UTXO status enum state
@@ -30,7 +23,6 @@ export class UTXO {
         path,
         sats,
         script,
-        vin = [],
         vout,
         height,
         status,
@@ -52,10 +44,6 @@ export class UTXO {
         /** HEX encoded spending script
          *  @type {String} */
         this.script = script;
-
-        /** The inputs of the transaction, if any
-         *  @type {Array<cIn>} */
-        this.vin = vin;
 
         /** Output position of this transaction
          *  @type {Number} */
@@ -111,17 +99,6 @@ export class Mempool {
 
     /** The PENDING state (standard UTXO is in mempool, pending confirmation) */
     static PENDING = 2;
-
-    /**
-     * Fetch a UTXO by ID and Index
-     * @param {string} id - Transaction ID of the UTXO
-     * @param {number} out - Output position of the UTXO
-     */
-    getUTXO(id, out) {
-        return this.UTXOs.find(
-            (cUTXO) => cUTXO.id === id && cUTXO.vout === out
-        );
-    }
 
     /**
      * Remove a UTXO after a set amount of time
@@ -186,7 +163,6 @@ export class Mempool {
         path,
         sats,
         script,
-        vin,
         vout,
         height,
         status,
@@ -198,7 +174,6 @@ export class Mempool {
             path,
             sats,
             script,
-            vin,
             vout,
             height,
             status,
@@ -209,15 +184,6 @@ export class Mempool {
         if (this.isAlreadyStored({ id, vout })) {
             this.updateUTXO({ id, vout });
         } else {
-            // If this new UTXO is a reward with one vin (i.e: a Stake), we'll backtrace the input
-            if (isReward && vin?.length === 1) {
-                const cStakeInput = this.getUTXO(vin[0].txid, vin[0].vout);
-
-                // And if the input is in our wallet, remove it
-                if (cStakeInput) {
-                    this.removeUTXO(cStakeInput);
-                }
-            }
             this.UTXOs.push(newUTXO);
         }
 
