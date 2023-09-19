@@ -239,7 +239,7 @@ export default {
     activitySentTo: 'Naipadala sa {r}', //Sent to
     activitySelf: 'sarili', //Self
     activityShieldedAddress: 'Shielded address', //Shielded address
-    activityReceivedFrom: 'Natanggap mula sa {s}', //Received from
+    activityReceivedWith: '', //Received with {}
     activityDelegatedTo: 'Delegated to {r}', //Delegated to
     activityUndelegated: 'Undeligated', //Undelegated
     activityUnknown: 'Unknown Tx', //Unknown Tx

@@ -2,7 +2,8 @@ import { parseWIF } from './encoding.js';
 import { generateMnemonic, mnemonicToSeed, validateMnemonic } from 'bip39';
 import { doms, beforeUnloadListener } from './global.js';
 import { getNetwork } from './network.js';
-import { MAX_ACCOUNT_GAP, cChainParams } from './chain_params.js';
+import { MAX_ACCOUNT_GAP } from './chain_params.js';
+import { Transaction, HistoricalTx, HistoricalTxType } from './mempool.js';
 import {
     LegacyMasterKey,
     HdMasterKey,
@@ -15,6 +16,9 @@ import {
     isXPub,
     isStandardAddress,
 } from './misc.js';
+import { cChainParams } from './chain_params.js';
+import { mempool } from './global.js';
+import { COIN } from './chain_params.js';
 import {
     refreshChainData,
     setDisplayForAllWalletOptions,
@@ -33,7 +37,7 @@ import { UTXO_WALLET_STATE } from './mempool.js';
 import {
     isP2CS,
     isP2PKH,
-    getAddressFromPKH,
+    getAddressFromHash,
     COLD_START_INDEX,
     P2PK_START_INDEX,
     OWNER_START_INDEX,
@@ -149,7 +153,7 @@ export class Wallet {
         this.#masterKey = mk;
         // If this is the global wallet update the network master key
         if (this.#isMainWallet) {
-            await getNetwork().setWallet(this);
+            getNetwork().setWallet(this);
         }
     }
 
@@ -287,35 +291,38 @@ export class Wallet {
     }
 
     //Get path from a script
-    getPath(script) {
+    async getPath(script) {
         const dataBytes = hexToBytes(script);
         // At the moment we support only P2PKH and P2CS
         const iStart = isP2PKH(dataBytes) ? P2PK_START_INDEX : COLD_START_INDEX;
-        const address = this.getAddressFromPKHCache(
-            bytesToHex(dataBytes.slice(iStart, iStart + 20))
+        const address = this.getAddressFromHashCache(
+            bytesToHex(dataBytes.slice(iStart, iStart + 20)),
+            false
         );
-        return this.isOwnAddress(address);
+        return await this.isOwnAddress(address);
     }
 
-    isMyVout(script) {
+    async isMyVout(script) {
         let address;
         const dataBytes = hexToBytes(script);
         if (isP2PKH(dataBytes)) {
-            address = this.getAddressFromPKHCache(
+            address = this.getAddressFromHashCache(
                 bytesToHex(
                     dataBytes.slice(P2PK_START_INDEX, P2PK_START_INDEX + 20)
-                )
+                ),
+                false
             );
-            if (this.isOwnAddress(address)) {
+            if (await this.isOwnAddress(address)) {
                 return UTXO_WALLET_STATE.SPENDABLE;
             }
         } else if (isP2CS(dataBytes)) {
             for (let i = 0; i < 2; i++) {
                 const iStart = i == 0 ? OWNER_START_INDEX : COLD_START_INDEX;
-                address = this.getAddressFromPKHCache(
-                    bytesToHex(dataBytes.slice(iStart, iStart + 20))
+                address = this.getAddressFromHashCache(
+                    bytesToHex(dataBytes.slice(iStart, iStart + 20)),
+                    iStart === OWNER_START_INDEX
                 );
-                if (this.isOwnAddress(address)) {
+                if (await this.isOwnAddress(address)) {
                     return i == 0
                         ? UTXO_WALLET_STATE.COLD_RECEIVED
                         : UTXO_WALLET_STATE.SPENDABLE_COLD;
@@ -324,12 +331,182 @@ export class Wallet {
         }
         return UTXO_WALLET_STATE.NOT_MINE;
     }
-    // Avoid calculating over and over the same getAddressFromPKH by saving the result in a map
-    getAddressFromPKHCache(pkh_hex) {
+    // Avoid calculating over and over the same getAddressFromHash by saving the result in a map
+    getAddressFromHashCache(pkh_hex, isColdStake) {
         if (!this.#knownPKH.has(pkh_hex)) {
-            this.#knownPKH.set(pkh_hex, getAddressFromPKH(hexToBytes(pkh_hex)));
+            this.#knownPKH.set(
+                pkh_hex,
+                getAddressFromHash(hexToBytes(pkh_hex), isColdStake)
+            );
         }
         return this.#knownPKH.get(pkh_hex);
+    }
+
+    /**
+     * Get the debit of a transaction in satoshi
+     * @param {Transaction} tx
+     */
+    async getDebit(tx) {
+        let debit = 0;
+        for (const vin of tx.vin) {
+            if (mempool.txmap.has(vin.outpoint.txid)) {
+                const spentVout = mempool.txmap.get(vin.outpoint.txid).vout[
+                    vin.outpoint.n
+                ];
+                if (
+                    ((await this.isMyVout(spentVout.script)) &
+                        UTXO_WALLET_STATE.SPENDABLE_TOTAL) !=
+                    0
+                ) {
+                    debit += spentVout.value;
+                }
+            }
+        }
+        return debit;
+    }
+
+    /**
+     * Get the credit of a transaction in satoshi
+     * @param {Transaction} tx
+     */
+    async getCredit(tx, filter) {
+        let credit = 0;
+        for (const vout of tx.vout) {
+            if (((await this.isMyVout(vout.script)) & filter) != 0) {
+                credit += vout.value;
+            }
+        }
+        return credit;
+    }
+
+    /**
+     * Return true if the transaction contains undelegations regarding the given wallet
+     * @param {Transaction} tx
+     */
+    async checkForUndelegations(tx) {
+        for (const vin of tx.vin) {
+            if (mempool.txmap.has(vin.outpoint.txid)) {
+                const spentVout = mempool.txmap.get(vin.outpoint.txid).vout[
+                    vin.outpoint.n
+                ];
+                if (
+                    ((await this.isMyVout(spentVout.script)) &
+                        UTXO_WALLET_STATE.SPENDABLE_COLD) !=
+                    0
+                ) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Return true if the transaction contains delegations regarding the given wallet
+     * @param {Transaction} tx
+     */
+    async checkForDelegations(tx) {
+        for (const vout of tx.vout) {
+            if (
+                ((await this.isMyVout(vout.script)) &
+                    UTXO_WALLET_STATE.SPENDABLE_COLD) !=
+                0
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Return the output addresses for a given transaction
+     * @param {Transaction} tx
+     */
+    async getOutAddress(tx) {
+        let addresses = [];
+        for (const vout of tx.vout) {
+            const dataBytes = hexToBytes(vout.script);
+            if (isP2PKH(dataBytes)) {
+                addresses.push(
+                    this.getAddressFromHashCache(
+                        bytesToHex(
+                            dataBytes.slice(
+                                P2PK_START_INDEX,
+                                P2PK_START_INDEX + 20
+                            )
+                        ),
+                        false
+                    )
+                );
+            } else if (isP2CS(dataBytes)) {
+                for (let i = 0; i < 2; i++) {
+                    const iStart =
+                        i == 0 ? OWNER_START_INDEX : COLD_START_INDEX;
+                    addresses.push(
+                        this.getAddressFromHashCache(
+                            bytesToHex(dataBytes.slice(iStart, iStart + 20)),
+                            iStart === OWNER_START_INDEX
+                        )
+                    );
+                }
+            }
+        }
+        return addresses;
+    }
+
+    /**
+     * Convert a list of Blockbook transactions to HistoricalTxs
+     * @param {Array<Transaction>} arrTXs - An array of the Blockbook TXs
+     * @returns {Promise<Array<HistoricalTx>>} - A new array of `HistoricalTx`-formatted transactions
+     */
+    // TODO: add shield data to txs
+    async toHistoricalTXs(arrTXs) {
+        let histTXs = [];
+        for (const tx of arrTXs) {
+            // The total 'delta' or change in balance, from the Tx's sums
+            let nAmount =
+                ((await this.getCredit(tx, UTXO_WALLET_STATE.SPENDABLE_TOTAL)) -
+                    (await this.getDebit(tx))) /
+                COIN;
+
+            // The receiver addresses, if any
+            let arrReceivers = await this.getOutAddress(tx);
+
+            // Figure out the type, based on the Tx's properties
+            let type = HistoricalTxType.UNKNOWN;
+            if (tx.isCoinStake()) {
+                type = HistoricalTxType.STAKE;
+            } else if (await this.checkForUndelegations(tx)) {
+                type = HistoricalTxType.UNDELEGATION;
+            } else if (await this.checkForDelegations(tx)) {
+                type = HistoricalTxType.DELEGATION;
+                arrReceivers.filter((addr) => {
+                    return addr[0] === cChainParams.current.STAKING_PREFIX;
+                });
+                nAmount =
+                    (await this.getCredit(
+                        tx,
+                        UTXO_WALLET_STATE.SPENDABLE_COLD
+                    )) / COIN;
+            } else if (nAmount > 0) {
+                type = HistoricalTxType.RECEIVED;
+            } else if (nAmount < 0) {
+                type = HistoricalTxType.SENT;
+            }
+
+            histTXs.push(
+                new HistoricalTx(
+                    type,
+                    tx.txid,
+                    arrReceivers,
+                    false,
+                    tx.blockTime,
+                    tx.blockHeight,
+                    Math.abs(nAmount)
+                )
+            );
+        }
+        return histTXs;
     }
 }
 
@@ -526,7 +703,7 @@ export async function importWallet({
         // Fetch state from explorer, if this import was post-startup
         if (getNetwork().enabled && !fStartup) {
             refreshChainData();
-            getNetwork().getUTXOs();
+            getNetwork().walletFullSync();
         }
 
         // Hide all wallet starter options

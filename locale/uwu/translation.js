@@ -232,7 +232,7 @@ export default {
     activitySentTo: 'Sentu to {r}', //Sent to
     activitySelf: 'selfu', //Self
     activityReceivedShield: 'Shielded addwess', //Received from Shielded address
-    activityReceivedFrom: 'Recewived fwom {s}', //Received from
+    activityReceivedWith: '', //Received with {}
     activityDelegatedTo: 'Delegwated to {r}', //Delegated to
     activityUndelegated: 'Undelegwated', //Undelegated
     activityUnknown: 'Unknown Tx', //Unknown Tx

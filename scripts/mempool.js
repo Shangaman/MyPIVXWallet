@@ -7,7 +7,6 @@ import {
 import { getEventEmitter } from './event_bus.js';
 import Multimap from 'multimap';
 import { wallet } from './wallet.js';
-import { COIN } from './chain_params.js';
 
 export class CTxOut {
     /**
@@ -26,6 +25,9 @@ export class CTxOut {
         /** Value in satoshi
          *  @type {Number} */
         this.value = value;
+    }
+    isEmpty() {
+        return this.value == 0 && this.script == 'f8';
     }
 }
 export class CTxIn {
@@ -51,8 +53,9 @@ export class Transaction {
      * @param {Number} Transaction.blockHeight - Block height of the transaction (-1 if is pending)
      * @param {Array<CTxIn>} Transaction.vin - Inputs of the transaction
      * @param {Array<CTxOut>} Transaction.vout - Outputs of the transaction
+     * @param {Number} Transaction.blockTime - Time of the block
      */
-    constructor({ txid, blockHeight, vin, vout } = {}) {
+    constructor({ txid, blockHeight, vin, vout, blockTime } = {}) {
         /** Transaction ID
          * @type {String} */
         this.txid = txid;
@@ -65,9 +68,15 @@ export class Transaction {
         /** Outputs of the transaction
          *  @type {Array<CTxOut>}*/
         this.vout = vout;
+        /** Time of the block
+         * @type {blockTime}*/
+        this.blockTime = blockTime;
     }
     isConfirmed() {
         return this.blockHeight != -1;
+    }
+    isCoinStake() {
+        return this.vout.length >= 2 && this.vout[0].isEmpty();
     }
 }
 /** An Unspent Transaction Output, used as Inputs of future transactions */
@@ -93,6 +102,51 @@ export const UTXO_WALLET_STATE = {
     SPENDABLE_COLD: 2, // Have the key to spend this (P2CS) utxo
     COLD_RECEIVED: 4, // Have the staking key of this (P2CS) utxo
     SPENDABLE_TOTAL: 1 | 2,
+};
+
+/**
+ * A historical transaction
+ */
+export class HistoricalTx {
+    /**
+     * @param {HistoricalTxType} type - The type of transaction.
+     * @param {string} id - The transaction ID.
+     * @param {Array<string>} receivers - The list of 'output addresses'.
+     * @param {boolean} shieldedOutputs - If this transaction contains Shield outputs.
+     * @param {number} time - The block time of the transaction.
+     * @param {number} blockHeight - The block height of the transaction.
+     * @param {number} amount - The amount transacted, in coins.
+     */
+    constructor(
+        type,
+        id,
+        receivers,
+        shieldedOutputs,
+        time,
+        blockHeight,
+        amount
+    ) {
+        this.type = type;
+        this.id = id;
+        this.receivers = receivers;
+        this.shieldedOutputs = shieldedOutputs;
+        this.time = time;
+        this.blockHeight = blockHeight;
+        this.amount = amount;
+    }
+}
+
+/**
+ * A historical transaction type.
+ * @enum {number}
+ */
+export const HistoricalTxType = {
+    UNKNOWN: 0,
+    STAKE: 1,
+    DELEGATION: 2,
+    UNDELEGATION: 3,
+    RECEIVED: 4,
+    SENT: 5,
 };
 
 /** A Mempool instance, stores and handles UTXO data for the wallet */
@@ -126,7 +180,11 @@ export class Mempool {
          * @type {Map<String, Transaction>}
          */
         this.txmap = new Map();
-        this.subscribeToNetwork();
+        /**
+         * Multimap nBlockHeight -> Transaction
+         * @type {Multimap<Number, Transaction>}
+         */
+        this.orderedTxmap = new Multimap();
     }
 
     reset() {
@@ -145,75 +203,6 @@ export class Mempool {
     }
 
     /**
-     * Subscribes to network events
-     * @param {Network} network
-     */
-    subscribeToNetwork() {
-        getEventEmitter().on('utxo', async (utxos) => {
-            //Should not really happen
-            if (this.#isLoaded) {
-                console.error(
-                    'ERROR! Event UTXO called on already loaded mempool'
-                );
-                return;
-            }
-            getEventEmitter().emit('sync-status', 'start');
-            for (const utxo of utxos) {
-                this.#syncHeight = Math.max(this.#syncHeight, utxo.height);
-                if (this.txmap.has(utxo.txid)) {
-                    continue;
-                }
-                // If the UTXO is new, we'll process it and add it internally
-                const tx = await getNetwork().getTxFullInfo(utxo.txid);
-                this.txmap.set(tx.txid, this.parseTransaction(tx));
-                //Little hack: sadly we don't have ALL the wallet txs
-                //So what we do: we put in spent state all the vouts that are not in the currrent utxos list.
-                for (const vout of tx.vout) {
-                    const op = new COutpoint({ txid: tx.txid, n: vout.n });
-                    const isMyUTXO = utxos.some(
-                        (x) => x.txid == op.txid && x.vout == op.n
-                    );
-                    if (!isMyUTXO && !this.isSpent(op)) {
-                        this.spent.set(tx.txid, op);
-                    }
-                }
-            }
-            this.#isLoaded = true;
-            this.#balance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
-            this.#coldBalance = this.getBalance(
-                UTXO_WALLET_STATE.SPENDABLE_COLD
-            );
-            getEventEmitter().emit('balance-update');
-            getStakingBalance(true);
-            activityDashboard.update();
-            stakingDashboard.update();
-            getEventEmitter().emit('sync-status', 'stop');
-        });
-        getEventEmitter().on('recent_txs', async (txs) => {
-            // Don't process recent_txs if mempool is not loaded yet
-            if (!this.#isLoaded) {
-                return;
-            }
-            getEventEmitter().emit('sync-status', 'start');
-            for (const tx of txs) {
-                // Do not accept any tx which is below the syncHeight
-                if (this.#syncHeight >= tx.blockHeight) {
-                    continue;
-                }
-                if (
-                    !this.txmap.has(tx.txid) ||
-                    !this.txmap.get(tx.txid).isConfirmed()
-                ) {
-                    const fullTx = this.parseTransaction(
-                        await getNetwork().getTxFullInfo(tx.txid)
-                    );
-                    await this.updateMempool(fullTx);
-                }
-            }
-            getEventEmitter().emit('sync-status', 'stop');
-        });
-    }
-    /**
      * An Outpoint to check
      * @param {COutpoint} op
      */
@@ -222,11 +211,26 @@ export class Mempool {
     }
 
     /**
+     * @param {Transaction} tx
+     */
+    addToOrderedTxMap(tx) {
+        if (!tx.isConfirmed()) return;
+        if (
+            this.orderedTxmap
+                .get(tx.blockHeight)
+                ?.some((x) => x.txid == tx.txid)
+        )
+            return;
+        this.orderedTxmap.set(tx.blockHeight, tx);
+    }
+
+    /**
      * Get the total wallet balance
      * @param {UTXO_WALLET_STATE} filter the filter you want to apply
      */
     getBalance(filter) {
         let totBalance = 0;
+        let utxoFound = 0;
         for (const [_, tx] of this.txmap) {
             for (const vout of tx.vout) {
                 if (this.isSpent(vout.outpoint)) {
@@ -237,6 +241,9 @@ export class Mempool {
                     continue;
                 }
                 totBalance += vout.value;
+                //console.log(vout.value,utxoFound, "utxo found")
+                utxoFound += 1;
+                //console.log(totBalance,"asd")
             }
         }
         return totBalance;
@@ -315,23 +322,24 @@ export class Mempool {
             vout.push(
                 new CTxOut({
                     outpoint: new COutpoint({ txid: tx.txid, n: out.n }),
-                    script: out.scriptPubKey.hex,
-                    value: out.value * COIN,
+                    script: out.hex,
+                    value: parseInt(out.value),
                 })
             );
         }
         for (const inp of tx.vin) {
-            const op = new COutpoint({ txid: inp.txid, n: inp.vout });
-            vin.push(new CTxIn({ outpoint: op, scriptSig: inp.scriptSig.hex }));
+            const op = new COutpoint({
+                txid: inp.txid,
+                n: inp.vout ? inp.vout : 0,
+            });
+            vin.push(new CTxIn({ outpoint: op, scriptSig: inp.hex }));
         }
         return new Transaction({
             txid: tx.txid,
-            blockHeight:
-                getNetwork().cachedBlockCount -
-                (tx.confirmations - 1) -
-                tx.confirmations,
+            blockHeight: tx.blockHeight,
             vin,
             vout,
+            blockTime: tx.blockTime,
         });
     }
     /**
@@ -339,6 +347,8 @@ export class Mempool {
      * @param {Transaction} tx
      */
     updateMempool(tx) {
+        if (this.txmap.get(tx.txid) && this.txmap.get(tx.txid).isConfirmed())
+            return;
         this.txmap.set(tx.txid, tx);
         for (const vin of tx.vin) {
             const op = vin.outpoint;
@@ -346,8 +356,16 @@ export class Mempool {
                 this.spent.set(op.txid, op);
             }
         }
+        this.addToOrderedTxMap(tx);
+        if (tx.isCoinStake()) {
+            console.log('Transaction added!', tx, tx.isCoinStake());
+        }
+    }
+    setBalance() {
         this.#balance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
-        this.#coldBalance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE_COLD);
+        this.#coldBalance = this.getBalance(
+            UTXO_WALLET_STATE.SPENDABLE_COLD
+        );
         getEventEmitter().emit('balance-update');
         getStakingBalance(true);
     }

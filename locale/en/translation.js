@@ -228,7 +228,7 @@ export default {
     activitySentTo: 'Sent to {r}',
     activitySelf: 'self',
     activityShieldedAddress: 'Shielded address',
-    activityReceivedFrom: 'Received from {s}',
+    activityReceivedWith: 'Received with {s}',
     activityDelegatedTo: 'Delegated to {r}',
     activityUndelegated: 'Undelegated',
     activityUnknown: 'Unknown Tx',

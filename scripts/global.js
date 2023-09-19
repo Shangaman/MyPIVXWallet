@@ -512,8 +512,8 @@ function subscribeToNetworkEvents() {
     getEventEmitter().on('new-block', (block, oldBlock) => {
         console.log(`New block detected! ${oldBlock} --> ${block}`);
         // Fetch latest Activity
-        activityDashboard.update(true);
-        stakingDashboard.update(true);
+        activityDashboard.update();
+        stakingDashboard.update();
 
         // If it's open: update the Governance Dashboard
         if (doms.domGovTab.classList.contains('active')) {
@@ -582,13 +582,10 @@ export function openTab(evt, tabName) {
         stakingDashboard.getTxCount() === 0
     ) {
         // Refresh the TX list
-        stakingDashboard.update(false);
-    } else if (
-        tabName === 'keypair' &&
-        getNetwork().arrTxHistory.length === 0
-    ) {
+        stakingDashboard.update();
+    } else if (tabName === 'keypair' && activityDashboard.getTxCount() === 0) {
         // Refresh the TX list
-        activityDashboard.update(false);
+        activityDashboard.update();
     }
 }
 
