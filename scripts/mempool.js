@@ -269,7 +269,11 @@ export class Mempool {
     autoRemoveUTXO({ id, vout }) {
         for (const cUTXO of this.UTXOs) {
             // Loop given + internal UTXOs to find a match, then start the delayed removal
-            if (cUTXO.id === id && cUTXO.vout === vout) {
+            if (
+                cUTXO.id === id &&
+                cUTXO.vout === vout &&
+                cUTXO.status != Mempool.REMOVED
+            ) {
                 cUTXO.status = Mempool.REMOVED;
                 this.removeWithDelay(12, cUTXO);
                 return;
@@ -375,6 +379,13 @@ export class Mempool {
                 }
                 // If the UTXO is new, we'll process it and add it internally
                 this.addUTXO(await getNetwork().getUTXOFullInfo(utxo));
+            }
+        });
+        getEventEmitter().on('recent_txs', async (txs) => {
+            for (const tx of txs) {
+                for (const vin of tx.vin) {
+                    this.autoRemoveUTXO({ id: vin.txid, vout: vin.n });
+                }
             }
         });
     }

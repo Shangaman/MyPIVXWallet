@@ -428,7 +428,11 @@ export class ExplorerNetwork extends Network {
                     cData.transactions || [],
                     mapPaths
                 );
-
+                if (cRecentTXs.transactions)
+                    getEventEmitter().emit(
+                        'recent_txs',
+                        cRecentTXs.transactions
+                    );
                 // Process Recent TXs, then add them manually on the basis that they are NOT already known in history
                 const arrRecentTXs = this.toHistoricalTXs(
                     cRecentTXs.transactions || [],
