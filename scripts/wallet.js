@@ -4,7 +4,6 @@ import { doms, beforeUnloadListener } from './global.js';
 import { getNetwork } from './network.js';
 import { MAX_ACCOUNT_GAP } from './chain_params.js';
 import {
-    MasterKey,
     LegacyMasterKey,
     HdMasterKey,
     HardwareWalletMasterKey,
@@ -39,7 +38,7 @@ export let fWalletLoaded = false;
  */
 export class Wallet {
     /**
-     * @type {MasterKey}
+     * @type {import('./masterkey.js').MasterKey}
      */
     #masterKey;
     /**

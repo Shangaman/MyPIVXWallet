@@ -61,7 +61,7 @@ export class MasterKey {
      * @return {void}
      * @abstract
      */
-    wipePrivateData(nAccount) {
+    wipePrivateData(_nAccount) {
         throw new Error('Not implemented');
     }
 
@@ -77,7 +77,7 @@ export class MasterKey {
      * @return {Promise<String>} public key to export. Only suitable for monitoring balance.
      * @abstract
      */
-    getKeyToExport(nAccount) {
+    getKeyToExport(_nAccount) {
         throw new Error('Not implemented');
     }
 
@@ -220,7 +220,7 @@ export class HardwareWalletMasterKey extends MasterKey {
     }
 
     // Hardware Wallets don't have exposed private data
-    wipePrivateData() {}
+    wipePrivateData(_nAccount) {}
 
     get isViewOnly() {
         return false;
@@ -248,7 +248,7 @@ export class LegacyMasterKey extends MasterKey {
         return this._address;
     }
 
-    getKeyToExport() {
+    getKeyToExport(_nAccount) {
         return this._address;
     }
 
@@ -271,7 +271,7 @@ export class LegacyMasterKey extends MasterKey {
         );
     }
 
-    wipePrivateData() {
+    wipePrivateData(_nAccount) {
         this._pkBytes = null;
         this._isViewOnly = true;
     }

@@ -2,7 +2,6 @@ import { cChainParams, COIN } from './chain_params.js';
 import { createAlert } from './misc.js';
 import { Mempool, UTXO } from './mempool.js';
 import { getEventEmitter } from './event_bus.js';
-import { Wallet } from './wallet.js';
 import {
     STATS,
     cStatKeys,
@@ -94,10 +93,10 @@ export class HistoricalTx {
  *
  */
 export class Network {
-    /**
-     * @type {Wallet}
-     */
     wallet;
+    /**
+     * @param {import('./wallet.js').Wallet} wallet
+     */
     constructor(wallet) {
         if (this.constructor === Network) {
             throw new Error('Initializing virtual class');
@@ -251,7 +250,7 @@ export class ExplorerNetwork extends Network {
     async getUTXOs(strAddress = '') {
         // Don't fetch UTXOs if we're already scanning for them!
         if (!strAddress) {
-            if (!this.wallet) return;
+            if (!this.wallet || !this.wallet.isLoaded()) return;
             if (this.isSyncing) return;
             this.isSyncing = true;
         }
@@ -363,7 +362,8 @@ export class ExplorerNetwork extends Network {
             return false;
         }
         try {
-            if (!this.enabled || !this.wallet) return this.arrTxHistory;
+            if (!this.enabled || !this.wallet || !this.wallet.isLoaded())
+                return this.arrTxHistory;
             this.historySyncing = true;
             const nHeight = this.arrTxHistory.length
                 ? this.arrTxHistory[this.arrTxHistory.length - 1].blockHeight
