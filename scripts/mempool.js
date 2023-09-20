@@ -3,6 +3,9 @@ import { getBalance, isMasternodeUTXO, getStakingBalance } from './global.js';
 import { sleep } from './misc.js';
 import { debug } from './settings.js';
 import { getEventEmitter } from './event_bus.js';
+import Multimap from 'multimap';
+import { isP2CS, isP2PKH, extactPubKey } from './script.js';
+import { wallet } from './wallet.js';
 
 /** An Unspent Transaction Output, used as Inputs of future transactions */
 export class UTXO {
@@ -84,10 +87,16 @@ export class UTXO {
 export class Mempool {
     constructor() {
         /**
+         * Multimap txid -> spent Coutpoint
+         * @type {Multimap<txid, UTXO>}
+         */
+        this.spent = new Multimap();
+        /**
          * An array of all known UTXOs
-         * @type {Array<UTXO>}
+         * @type {Map<txid, transaction>}
          */
         this.UTXOs = [];
+        this.txmap = new Map();
         this.subscribeToNetwork();
     }
 
@@ -345,12 +354,30 @@ export class Mempool {
                 }
                 // If the UTXO is new, we'll process it and add it internally
                 this.addUTXO(await getNetwork().getUTXOFullInfo(utxo));
+                if (!this.txmap.has(utxo.txid)) {
+                    const test = await getNetwork().getTxInfo(utxo.txid);
+                    for (const vout of test.vout) {
+                        if (wallet.isMyVout(vout.hex)) {
+                            console.log(utxo.txid, vout);
+                        }
+                    }
+                    this.txmap.set(
+                        utxo.txid,
+                        await getNetwork().getTxInfo(utxo.txid)
+                    );
+                }
             }
+            console.log(this.txmap);
+            console.log(this.UTXOs);
         });
         getEventEmitter().on('recent_txs', async (txs) => {
             for (const tx of txs) {
                 for (const vin of tx.vin) {
+                    //console.log(vin);
                     this.autoRemoveUTXO({ id: vin.txid, vout: vin.n });
+                }
+                for (const vout of tx.vout) {
+                    // console.log(isP2PKH(vout.hex));
                 }
             }
         });
