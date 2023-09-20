@@ -394,6 +394,7 @@ export async function createAndSendTransaction({
     // Update the mempool
     if (result) {
         // Remove spent inputs
+        console.log(cTx);
         for (const tx of cTx.inputs) {
             mempool.autoRemoveUTXO({
                 id: tx.outpoint.hash,

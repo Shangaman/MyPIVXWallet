@@ -7,7 +7,11 @@ import {
     hasEncryptedWallet,
     importWallet,
     decryptWallet,
+<<<<<<< HEAD
     getNewAddress,
+=======
+    UTXO_WALLET_STATE,
+>>>>>>> 79f3746 (various test)
 } from './wallet.js';
 import { LegacyMasterKey } from './masterkey.js';
 import { getNetwork, HistoricalTxType } from './network.js';
@@ -733,6 +737,8 @@ export function selectMaxBalance(domCoin, domValue, fCold = false) {
  * Prompt a QR scan for a Payment (Address or BIP21)
  */
 export async function openSendQRScanner() {
+    await mempool.getBalanceNew(UTXO_WALLET_STATE.SPENDABLE);
+    await mempool.getUTXOs(UTXO_WALLET_STATE.SPENDABLE);
     const cScan = await scanQRCode();
 
     if (!cScan || !cScan.data) return;

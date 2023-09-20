@@ -11,6 +11,7 @@ import { cChainParams, COIN } from './chain_params';
 import { doms, isMasternodeUTXO, mempool } from './global';
 import { Database } from './database.js';
 import { translation } from './i18n';
+import { UTXO_WALLET_STATE } from './wallet';
 
 Chart.register(
     Colors,
@@ -43,19 +44,25 @@ async function getWalletDataset() {
     const arrBreakdown = [];
 
     // Public (Available)
-    if (mempool.getBalance() > 0) {
+    const spendable_bal = await mempool.getBalanceNew(
+        UTXO_WALLET_STATE.SPENDABLE
+    );
+    if (spendable_bal > 0) {
         arrBreakdown.push({
             type: translation.chartPublicAvailable,
-            balance: mempool.getBalance() / COIN,
+            balance: spendable_bal / COIN,
             colour: 'rgba(127, 17, 224, 1)',
         });
     }
 
     // Staking (Locked)
-    if (mempool.getDelegatedBalance() > 0) {
+    const spendable_cold_bal = await mempool.getBalanceNew(
+        UTXO_WALLET_STATE.SPENDABLE_COLD
+    );
+    if (spendable_cold_bal > 0) {
         arrBreakdown.push({
             type: 'Staking',
-            balance: mempool.getDelegatedBalance() / COIN,
+            balance: spendable_cold_bal / COIN,
             colour: 'rgba(42, 27, 66, 1)',
         });
     }

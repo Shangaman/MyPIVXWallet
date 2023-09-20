@@ -599,7 +599,10 @@ export class ExplorerNetwork extends Network {
     }
 
     async getTxFullInfo(txHash) {
-        const req = await retryWrapper(fetchBlockbook, `/api/v2/tx-specific/${txHash}`);
+        const req = await retryWrapper(
+            fetchBlockbook,
+            `/api/v2/tx-specific/${txHash}`
+        );
         return await req.json();
     }
 

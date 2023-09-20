@@ -33,12 +33,20 @@ import { strHardwareName, getHardwareWalletKeys } from './ledger.js';
 import { isP2CS, isP2PKH, getAddressFromPKH } from './script.js';
 export let fWalletLoaded = false;
 
+export const UTXO_WALLET_STATE = {
+    NOT_MINE: 0, // Don't have the key to spend this utxo
+    SPENDABLE: 1, // Have the key to spend this (P2PKH) utxo
+    SPENDABLE_COLD: 2, // Have the key to spend this (P2CS) utxo
+    COLD_RECEIVED: 4, // Have the staking key of this (P2CS) utxo
+    SPENDABLE_TOTAL: 1 | 2,
+};
+
 /**
  * Class Wallet, at the moment it is just a "realization" of Masterkey with a given nAccount
  * it also remembers which addresses we generated.
  * in future PRs this class will manage balance, UTXOs, masternode etc...
  */
-export class Wallet {
+class Wallet {
     /**
      * @type {import('./masterkey.js').MasterKey}
      */
@@ -255,26 +263,25 @@ export class Wallet {
         return await this.#masterKey?.getKeyToExport(this.#nAccount);
     }
 
-    async isMyVout(data) {
+    async isMyVout(script) {
         let addresses = [];
-        const dataBytes = hexToBytes(data);
+        const dataBytes = hexToBytes(script);
         if (isP2PKH(dataBytes)) {
             addresses.push(getAddressFromPKH(dataBytes.slice(3, 23)));
             if (await this.isOwnAddress(addresses[0])) {
-                return true;
+                return UTXO_WALLET_STATE.SPENDABLE;
             }
         } else if (isP2CS(dataBytes)) {
             addresses.push(getAddressFromPKH(dataBytes.slice(6, 26)));
             addresses.push(getAddressFromPKH(dataBytes.slice(28, 48)));
             if (await this.isOwnAddress(addresses[0])) {
-                return true;
+                // TODO: update isOwnADdress to take in consideration of cold stake addresses
+                return UTXO_WALLET_STATE.COLD_RECEIVED;
             } else if (await this.isOwnAddress(addresses[1])) {
-                //TODO: in this case we can actually say that we own the staking key
-                return false;
+                return UTXO_WALLET_STATE.SPENDABLE_COLD;
             }
-            return true;
         }
-        return false;
+        return UTXO_WALLET_STATE.NOT_MINE;
     }
 }
 
