@@ -28,7 +28,9 @@ import { Database } from './database.js';
 import { guiRenderCurrentReceiveModal } from './contacts-book.js';
 import { Account } from './accounts.js';
 import { debug, fAdvancedMode } from './settings.js';
+import { hexToBytes } from './utils.js';
 import { strHardwareName, getHardwareWalletKeys } from './ledger.js';
+import { isP2CS, isP2PKH, getAddressFromPKH } from './script.js';
 export let fWalletLoaded = false;
 
 /**
@@ -251,6 +253,28 @@ export class Wallet {
 
     async getKeyToExport() {
         return await this.#masterKey?.getKeyToExport(this.#nAccount);
+    }
+
+    async isMyVout(data) {
+        let addresses = [];
+        const dataBytes = hexToBytes(data);
+        if (isP2PKH(dataBytes)) {
+            addresses.push(getAddressFromPKH(dataBytes.slice(3, 23)));
+            if (await this.isOwnAddress(addresses[0])) {
+                return true;
+            }
+        } else if (isP2CS(dataBytes)) {
+            addresses.push(getAddressFromPKH(dataBytes.slice(6, 26)));
+            addresses.push(getAddressFromPKH(dataBytes.slice(28, 48)));
+            if (await this.isOwnAddress(addresses[0])) {
+                return true;
+            } else if (await this.isOwnAddress(addresses[1])) {
+                //TODO: in this case we can actually say that we own the staking key
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
 }
 
