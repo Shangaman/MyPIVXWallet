@@ -1,3 +1,9 @@
+import bs58 from 'bs58';
+import { bytesToHex, hexToBytes } from './utils';
+import { cChainParams } from './chain_params';
+import { dSHA256 } from './utils.js';
+import { wallet } from './wallet';
+
 export const OP = {
     // push value
     0: 0x00,
@@ -162,4 +168,47 @@ export function getScriptForBurn(data) {
     }
     // Return the burn script
     return cScript;
+}
+
+// Is a given script pay to public key hash?
+export function isP2PKH(dataBytes) {
+    return (
+        dataBytes.length >= 25 &&
+        dataBytes[0] == OP['DUP'] &&
+        dataBytes[1] == OP['HASH160'] &&
+        dataBytes[2] == 0x14 &&
+        dataBytes[23] == OP['EQUALVERIFY'] &&
+        dataBytes[24] == OP['CHECKSIG']
+    );
+}
+
+// Is a given script pay to cold stake?
+export function isP2CS(dataBytes) {
+    return (
+        dataBytes.length >= 51 &&
+        dataBytes[0] == OP['DUP'] &&
+        dataBytes[1] == OP['HASH160'] &&
+        dataBytes[2] == OP['ROT'] &&
+        dataBytes[3] == OP['IF'] &&
+        (dataBytes[4] == OP['CHECKCOLDSTAKEVERIFY'] ||
+            dataBytes[4] == OP['CHECKCOLDSTAKEVERIFY_LOF']) &&
+        dataBytes[5] == 0x14 &&
+        dataBytes[26] == OP['ELSE'] &&
+        dataBytes[27] == 0x14 &&
+        dataBytes[48] == OP['ENDIF'] &&
+        dataBytes[49] == OP['EQUALVERIFY'] &&
+        dataBytes[50] == OP['CHECKSIG']
+    );
+}
+
+export function getAddressFromPKH(pkhBytes) {
+    let buffer = new Uint8Array([
+        cChainParams.current.PUBKEY_ADDRESS,
+        ...pkhBytes,
+    ]);
+    let checksum = dSHA256(buffer);
+    return bs58.encode([
+        ...Array.from(buffer),
+        ...Array.from(checksum.slice(0, 4)),
+    ]);
 }
