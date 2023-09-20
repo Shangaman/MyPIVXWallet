@@ -414,7 +414,7 @@ export async function importWallet({
         doms.domDashboard.click();
 
         // Update identicon
-        doms.domIdenticon.dataset.jdenticonValue = wallet.getAddress();
+        doms.domIdenticon.dataset.jdenticonValue = await wallet.getAddress();
         jdenticon.update('#identicon');
 
         // Hide the encryption prompt if the user is using
