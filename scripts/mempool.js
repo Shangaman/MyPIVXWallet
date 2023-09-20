@@ -4,8 +4,83 @@ import { sleep } from './misc.js';
 import { debug } from './settings.js';
 import { getEventEmitter } from './event_bus.js';
 import Multimap from 'multimap';
-import { isP2CS, isP2PKH, extactPubKey } from './script.js';
 import { wallet } from './wallet.js';
+import { COIN } from './chain_params.js';
+
+export class CTxOut {
+    /**
+     * @param {Object} CTxOut
+     * @param {Number} CTxOut.n - Position inside the transaction
+     * @param {String} CTxOut.script - Reedem script, in hex
+     * @param {Number} CTxOut.value - Value in satoshi
+     */
+    constructor({ n, script, value } = {}) {
+        /** Position inside the transaction
+         *  @type {Number} */
+        this.n = n;
+        /** Reedem script, in hex
+         * @type {String} */
+        this.script = script;
+        /** Value in satoshi
+         *  @type {Number} */
+        this.value = value;
+    }
+}
+export class CTxIn {
+    /**
+     * @param {Object} CTxIn
+     * @param {COutpoint} CTxIn.outpoint - Outpoint of the UTXO that the vin spends
+     * @param {String} CTxIn.scriptSig - Script used to spend the corresponding UTXO, in hex
+     */
+    constructor({ outpoint, scriptSig } = {}) {
+        /** Outpoint of the UTXO that the vin spends
+         *  @type {COutpoint} */
+        this.outpoint = outpoint;
+        /** Script used to spend the corresponding UTXO, in hex
+         * @type {String} */
+        this.scriptSig = scriptSig;
+    }
+}
+
+export class Transaction {
+    /**
+     * @param {Object} Transaction
+     * @param {String} Transaction.txid - Transaction ID
+     * @param {Number} Transaction.confirmations - Number of confirmations (-1 if is pending)
+     * @param {Array<CTxIn>} Transaction.vin - Inputs of the transaction
+     * @param {Array<CTxOut>} Transaction.vout - Outputs of the transaction
+     */
+    constructor({ txid, confirmations, vin, vout } = {}) {
+        /** Transaction ID
+         * @type {String} */
+        this.txid = txid;
+        /** Number of confirmations (-1 if is pending)
+         * @param {Number} */
+        this.confirmations = confirmations;
+        /** Outputs of the transaction
+         *  @type {Array<CTxIn>}*/
+        this.vin = vin;
+        /** Outputs of the transaction
+         *  @type {Array<CTxOut>}*/
+        this.vout = vout;
+    }
+}
+/** An Unspent Transaction Output, used as Inputs of future transactions */
+export class COutpoint {
+    /**
+     * @param {Object} COutpoint
+     * @param {String} COutpoint.txid - Transaction ID
+     * @param {Number} COutpoint.n - Outpoint position in the corresponding transaction
+     */
+    constructor({ txid, n } = {}) {
+        /** Transaction ID
+         * @type {String} */
+        this.txid = txid;
+        /** Outpoint position in the corresponding transaction
+         *  @type {Number} */
+        this.n = n;
+    }
+}
 
 /** An Unspent Transaction Output, used as Inputs of future transactions */
 export class UTXO {
@@ -92,17 +167,17 @@ export class Mempool {
     constructor() {
         /**
          * Multimap txid -> spent Coutpoint
-         * @type {Multimap<txid, UTXO>}
+         * @type {Multimap<String, COutpoint>}
          */
         this.spent = new Multimap();
         /**
          * An array of all known UTXOs
-         * @type {Map<txid, transaction>}
+         * @type {Map<String, Transaction>}
          */
         this.UTXOs = [];
         /**
-         * A map of all known UTXOs
-         * @type {Map<txid, transaction>}
+         * A map of all known transactions
+         * @type {Map<String, Transaction>}
          */
         this.txmap = new Map();
         this.subscribeToNetwork();
@@ -381,15 +456,25 @@ export class Mempool {
                 // If the UTXO is new, we'll process it and add it internally
                 const tx = await getNetwork().getTxFullInfo(utxo.txid);
                 this.addUTXO(await getNetwork().getUTXOFullInfo(utxo));
-                this.txmap.set(utxo.txid, tx);
-                for (const vin of tx.vin) {
-                    if (!this.isCoutSpent([vin.txid, vin.vout])) {
-                        this.spent.set(vin.txid, [vin.txid, vin.vout]);
+                this.txmap.set(tx.txid, this.parseTransaction(tx));
+                //Little hack: sadly we don't have ALL the wallet txs
+                //So what we do: we put in spent state all the vouts that are not in the currrent utxos list.
+                for (const vout of tx.vout) {
+                    const op = new COutpoint({ txid: tx.txid, n: vout.n });
+                    const isMyUTXO = utxos.some(
+                        (x) => x.txid == op.txid && x.vout == op.n
+                    );
+                    if (!isMyUTXO && !this.isSpent(op)) {
+                        this.spent.set(tx.txid, op);
                     }
                 }
             }
             console.log(this.txmap);
             console.log(this.UTXOs);
+            for (let u of this.UTXOs) {
+                console.log(u.id, u.vout, u.sats / COIN);
+            }
+            console.log(this.spent);
             this.#isLoaded = true;
         });
         getEventEmitter().on('recent_txs', async (txs) => {
@@ -400,10 +485,14 @@ export class Mempool {
             for (const tx of txs) {
                 if (this.txmap.has(tx.txid)) continue;
                 const fullTx = await getNetwork().getTxFullInfo(tx.txid);
-                this.txmap.set(tx.txid, fullTx);
+                this.txmap.set(tx.txid, this.parseTransaction(fullTx));
                 for (const vin of fullTx.vin) {
-                    if (!this.isCoutSpent([vin.txid, vin.vout])) {
-                        this.spent.set(vin.txid, [vin.txid, vin.vout]);
+                    const op = new COutpoint({
+                        txid: vin.txid,
+                        n: vin.vout,
+                    });
+                    if (!this.isSpent(op)) {
+                        this.spent.set(vin.txid, op);
                     }
                 }
             }
@@ -411,7 +500,78 @@ export class Mempool {
             console.log('spent', this.spent);
         });
     }
-    isCoutSpent(cOut) {
-        return this.spent.get(cOut[0])?.some((x) => x[1] == cOut[1]);
+    /**
+     * An Outpoint to check
+     * @param {COutpoint} op
+     */
+    isSpent(op) {
+        return this.spent.get(op.txid)?.some((x) => x.n == op.n);
+    }
+
+    /**
+     * Get the total wallet balance
+     */
+    async getBalanceNew(filter) {
+        let totBalance = 0;
+        for (let [txid, tx] of this.txmap) {
+            for (let vout of tx.vout) {
+                const op = new COutpoint({ txid: txid, n: vout.n });
+                const UTXO_STATE = await wallet.isMyVout(vout.script);
+                if (this.isSpent(op)) {
+                    continue;
+                }
+
+                if ((UTXO_STATE & filter) == 0) {
+                    continue;
+                }
+                console.log('Mine', vout);
+                totBalance += vout.value;
+            }
+        }
+        console.log(totBalance/COIN);
+        return totBalance/COIN;
+    }
+    // a bit a copy and paste from getBalanceNew, TODO: remove the copy and paste
+    async getUTXOs(filter) {
+        let utxos = [];
+        for (let [txid, tx] of this.txmap) {
+            for (let vout of tx.vout) {
+                const op = new COutpoint({ txid: txid, n: vout.n });
+                const UTXO_STATE = await wallet.isMyVout(vout.script);
+                if ((UTXO_STATE & filter) == 0) {
+                    continue;
+                }
+
+                if (this.isSpent(op)) {
+                    continue;
+                }
+                const utxo_path = await wallet.isOwnAddress(
+                    vout.script
+                ); //TODO: optimize this step
+                utxos.push(
+                    new UTXO({
+                        id: txid,
+                        sats: vout.value * COIN,
+                        script: vout.script,
+                        path: utxo_path,
+                        vout: vout.n,
+                    })
+                );
+            }
+        }
+        console.log(utxos);
+        return utxos;
+    }
+    parseTransaction(tx){
+        let vout = [];
+        let vin = [];
+        for(const out of tx.vout){
+            vout.push(new CTxOut({n: out.n,script: out.scriptPubKey.hex,value: out.value * COIN}));
+        }
+        for(const inp of tx.vin){
+            const op = new COutpoint({ txid: inp.txid, n: inp.vout });
+            vin.push(new CTxIn({outpoint : op,scriptSig: inp.scriptSig.hex}));
+        }
+        return new Transaction({txid: tx.txid, confirmations: tx.confirmations, vin: vin, vout:vout})
     }
 }
