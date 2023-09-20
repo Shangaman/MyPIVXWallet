@@ -476,10 +476,10 @@ export async function generateWallet(noUI = false) {
         setDisplayForAllWalletOptions('none');
 
         // Update identicon
-        doms.domIdenticon.dataset.jdenticonValue = wallet.getAddress();
+        doms.domIdenticon.dataset.jdenticonValue = await wallet.getAddress();
         jdenticon.update('#identicon');
 
-        wallet.getNewAddress({ updateGUI: true });
+        await getNewAddress({ updateGUI: true });
 
         // Refresh the balance UI (why? because it'll also display any 'get some funds!' alerts)
         getBalance(true);
