@@ -85,6 +85,10 @@ export class UTXO {
 
 /** A Mempool instance, stores and handles UTXO data for the wallet */
 export class Mempool {
+    /**
+     * @type {boolean}
+     */
+    #isLoaded = false;
     constructor() {
         /**
          * Multimap txid -> spent Coutpoint
@@ -96,8 +100,23 @@ export class Mempool {
          * @type {Map<txid, transaction>}
          */
         this.UTXOs = [];
+        /**
+         * A map of all known UTXOs
+         * @type {Map<txid, transaction>}
+         */
         this.txmap = new Map();
         this.subscribeToNetwork();
+    }
+
+    reset() {
+        this.UTXOs = [];
+        this.#isLoaded = false;
+        this.txmap = new Map();
+        this.spent = new Multimap();
+    }
+
+    get isLoaded() {
+        return this.#isLoaded;
     }
 
     /** The CONFIRMED state (UTXO is spendable) */
@@ -346,6 +365,13 @@ export class Mempool {
      */
     subscribeToNetwork() {
         getEventEmitter().on('utxo', async (utxos) => {
+            //Should not really happen
+            if (this.#isLoaded && this.UTXOs.length != 0) {
+                console.log(
+                    'ERROR! Event UTXO called on already loaded mempool'
+                );
+                return;
+            }
             for (const utxo of utxos) {
                 // If we have the UTXO, we update it's confirmation status
                 if (this.isAlreadyStored({ id: utxo.txid, vout: utxo.vout })) {
@@ -353,33 +379,39 @@ export class Mempool {
                     continue;
                 }
                 // If the UTXO is new, we'll process it and add it internally
+                const tx = await getNetwork().getTxFullInfo(utxo.txid);
                 this.addUTXO(await getNetwork().getUTXOFullInfo(utxo));
-                if (!this.txmap.has(utxo.txid)) {
-                    const test = await getNetwork().getTxInfo(utxo.txid);
-                    for (const vout of test.vout) {
-                        if (wallet.isMyVout(vout.hex)) {
-                            console.log(utxo.txid, vout);
-                        }
+                this.txmap.set(utxo.txid, tx);
+                for (const vin of tx.vin) {
+                    if (!this.isCoutSpent([vin.txid, vin.vout])) {
+                        this.spent.set(vin.txid, [vin.txid, vin.vout]);
                     }
-                    this.txmap.set(
-                        utxo.txid,
-                        await getNetwork().getTxInfo(utxo.txid)
-                    );
                 }
             }
             console.log(this.txmap);
             console.log(this.UTXOs);
+            this.#isLoaded = true;
         });
         getEventEmitter().on('recent_txs', async (txs) => {
+            // Don't process recent_txs if mempool is not loaded yet
+            if (!this.#isLoaded) {
+                return;
+            }
             for (const tx of txs) {
-                for (const vin of tx.vin) {
-                    //console.log(vin);
-                    this.autoRemoveUTXO({ id: vin.txid, vout: vin.n });
-                }
-                for (const vout of tx.vout) {
-                    // console.log(isP2PKH(vout.hex));
+                if (this.txmap.has(tx.txid)) continue;
+                const fullTx = await getNetwork().getTxFullInfo(tx.txid);
+                this.txmap.set(tx.txid, fullTx);
+                for (const vin of fullTx.vin) {
+                    if (!this.isCoutSpent([vin.txid, vin.vout])) {
+                        this.spent.set(vin.txid, [vin.txid, vin.vout]);
+                    }
                 }
             }
+            console.log('txmap', this.txmap);
+            console.log('spent', this.spent);
         });
+    }
+    isCoutSpent(cOut) {
+        return this.spent.get(cOut[0])?.some((x) => x[1] == cOut[1]);
     }
 }

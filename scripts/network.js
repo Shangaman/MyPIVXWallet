@@ -598,6 +598,11 @@ export class ExplorerNetwork extends Network {
         return await req.json();
     }
 
+    async getTxFullInfo(txHash) {
+        const req = await retryWrapper(fetchBlockbook, `/api/v2/tx-specific/${txHash}`);
+        return await req.json();
+    }
+
     // PIVX Labs Analytics: if you are a user, you can disable this FULLY via the Settings.
     // ... if you're a developer, we ask you to keep these stats to enhance upstream development,
     // ... but you are free to completely strip MPW of any analytics, if you wish, no hard feelings.
