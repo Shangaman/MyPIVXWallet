@@ -250,7 +250,7 @@ export class Wallet {
     }
 
     async getKeyToExport() {
-        return await this.#masterKey.getKeyToExport(this.#nAccount);
+        return await this.#masterKey?.getKeyToExport(this.#nAccount);
     }
 }
 
