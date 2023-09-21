@@ -45,9 +45,7 @@ async function getWalletDataset() {
     const arrBreakdown = [];
 
     // Public (Available)
-    const spendable_bal = await mempool.getBalanceNew(
-        UTXO_WALLET_STATE.SPENDABLE
-    );
+    const spendable_bal = mempool.balance;
     if (spendable_bal > 0) {
         arrBreakdown.push({
             type: translation.chartPublicAvailable,
@@ -57,9 +55,7 @@ async function getWalletDataset() {
     }
 
     // Staking (Locked)
-    const spendable_cold_bal = await mempool.getBalanceNew(
-        UTXO_WALLET_STATE.SPENDABLE_COLD
-    );
+    const spendable_cold_bal = mempool.coldBalance;
     if (spendable_cold_bal > 0) {
         arrBreakdown.push({
             type: 'Staking',

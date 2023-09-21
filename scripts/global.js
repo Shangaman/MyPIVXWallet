@@ -661,7 +661,7 @@ export async function updatePriceDisplay(domValue, fCold = false) {
     if (nPrice) {
         // Calculate the value
         const nCurrencyValue =
-            ((fCold ? await getStakingBalance() : await getBalance()) / COIN) *
+            ((fCold ? getStakingBalance() : getBalance()) / COIN) *
             nPrice;
 
         const { nValue, cLocale } = optimiseCurrencyLocale(nCurrencyValue);
@@ -671,8 +671,8 @@ export async function updatePriceDisplay(domValue, fCold = false) {
     }
 }
 
-export async function getBalance(updateGUI = false) {
-    const nBalance = await mempool.getBalanceNew(UTXO_WALLET_STATE.SPENDABLE);
+export function getBalance(updateGUI = false) {
+    const nBalance = mempool.balance;
     const nCoins = nBalance / COIN;
 
     // Update the GUI too, if chosen
@@ -697,10 +697,8 @@ export async function getBalance(updateGUI = false) {
     return nBalance;
 }
 
-export async function getStakingBalance(updateGUI = false) {
-    const nBalance = await mempool.getBalanceNew(
-        UTXO_WALLET_STATE.SPENDABLE_COLD
-    );
+export function getStakingBalance(updateGUI = false) {
+    const nBalance = mempool.coldBalance;
     const nCoins = nBalance / COIN;
 
     if (updateGUI) {
@@ -1128,7 +1126,7 @@ export async function importMasternode() {
         )
             .values()
             .next().value;
-        const balance = await getBalance(false);
+        const balance = getBalance(false);
         // If there's no valid UTXO, exit with a contextual message
         if (!cCollaUTXO) {
             if (balance < cChainParams.current.collateralInSats) {
@@ -2321,7 +2319,7 @@ export async function updateMasternodeTab() {
         )
             .values()
             .next().value;
-        const balance = await getBalance(false);
+        const balance = getBalance(false);
         if (cCollaUTXO) {
             if (cMasternode) {
                 await refreshMasternodeData(cMasternode);
@@ -2482,7 +2480,7 @@ export async function createProposal() {
         return;
     }
     // Must have enough funds
-    const balance = await getBalance();
+    const balance = getBalance();
     if (balance * COIN < cChainParams.current.proposalFee) {
         return createAlert('warning', ALERTS.PROPOSAL_NOT_ENOUGH_FUNDS, 4500);
     }
@@ -2593,7 +2591,7 @@ export function refreshChainData() {
             updateGovernanceTab();
         }
     });
-    //getBalance(true);
+    getBalance(true);
 }
 
 // A safety mechanism enabled if the user attempts to leave without encrypting/saving their keys
