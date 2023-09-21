@@ -2296,7 +2296,7 @@ export async function updateMasternodeTab() {
             txid: cMasternode.collateralTxId,
             n: cMasternode.outidx,
         });
-        if (!(await mempool.getUTXO(op, UTXO_WALLET_STATE.SPENDABLE, true))) {
+        if (!(await mempool.hasUTXO(op, UTXO_WALLET_STATE.SPENDABLE, true))) {
             database.removeMasternode();
             cMasternode = null;
         }

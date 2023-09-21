@@ -546,7 +546,7 @@ export class Mempool {
      * Outpoint that we want to fetch
      * @param {COutpoint} op
      */
-    async getUTXO(op, filter, onlyConfirmed) {
+    async hasUTXO(op, filter, onlyConfirmed) {
         // If the outpoint is spent return false
         if (this.isSpent(op)) {
             return false;
