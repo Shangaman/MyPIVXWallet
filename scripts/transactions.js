@@ -311,11 +311,6 @@ export async function createAndSendTransaction({
     });
 
     /**
-     * Array containing known UTXOs we can spend after the transaction is complete
-     * @type{Array<UTXO>}
-     */
-    const knownUTXOs = [];
-    /**
      * Array containing the transaction outputs, useful for showing confirmation screen
      */
     const outputs = [];
@@ -338,17 +333,6 @@ export async function createAndSendTransaction({
             cTx.addoutput(changeAddress, nChange / COIN);
             outputs.push([changeAddress, nChange / COIN]);
         }
-        knownUTXOs.push(
-            new UTXO({
-                id: null, // We still don't know the txid
-                path: changeAddressPath,
-                script: cTx.outputs[0].script,
-                sats: nChange,
-                vout: 0,
-                status: Mempool.PENDING,
-                isDelegate: delegateChange && nChange > 1.01 * COIN,
-            })
-        );
     } else {
         // We're sending alot! So we deduct the fee from the send amount. There's not enough change to pay it with!
         amount -= nFee;
@@ -360,18 +344,6 @@ export async function createAndSendTransaction({
             await wallet.getNewAddress();
         cTx.addcoldstakingoutput(primaryAddress, address, amount / COIN);
         outputs.push([primaryAddress, address, amount / COIN]);
-
-        knownUTXOs.push(
-            new UTXO({
-                id: null,
-                path: primaryAddressPath,
-                script: cTx.outputs[cTx.outputs.length - 1].script,
-                sats: amount,
-                vout: cTx.outputs.length - 1,
-                status: Mempool.PENDING,
-                isDelegate: true,
-            })
-        );
     } else if (isProposal) {
         cTx.addproposaloutput(address, amount / COIN);
     } else {
@@ -401,21 +373,8 @@ export async function createAndSendTransaction({
     // Update the mempool
     if (result) {
         // Remove spent inputs
-        console.log(cTx);
-        for (const tx of cTx.inputs) {
-            mempool.autoRemoveUTXO({
-                id: tx.outpoint.hash,
-                path: tx.path,
-                vout: tx.outpoint.index,
-            });
-        }
 
         const futureTxid = bytesToHex(dSHA256(hexToBytes(sign)).reverse());
-
-        for (const utxo of knownUTXOs) {
-            utxo.id = futureTxid;
-            mempool.addUTXO(utxo);
-        }
 
         // Build Transaction object
         let vin = [];
@@ -447,26 +406,6 @@ export async function createAndSendTransaction({
             vout: vout,
         });
         await mempool.updateMempool(parsedTx);
-        console.log(parsedTx);
-
-        if (!isDelegation && !isProposal) {
-            const path = await wallet.isOwnAddress(address);
-
-            // If the tx was sent to yourself, add it to the mempool
-            if (path) {
-                const vout = nChange > 0 ? 1 : 0;
-                mempool.addUTXO(
-                    new UTXO({
-                        id: futureTxid,
-                        path,
-                        sats: amount,
-                        vout,
-                        script: bytesToHex(cTx.outputs[vout].script),
-                        status: Mempool.PENDING,
-                    })
-                );
-            }
-        }
     }
     return { ok: !!result, txid: result };
 }
@@ -580,9 +519,6 @@ async function chooseUTXOs(
 
     for (let i = 0; i < arrUTXOs.length; i++) {
         const cUTXO = arrUTXOs[i];
-        if (!Mempool.isValidUTXO(cUTXO)) {
-            continue;
-        }
         // Don't spend locked Masternode collaterals
         if (isMasternodeUTXO(cUTXO, masternode)) continue; //CHANGE THIS
 
