@@ -544,8 +544,6 @@ export async function toggleTestnet() {
     }
 
     mempool.reset();
-    // Re-render the Activity UI as empty
-    await renderActivityGUI([]);
     getBalance(true);
     getStakingBalance(true);
     await updateEncryptionGUI(wallet.isLoaded());

@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { getNetwork, HistoricalTxType } from './network.js';
 import { wallet } from './wallet.js';
+import { mempool } from './global.js';
 import { cChainParams } from './chain_params.js';
 import { translation } from './i18n.js';
 import { Database } from './database.js';
@@ -56,6 +57,12 @@ const txMap = computed(() => {
 
 async function update(fNewOnly = false, sync = true) {
     const cNet = getNetwork();
+
+    // If mempool is not loaded yet do not update the activity GUI
+    // or we might end up in a state where many of our addresses are considered invalid
+    if (!mempool.isLoaded) {
+        return;
+    }
 
     if (!cNet) return;
 
@@ -181,7 +188,7 @@ async function parseTXs(arrTXs) {
             // Check all addresses to find our own, caching them for performance
             for (const strAddr of cTx.receivers.concat(cTx.senders)) {
                 // If a previous Tx checked this address, skip it, otherwise, check it against our own address(es)
-                if (!(await wallet.getMasterKey().isOwnAddress(strAddr))) {
+                if (!(await wallet.isOwnAddress(strAddr))) {
                     // External address, this is not a self-only Tx
                     fSendToSelf = false;
                 }
@@ -208,7 +215,7 @@ async function parseTXs(arrTXs) {
                 const arrExternalAddresses = (
                     await Promise.all(
                         cTx[where].map(async (addr) => [
-                            await wallet.getMasterKey().isOwnAddress(addr),
+                            await wallet.isOwnAddress(addr),
                             addr,
                         ])
                     )

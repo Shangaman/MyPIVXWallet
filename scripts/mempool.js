@@ -252,7 +252,7 @@ export class Mempool {
             console.log('Started recent tx fetch: ');
             for (const tx of txs) {
                 // Do not accept any tx which is below the syncHeight
-                if (this.#syncHeight >= tx.blockHeight) {
+                if (this.#syncHeight > tx.blockHeight) {
                     continue;
                 }
                 if (
