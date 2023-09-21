@@ -205,7 +205,6 @@ export class Mempool {
             }
             const startTime = new Date();
             console.log('Started utxo fetch: ');
-            console.log(this);
             for (const utxo of utxos) {
                 if (this.txmap.has(utxo.txid)) {
                     continue;

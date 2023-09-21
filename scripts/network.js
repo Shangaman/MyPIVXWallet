@@ -266,7 +266,13 @@ export class ExplorerNetwork extends Network {
             const arrUTXOs = await (
                 await retryWrapper(fetchBlockbook, `/api/v2/utxo/${publicKey}`)
             ).json();
-
+            // Update the maximum path
+            for (const utxo of arrUTXOs) {
+                this.lastWallet = Math.max(
+                    parseInt(utxo.path.split('/')[5]),
+                    this.lastWallet
+                );
+            }
             // If using MPW's wallet, then sync the UTXOs in MPW's state
             if (!strAddress) getEventEmitter().emit('utxo', arrUTXOs);
 
@@ -285,6 +291,7 @@ export class ExplorerNetwork extends Network {
      * @returns {Promise<UTXO>} Promise that resolves with the full info of the UTXO
      */
     async getUTXOFullInfo(cUTXO) {
+        //This is still used in promo.js TODO: I'm sure we can get rid of it
         const cTx = await (
             await retryWrapper(
                 fetchBlockbook,
@@ -319,7 +326,6 @@ export class ExplorerNetwork extends Network {
             script: cVout.scriptPubKey.hex,
             vout: cVout.n,
             height: this.cachedBlockCount - (cTx.confirmations - 1),
-            status: cTx.confirmations < 1 ? Mempool.PENDING : Mempool.CONFIRMED,
             isDelegate: isColdStake,
             isReward,
         });
