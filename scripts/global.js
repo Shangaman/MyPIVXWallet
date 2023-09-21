@@ -1487,7 +1487,11 @@ export async function importMasternode() {
     } else {
         const path = doms.domMnTxId.value;
         const masterUtxo = (
-            await mempool.getUTXOs(UTXO_WALLET_STATE.SPENDABLE, true)
+            await mempool.getUTXOs(
+                UTXO_WALLET_STATE.SPENDABLE,
+                getBalance(),
+                true
+            )
         ).findLast((u) => u.path === path); // first UTXO for each address in HD
         // sanity check:
         if (masterUtxo.sats !== cChainParams.current.collateralInSats) {

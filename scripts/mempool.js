@@ -157,6 +157,12 @@ export class Mempool {
     #isLoaded = false;
     #balance = 0;
     #coldBalance = 0;
+    /**
+     * @type {Number}
+     * The maximum block height that we received with the call 'utxos'
+     * We don't want to receive anymore transactions which are below this block
+     */
+    #syncHeight = -1;
     constructor() {
         /**
          * Multimap txid -> spent Coutpoint
@@ -206,6 +212,7 @@ export class Mempool {
             const startTime = new Date();
             console.log('Started utxo fetch: ');
             for (const utxo of utxos) {
+                this.#syncHeight = Math.max(this.#syncHeight, utxo.height);
                 if (this.txmap.has(utxo.txid)) {
                     continue;
                 }
@@ -244,6 +251,10 @@ export class Mempool {
             const startTime = new Date();
             console.log('Started recent tx fetch: ');
             for (const tx of txs) {
+                // Do not accept any tx which is below the syncHeight
+                if (this.#syncHeight >= tx.blockHeight) {
+                    continue;
+                }
                 if (
                     !this.txmap.has(tx.txid) ||
                     !this.txmap.get(tx.txid).isConfirmed()
@@ -349,7 +360,10 @@ export class Mempool {
         return utxos;
     }
     // a bit a copy and paste from getBalanceNew, TODO: remove the copy and paste
-    async getUTXOs(filter, onlyConfirmed = false) {
+    async getUTXOs(filter, target, onlyConfirmed = false) {
+        const startTime = new Date();
+        let totFound = 0;
+        console.log('Starting fetching UTXOs from wallet data:');
         let utxos = [];
         for (let [txid, tx] of this.txmap) {
             if (onlyConfirmed && !tx.isConfirmed()) {
@@ -364,7 +378,6 @@ export class Mempool {
                 if ((UTXO_STATE & filter) == 0) {
                     continue;
                 }
-
                 utxos.push(
                     new UTXO({
                         id: txid,
@@ -374,8 +387,23 @@ export class Mempool {
                         vout: vout.n,
                     })
                 );
+                // Return early if you found enough PIVs (11/10 is to make sure to pay fee)
+                totFound += vout.value;
+                if (totFound > (11 / 10) * target) {
+                    const endTime = new Date();
+                    console.log(
+                        'Finished early fetching UTXOs from wallet data:',
+                        (endTime - startTime) / 1000
+                    );
+                    return utxos;
+                }
             }
         }
+        const endTime = new Date();
+        console.log(
+            'Finished fetching UTXOs from wallet data:',
+            (endTime - startTime) / 1000
+        );
         return utxos;
     }
     parseTransaction(tx) {
