@@ -590,7 +590,7 @@ export class Mempool {
                     path,
                     new UTXO({
                         id: txid,
-                        sats: vout.value * COIN,
+                        sats: vout.value,
                         script: vout.script,
                         path: path,
                         vout: vout.n,
@@ -620,7 +620,7 @@ export class Mempool {
                 utxos.push(
                     new UTXO({
                         id: txid,
-                        sats: vout.value * COIN,
+                        sats: vout.value,
                         script: vout.script,
                         path: path,
                         vout: vout.n,
