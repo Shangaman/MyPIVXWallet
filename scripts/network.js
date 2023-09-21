@@ -10,6 +10,7 @@ import {
     fAutoSwitch,
 } from './settings.js';
 import { ALERTS } from './i18n.js';
+import { mempool } from './global.js';
 
 /**
  * @typedef {Object} XPUBAddress
@@ -248,6 +249,11 @@ export class ExplorerNetwork extends Network {
      * @returns {Promise<Array<BlockbookUTXO>>} Resolves when it has finished fetching UTXOs
      */
     async getUTXOs(strAddress = '') {
+        // If mempool has been already loaded return
+        if (mempool.isLoaded) {
+            // TODO: don't call mempool directly but use the wallet instead
+            return;
+        }
         // Don't fetch UTXOs if we're already scanning for them!
         if (!strAddress) {
             if (!this.wallet || !this.wallet.isLoaded()) return;

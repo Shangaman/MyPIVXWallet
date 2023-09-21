@@ -543,10 +543,9 @@ export async function toggleTestnet() {
         doms.domImportWallet.style.display = 'none';
     }
 
+    mempool.reset();
     // Re-render the Activity UI as empty
     await renderActivityGUI([]);
-
-    mempool.reset();
     getBalance(true);
     getStakingBalance(true);
     await updateEncryptionGUI(wallet.isLoaded());

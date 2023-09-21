@@ -450,8 +450,12 @@ export class Mempool {
      */
     subscribeToNetwork() {
         getEventEmitter().on('utxo', async (utxos) => {
+            // For some reasons we are receiving empty [] sometimes  (it happens once the network is switched). In this case bail
+            if (utxos.length == 0) {
+                return;
+            }
             //Should not really happen
-            if (this.#isLoaded && this.UTXOs.length != 0) {
+            if (this.#isLoaded) {
                 console.log(
                     'ERROR! Event UTXO called on already loaded mempool'
                 );
@@ -481,10 +485,7 @@ export class Mempool {
             }
             console.log(this.txmap);
             console.log(this.UTXOs);
-            for (let u of this.UTXOs) {
-                console.log(u.id, u.vout, u.sats / COIN);
-            }
-            console.log(this.spent);
+            console.log('Spent', this.spent);
             this.#isLoaded = true;
             this.#balance = await this.getBalanceNew(
                 UTXO_WALLET_STATE.SPENDABLE
@@ -492,6 +493,8 @@ export class Mempool {
             this.#coldBalance = await this.getBalanceNew(
                 UTXO_WALLET_STATE.SPENDABLE_COLD
             );
+            getBalance(true);
+            getStakingBalance(true);
         });
         getEventEmitter().on('recent_txs', async (txs) => {
             // Don't process recent_txs if mempool is not loaded yet
@@ -673,5 +676,7 @@ export class Mempool {
         this.#coldBalance = await this.getBalanceNew(
             UTXO_WALLET_STATE.SPENDABLE_COLD
         );
+        getBalance(true);
+        getStakingBalance(true);
     }
 }
