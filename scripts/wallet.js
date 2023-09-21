@@ -28,7 +28,7 @@ import { Database } from './database.js';
 import { guiRenderCurrentReceiveModal } from './contacts-book.js';
 import { Account } from './accounts.js';
 import { debug, fAdvancedMode } from './settings.js';
-import { hexToBytes } from './utils.js';
+import { bytesToHex, hexToBytes } from './utils.js';
 import { strHardwareName, getHardwareWalletKeys } from './ledger.js';
 import { isP2CS, isP2PKH, getAddressFromPKH } from './script.js';
 export let fWalletLoaded = false;
@@ -64,6 +64,11 @@ class Wallet {
      * @type {Map<String, String?>}
      */
     #ownAddresses = new Map();
+    /**
+     * Map public key hash -> Address
+     * @type {Map<String,String>}
+     */
+    #knownPKH = new Map();
     constructor(nAccount) {
         this.#nAccount = nAccount;
     }
@@ -267,14 +272,14 @@ class Wallet {
         let addresses = [];
         const dataBytes = hexToBytes(script);
         if (isP2PKH(dataBytes)) {
-            addresses.push(getAddressFromPKH(dataBytes.slice(3, 23)));
+            addresses.push(this.updatePkhMap(bytesToHex(dataBytes.slice(3, 23))))
             const path = await this.isOwnAddress(addresses[0]);
             if (path) {
                 return [UTXO_WALLET_STATE.SPENDABLE, path];
             }
         } else if (isP2CS(dataBytes)) {
-            addresses.push(getAddressFromPKH(dataBytes.slice(6, 26)));
-            addresses.push(getAddressFromPKH(dataBytes.slice(28, 48)));
+            addresses.push(this.updatePkhMap(bytesToHex((dataBytes.slice(6, 26)))));
+            addresses.push(this.updatePkhMap(bytesToHex((dataBytes.slice(28, 48)))))
             const path1 = await this.isOwnAddress(addresses[0]);
             const path2 = await this.isOwnAddress(addresses[1]);
             if (path1) {
@@ -285,6 +290,13 @@ class Wallet {
             }
         }
         return [UTXO_WALLET_STATE.NOT_MINE, null];
+    }
+    // Avoid calculating over and over the same getAddressFromPKH by saving the result in a map
+    updatePkhMap(pkh_hex){
+        if(!this.#knownPKH.has(pkh_hex)){
+            this.#knownPKH.set(pkh_hex, getAddressFromPKH(hexToBytes(pkh_hex)))
+        }
+        return this.#knownPKH.get(pkh_hex);
     }
 }
 

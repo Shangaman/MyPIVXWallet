@@ -284,6 +284,8 @@ export class Mempool {
      * Get the total wallet balance
      */
     async getBalanceNew(filter) {
+        const startTime = new Date();
+        console.log('Starting calculating total balance');
         let totBalance = 0;
         for (let [txid, tx] of this.txmap) {
             for (let vout of tx.vout) {
@@ -298,6 +300,8 @@ export class Mempool {
                 totBalance += vout.value;
             }
         }
+        const endTime = new Date();
+        console.log('Finished calculating total balance',(endTime - startTime)/1000);
         return totBalance;
     }
     /**
