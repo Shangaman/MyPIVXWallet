@@ -446,7 +446,7 @@ export async function createAndSendTransaction({
             vin: vin,
             vout: vout,
         });
-        mempool.updateMempool(parsedTx);
+        await mempool.updateMempool(parsedTx);
         console.log(parsedTx);
 
         if (!isDelegation && !isProposal) {

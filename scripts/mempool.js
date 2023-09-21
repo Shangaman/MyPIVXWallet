@@ -4,7 +4,7 @@ import { sleep } from './misc.js';
 import { debug } from './settings.js';
 import { getEventEmitter } from './event_bus.js';
 import Multimap from 'multimap';
-import { wallet } from './wallet.js';
+import { UTXO_WALLET_STATE, wallet } from './wallet.js';
 import { COIN } from './chain_params.js';
 
 export class CTxOut {
@@ -167,6 +167,8 @@ export class Mempool {
      * @type {boolean}
      */
     #isLoaded = false;
+    #balance = 0;
+    #coldBalance = 0;
     constructor() {
         /**
          * Multimap txid -> spent Coutpoint
@@ -192,7 +194,12 @@ export class Mempool {
         this.txmap = new Map();
         this.spent = new Multimap();
     }
-
+    get balance() {
+        return this.#balance;
+    }
+    get coldBalance() {
+        return this.#coldBalance;
+    }
     get isLoaded() {
         return this.#isLoaded;
     }
@@ -479,6 +486,12 @@ export class Mempool {
             }
             console.log(this.spent);
             this.#isLoaded = true;
+            this.#balance = await this.getBalanceNew(
+                UTXO_WALLET_STATE.SPENDABLE
+            );
+            this.#coldBalance = await this.getBalanceNew(
+                UTXO_WALLET_STATE.SPENDABLE_COLD
+            );
         });
         getEventEmitter().on('recent_txs', async (txs) => {
             // Don't process recent_txs if mempool is not loaded yet
@@ -493,7 +506,7 @@ export class Mempool {
                     const fullTx = this.parseTransaction(
                         await getNetwork().getTxFullInfo(tx.txid)
                     );
-                    this.updateMempool(fullTx);
+                    await this.updateMempool(fullTx);
                 }
             }
             console.log('txmap', this.txmap);
@@ -649,7 +662,7 @@ export class Mempool {
      * Update the mempool status
      * @param {Transaction} tx
      */
-    updateMempool(tx) {
+    async updateMempool(tx) {
         this.txmap.set(tx.txid, tx);
         for (const vin of tx.vin) {
             const op = vin.outpoint;
@@ -657,5 +670,9 @@ export class Mempool {
                 this.spent.set(op.txid, op);
             }
         }
+        this.#balance = await this.getBalanceNew(UTXO_WALLET_STATE.SPENDABLE);
+        this.#coldBalance = await this.getBalanceNew(
+            UTXO_WALLET_STATE.SPENDABLE_COLD
+        );
     }
 }
