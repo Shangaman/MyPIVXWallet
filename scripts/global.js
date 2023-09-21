@@ -661,8 +661,7 @@ export async function updatePriceDisplay(domValue, fCold = false) {
     if (nPrice) {
         // Calculate the value
         const nCurrencyValue =
-            ((fCold ? getStakingBalance() : getBalance()) / COIN) *
-            nPrice;
+            ((fCold ? getStakingBalance() : getBalance()) / COIN) * nPrice;
 
         const { nValue, cLocale } = optimiseCurrencyLocale(nCurrencyValue);
 
@@ -679,6 +678,7 @@ export function getBalance(updateGUI = false) {
     if (updateGUI) {
         // Set the balance, and adjust font-size for large balance strings
         const strBal = nCoins.toFixed(nDisplayDecimals);
+        console.log('MENOMALKE', nCoins, strBal);
         const nLen = strBal.length;
         doms.domGuiBalance.innerHTML = beautifyNumber(
             strBal,

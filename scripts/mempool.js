@@ -540,8 +540,7 @@ export class Mempool {
                 totBalance += vout.value;
             }
         }
-        console.log(totBalance / COIN);
-        return totBalance / COIN;
+        return totBalance;
     }
     /**
      * Outpoint that we want to fetch
