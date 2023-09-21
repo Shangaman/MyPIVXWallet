@@ -12,6 +12,7 @@ import { doms, isMasternodeUTXO, mempool } from './global';
 import { Database } from './database.js';
 import { translation } from './i18n';
 import { UTXO_WALLET_STATE } from './wallet';
+import { COutpoint } from './mempool';
 
 Chart.register(
     Colors,
@@ -70,25 +71,16 @@ async function getWalletDataset() {
     const masternode = await (await Database.getInstance()).getMasternode();
 
     // Masternode (Locked)
-    (
-        await Promise.all(
-            mempool.getConfirmed().map(async (cUTXO) => {
-                return {
-                    UTXO: cUTXO,
-                    isMnUTXO: isMasternodeUTXO(cUTXO, masternode),
-                };
-            })
-        )
-    )
-        .filter(({ isMnUTXO }) => isMnUTXO)
-        .forEach(({ UTXO }) =>
+    if(masternode){
+        const mnOp = new COutpoint({txid: masternode.collateralTxId, n: masternode.outidx})
+        if(await mempool.getUTXO(mnOp, UTXO_WALLET_STATE.SPENDABLE, true)){
             arrBreakdown.push({
                 type: 'Masternode',
-                balance: UTXO.sats / COIN,
+                balance: cChainParams.current.collateralInSats / COIN,
                 colour: 'rgba(19, 13, 30, 1)',
             })
-        );
-
+        }
+    }
     return arrBreakdown;
 }
 

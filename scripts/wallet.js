@@ -263,25 +263,29 @@ class Wallet {
         return await this.#masterKey?.getKeyToExport(this.#nAccount);
     }
 
+    //TODO: for future return only the enum item and not the address path
     async isMyVout(script) {
         let addresses = [];
         const dataBytes = hexToBytes(script);
         if (isP2PKH(dataBytes)) {
             addresses.push(getAddressFromPKH(dataBytes.slice(3, 23)));
-            if (await this.isOwnAddress(addresses[0])) {
-                return UTXO_WALLET_STATE.SPENDABLE;
+            const path = await this.isOwnAddress(addresses[0]);
+            if (path) {
+                return [UTXO_WALLET_STATE.SPENDABLE,path];
             }
         } else if (isP2CS(dataBytes)) {
             addresses.push(getAddressFromPKH(dataBytes.slice(6, 26)));
             addresses.push(getAddressFromPKH(dataBytes.slice(28, 48)));
-            if (await this.isOwnAddress(addresses[0])) {
+            const path1 = await this.isOwnAddress(addresses[0]);
+            const path2 = await this.isOwnAddress(addresses[1]);
+            if (path1) {
                 // TODO: update isOwnADdress to take in consideration of cold stake addresses
-                return UTXO_WALLET_STATE.COLD_RECEIVED;
-            } else if (await this.isOwnAddress(addresses[1])) {
-                return UTXO_WALLET_STATE.SPENDABLE_COLD;
+                return [UTXO_WALLET_STATE.COLD_RECEIVED,path1];
+            } else if (path2) {
+                return [UTXO_WALLET_STATE.SPENDABLE_COLD,path2];
             }
         }
-        return UTXO_WALLET_STATE.NOT_MINE;
+        return [UTXO_WALLET_STATE.NOT_MINE, null];
     }
 }
 
@@ -513,8 +517,8 @@ export async function generateWallet(noUI = false) {
         await getNewAddress({ updateGUI: true });
 
         // Refresh the balance UI (why? because it'll also display any 'get some funds!' alerts)
-        getBalance(true);
-        getStakingBalance(true);
+        await getBalance(true);
+        await getStakingBalance(true);
     }
 
     return wallet;

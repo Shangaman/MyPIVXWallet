@@ -326,8 +326,8 @@ async function setCurrency(currency) {
     const database = await Database.getInstance();
     database.setSettings({ displayCurrency: strCurrency });
     // Update the UI to reflect the new currency
-    getBalance(true);
-    getStakingBalance(true);
+    await getBalance(true);
+    await getStakingBalance(true);
 }
 
 /**
@@ -339,8 +339,8 @@ async function setDecimals(decimals) {
     const database = await Database.getInstance();
     database.setSettings({ displayDecimals: nDisplayDecimals });
     // Update the UI to reflect the new decimals
-    getBalance(true);
-    getStakingBalance(true);
+    await getBalance(true);
+    await getStakingBalance(true);
 }
 
 /**

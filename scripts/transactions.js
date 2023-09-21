@@ -11,9 +11,9 @@ import {
     guiSetColdStakingAddress,
 } from './global.js';
 import { cHardwareWallet, strHardwareName } from './ledger.js';
-import { wallet } from './wallet.js';
+import { UTXO_WALLET_STATE, wallet } from './wallet.js';
 import { HdMasterKey } from './masterkey.js';
-import { Mempool, UTXO } from './mempool.js';
+import { COutpoint, CTxIn, CTxOut, Mempool, Transaction, UTXO } from './mempool.js';
 import { getNetwork } from './network.js';
 import { cChainParams, COIN, COIN_DECIMALS } from './chain_params.js';
 import {
@@ -289,7 +289,7 @@ export async function createAndSendTransaction({
         return;
 
     // Construct a TX and fetch Standard inputs
-    const nBalance = getBalance();
+    const nBalance = await getBalance();
     const cTx = new bitjs.transaction();
     const cCoinControl = await chooseUTXOs(cTx, amount, 0, useDelegatedInputs);
     if (!cCoinControl.success)
@@ -409,6 +409,22 @@ export async function createAndSendTransaction({
             utxo.id = futureTxid;
             mempool.addUTXO(utxo);
         }
+
+        // Build Transaction object
+        let vin = []
+        let vout = []
+        for(const inp of  cTx.inputs){
+            const op = new COutpoint({txid: inp.outpoint.hash, n: inp.outpoint.index})
+            vin.push(new CTxIn({outpoint: op,scriptSig: bytesToHex(inp.script)}))
+        }
+        let i = 0;
+        for(const out of  cTx.outputs){
+            vout.push(new CTxOut({n:i, script: bytesToHex(out.script), value: Number(out.value)}))
+            i+=1;
+        }
+        const parsedTx = new Transaction({txid: futureTxid, blockHeight: -1,vin:vin,vout:vout })
+        mempool.updateMempool(parsedTx)
+        console.log(parsedTx)
 
         if (!isDelegation && !isProposal) {
             const path = await wallet.isOwnAddress(address);
@@ -530,9 +546,8 @@ async function chooseUTXOs(
     // Select the UTXO type bucket
 
     //const arrUTXOs
-    const arrUTXOs = fColdOnly
-        ? mempool.getDelegatedUTXOs()
-        : mempool.getStandardUTXOs();
+    const filter = fColdOnly ? UTXO_WALLET_STATE.SPENDABLE_COLD : UTXO_WALLET_STATE.SPENDABLE;
+    const arrUTXOs = await mempool.getUTXOs(filter);
 
     // Select and return UTXO pointers (filters applied)
     const cCoinControl = { nValue: 0, nChange: 0, arrSelectedUTXOs: [] };
