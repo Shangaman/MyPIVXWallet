@@ -461,10 +461,15 @@ export class Mempool {
                 );
                 return;
             }
+            const startTime = new Date();
+            console.log('Started utxo fetch: ');
             for (const utxo of utxos) {
                 // If we have the UTXO, we update it's confirmation status
                 if (this.isAlreadyStored({ id: utxo.txid, vout: utxo.vout })) {
                     this.updateUTXO({ id: utxo.txid, vout: utxo.vout });
+                    continue;
+                }
+                if (this.txmap.has(utxo.txid)) {
                     continue;
                 }
                 // If the UTXO is new, we'll process it and add it internally
@@ -483,9 +488,6 @@ export class Mempool {
                     }
                 }
             }
-            console.log(this.txmap);
-            console.log(this.UTXOs);
-            console.log('Spent', this.spent);
             this.#isLoaded = true;
             this.#balance = await this.getBalanceNew(
                 UTXO_WALLET_STATE.SPENDABLE
@@ -495,12 +497,16 @@ export class Mempool {
             );
             getBalance(true);
             getStakingBalance(true);
+            const endTime = new Date();
+            console.log('Ended utxo fetch in:', (endTime - startTime) / 1000);
         });
         getEventEmitter().on('recent_txs', async (txs) => {
             // Don't process recent_txs if mempool is not loaded yet
             if (!this.#isLoaded) {
                 return;
             }
+            const startTime = new Date();
+            console.log('Started recent tx fetch: ');
             for (const tx of txs) {
                 if (
                     !this.txmap.has(tx.txid) ||
@@ -512,8 +518,11 @@ export class Mempool {
                     await this.updateMempool(fullTx);
                 }
             }
-            console.log('txmap', this.txmap);
-            console.log('spent', this.spent);
+            const endTime = new Date();
+            console.log(
+                'Ended recent tx fetch in:',
+                (endTime - startTime) / 1000
+            );
         });
     }
     /**
@@ -539,7 +548,6 @@ export class Mempool {
                 if ((UTXO_STATE & filter) == 0) {
                     continue;
                 }
-                console.log('Mine', vout);
                 totBalance += vout.value;
             }
         }
@@ -631,7 +639,6 @@ export class Mempool {
                 );
             }
         }
-        console.log(utxos);
         return utxos;
     }
     parseTransaction(tx) {
