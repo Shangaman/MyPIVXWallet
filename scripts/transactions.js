@@ -13,7 +13,14 @@ import {
 import { cHardwareWallet, strHardwareName } from './ledger.js';
 import { UTXO_WALLET_STATE, wallet } from './wallet.js';
 import { HdMasterKey } from './masterkey.js';
-import { COutpoint, CTxIn, CTxOut, Mempool, Transaction, UTXO } from './mempool.js';
+import {
+    COutpoint,
+    CTxIn,
+    CTxOut,
+    Mempool,
+    Transaction,
+    UTXO,
+} from './mempool.js';
 import { getNetwork } from './network.js';
 import { cChainParams, COIN, COIN_DECIMALS } from './chain_params.js';
 import {
@@ -411,20 +418,36 @@ export async function createAndSendTransaction({
         }
 
         // Build Transaction object
-        let vin = []
-        let vout = []
-        for(const inp of  cTx.inputs){
-            const op = new COutpoint({txid: inp.outpoint.hash, n: inp.outpoint.index})
-            vin.push(new CTxIn({outpoint: op,scriptSig: bytesToHex(inp.script)}))
+        let vin = [];
+        let vout = [];
+        for (const inp of cTx.inputs) {
+            const op = new COutpoint({
+                txid: inp.outpoint.hash,
+                n: inp.outpoint.index,
+            });
+            vin.push(
+                new CTxIn({ outpoint: op, scriptSig: bytesToHex(inp.script) })
+            );
         }
         let i = 0;
-        for(const out of  cTx.outputs){
-            vout.push(new CTxOut({n:i, script: bytesToHex(out.script), value: Number(out.value)}))
-            i+=1;
+        for (const out of cTx.outputs) {
+            vout.push(
+                new CTxOut({
+                    n: i,
+                    script: bytesToHex(out.script),
+                    value: Number(out.value),
+                })
+            );
+            i += 1;
         }
-        const parsedTx = new Transaction({txid: futureTxid, blockHeight: -1,vin:vin,vout:vout })
-        mempool.updateMempool(parsedTx)
-        console.log(parsedTx)
+        const parsedTx = new Transaction({
+            txid: futureTxid,
+            blockHeight: -1,
+            vin: vin,
+            vout: vout,
+        });
+        mempool.updateMempool(parsedTx);
+        console.log(parsedTx);
 
         if (!isDelegation && !isProposal) {
             const path = await wallet.isOwnAddress(address);
@@ -546,7 +569,9 @@ async function chooseUTXOs(
     // Select the UTXO type bucket
 
     //const arrUTXOs
-    const filter = fColdOnly ? UTXO_WALLET_STATE.SPENDABLE_COLD : UTXO_WALLET_STATE.SPENDABLE;
+    const filter = fColdOnly
+        ? UTXO_WALLET_STATE.SPENDABLE_COLD
+        : UTXO_WALLET_STATE.SPENDABLE;
     const arrUTXOs = await mempool.getUTXOs(filter);
 
     // Select and return UTXO pointers (filters applied)

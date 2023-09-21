@@ -271,7 +271,7 @@ class Wallet {
             addresses.push(getAddressFromPKH(dataBytes.slice(3, 23)));
             const path = await this.isOwnAddress(addresses[0]);
             if (path) {
-                return [UTXO_WALLET_STATE.SPENDABLE,path];
+                return [UTXO_WALLET_STATE.SPENDABLE, path];
             }
         } else if (isP2CS(dataBytes)) {
             addresses.push(getAddressFromPKH(dataBytes.slice(6, 26)));
@@ -280,9 +280,9 @@ class Wallet {
             const path2 = await this.isOwnAddress(addresses[1]);
             if (path1) {
                 // TODO: update isOwnADdress to take in consideration of cold stake addresses
-                return [UTXO_WALLET_STATE.COLD_RECEIVED,path1];
+                return [UTXO_WALLET_STATE.COLD_RECEIVED, path1];
             } else if (path2) {
-                return [UTXO_WALLET_STATE.SPENDABLE_COLD,path2];
+                return [UTXO_WALLET_STATE.SPENDABLE_COLD, path2];
             }
         }
         return [UTXO_WALLET_STATE.NOT_MINE, null];

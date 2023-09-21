@@ -71,14 +71,17 @@ async function getWalletDataset() {
     const masternode = await (await Database.getInstance()).getMasternode();
 
     // Masternode (Locked)
-    if(masternode){
-        const mnOp = new COutpoint({txid: masternode.collateralTxId, n: masternode.outidx})
-        if(await mempool.getUTXO(mnOp, UTXO_WALLET_STATE.SPENDABLE, true)){
+    if (masternode) {
+        const mnOp = new COutpoint({
+            txid: masternode.collateralTxId,
+            n: masternode.outidx,
+        });
+        if (await mempool.getUTXO(mnOp, UTXO_WALLET_STATE.SPENDABLE, true)) {
             arrBreakdown.push({
                 type: 'Masternode',
                 balance: cChainParams.current.collateralInSats / COIN,
                 colour: 'rgba(19, 13, 30, 1)',
-            })
+            });
         }
     }
     return arrBreakdown;
