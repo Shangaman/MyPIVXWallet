@@ -1486,6 +1486,7 @@ export async function importMasternode() {
             await mempool.getUTXOs(UTXO_WALLET_STATE.SPENDABLE, true)
         ).findLast((u) => u.path === path); // first UTXO for each address in HD
         // sanity check:
+        console.log("mannagg", masterUtxo, path)
         if (masterUtxo.sats !== cChainParams.current.collateralInSats) {
             return createAlert('warning', ALERTS.MN_COLLAT_NOT_SUITABLE, 10000);
         }
@@ -2798,8 +2799,7 @@ export async function createProposal() {
         return;
     }
     // Must have enough funds
-    const balance = getBalance();
-    if (balance * COIN < cChainParams.current.proposalFee) {
+    if (getBalance() * COIN < cChainParams.current.proposalFee) {
         return createAlert('warning', ALERTS.PROPOSAL_NOT_ENOUGH_FUNDS, 4500);
     }
 
