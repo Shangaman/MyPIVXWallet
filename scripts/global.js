@@ -1426,6 +1426,10 @@ export async function importMasternode() {
         createAlert('warning', ALERTS.MN_BAD_IP, 5000);
         return;
     }
+    if (!mnPrivKey) {
+        createAlert('warning', 'You must provide a private key', 5000);
+        return;
+    }
 
     let collateralTxId;
     let outidx;
@@ -1486,7 +1490,6 @@ export async function importMasternode() {
             await mempool.getUTXOs(UTXO_WALLET_STATE.SPENDABLE, true)
         ).findLast((u) => u.path === path); // first UTXO for each address in HD
         // sanity check:
-        console.log("mannagg", masterUtxo, path)
         if (masterUtxo.sats !== cChainParams.current.collateralInSats) {
             return createAlert('warning', ALERTS.MN_COLLAT_NOT_SUITABLE, 10000);
         }
@@ -2597,10 +2600,7 @@ export async function updateMasternodeTab() {
         return;
     }
 
-    if (
-        !(await mempool.getUTXOs(UTXO_WALLET_STATE.SPENDABLE_TOTAL, true))
-            .length
-    ) {
+    if (!mempool.isLoaded) {
         doms.domMnTextErrors.innerHTML =
             'Your wallet is empty or still loading, re-open the tab in a few seconds!';
         return;
@@ -2740,6 +2740,8 @@ async function refreshMasternodeData(cMasternode, fAlert = false) {
                 doms.domMnTextErrors.innerHTML = ALERTS.MN_START_FAILED;
                 createAlert('warning', ALERTS.MN_START_FAILED, 6000);
             }
+        } else {
+            createAlert('warning', 'You must disable the view only mode', 6000);
         }
     } else if (
         cMasternodeData.status === 'ENABLED' ||
