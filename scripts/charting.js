@@ -46,7 +46,6 @@ async function getWalletDataset() {
 
     // Public (Available)
     const spendable_bal = mempool.balance;
-    console.log('BAL:', spendable_bal);
     if (spendable_bal > 0) {
         arrBreakdown.push({
             type: translation.chartPublicAvailable,
@@ -57,7 +56,6 @@ async function getWalletDataset() {
 
     // Staking (Locked)
     const spendable_cold_bal = mempool.coldBalance;
-    console.log('CBAL:', spendable_cold_bal);
     if (spendable_cold_bal > 0) {
         arrBreakdown.push({
             type: 'Staking',

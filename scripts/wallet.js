@@ -243,7 +243,6 @@ class Wallet {
             this.#ownAddresses.set(address, value);
             return value;
         }
-        console.log('we failed Last is:', last);
         this.#ownAddresses.set(address, null);
         return null;
     }
