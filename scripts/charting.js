@@ -8,7 +8,7 @@ import {
     Tooltip,
 } from 'chart.js';
 import { cChainParams, COIN } from './chain_params';
-import { doms, isMasternodeUTXO, mempool } from './global';
+import { doms, mempool } from './global';
 import { Database } from './database.js';
 import { translation } from './i18n';
 import { UTXO_WALLET_STATE } from './wallet';

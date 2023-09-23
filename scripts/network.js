@@ -1,6 +1,6 @@
 import { cChainParams, COIN } from './chain_params.js';
 import { createAlert } from './misc.js';
-import { Mempool, UTXO } from './mempool.js';
+import { UTXO } from './mempool.js';
 import { getEventEmitter } from './event_bus.js';
 import {
     STATS,

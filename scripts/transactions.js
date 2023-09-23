@@ -13,14 +13,7 @@ import {
 import { cHardwareWallet, strHardwareName } from './ledger.js';
 import { UTXO_WALLET_STATE, wallet } from './wallet.js';
 import { HdMasterKey } from './masterkey.js';
-import {
-    COutpoint,
-    CTxIn,
-    CTxOut,
-    Mempool,
-    Transaction,
-    UTXO,
-} from './mempool.js';
+import { COutpoint, CTxIn, CTxOut, Transaction } from './mempool.js';
 import { getNetwork } from './network.js';
 import { cChainParams, COIN, COIN_DECIMALS } from './chain_params.js';
 import {
@@ -306,7 +299,7 @@ export async function createAndSendTransaction({
 
     // Compute change (or lack thereof)
     const nChange = cCoinControl.nValue - (nFee + amount);
-    const [changeAddress, changeAddressPath] = await wallet.getNewAddress({
+    const [changeAddress, _] = await wallet.getNewAddress({
         verify: wallet.isHardwareWallet(),
     });
 
@@ -340,8 +333,7 @@ export async function createAndSendTransaction({
 
     // Primary output (receiver)
     if (isDelegation) {
-        const [primaryAddress, primaryAddressPath] =
-            await wallet.getNewAddress();
+        const [primaryAddress, _] = await wallet.getNewAddress();
         cTx.addcoldstakingoutput(primaryAddress, address, amount / COIN);
         outputs.push([primaryAddress, address, amount / COIN]);
     } else if (isProposal) {
