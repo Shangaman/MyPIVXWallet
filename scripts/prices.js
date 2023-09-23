@@ -1,5 +1,5 @@
-import { getBalance } from './global';
-import { cMarket, fillCurrencySelect } from './settings';
+import { getBalance } from './global.js';
+import { cMarket, fillCurrencySelect } from './settings.js';
 
 /**
  * CoinGecko's endpoint for PIVX data, optimised for least bandwidth

@@ -7,8 +7,8 @@ import {
     LinearScale,
     Tooltip,
 } from 'chart.js';
-import { cChainParams, COIN } from './chain_params';
-import { doms, isMasternodeUTXO, mempool } from './global';
+import { cChainParams, COIN } from './chain_params.js';
+import { doms, isMasternodeUTXO, mempool } from './global.js';
 
 Chart.register(
     Colors,

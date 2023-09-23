@@ -1,17 +1,19 @@
 /* eslint-env node */
 /* eslint @typescript-eslint/no-var-requires: "off" */
 
-const path = require('path');
-const webpack = require('webpack');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const NodePolyfillPlugin = require('node-polyfill-webpack-plugin');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const CopyPlugin = require('copy-webpack-plugin');
+import path from 'path';
+import webpack from 'webpack';
+import HtmlWebpackPlugin from 'html-webpack-plugin';
+import NodePolyfillPlugin from 'node-polyfill-webpack-plugin';
+import MiniCssExtractPlugin from 'mini-css-extract-plugin';
+import CopyPlugin from 'copy-webpack-plugin';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-module.exports = {
+export default {
     entry: './scripts/index.js',
     output: {
-        path: path.resolve(__dirname, './dist'),
+        path: path.resolve(dirname(fileURLToPath(import.meta.url)), './dist'),
         filename: './mpw.js',
         library: 'MPW',
         libraryTarget: 'var',
@@ -32,7 +34,10 @@ module.exports = {
     },
     resolve: {
         alias: {
-            'bn.js': path.join(__dirname, 'node_modules/bn.js/lib/bn.js'),
+            'bn.js': path.join(
+                dirname(fileURLToPath(import.meta.url)),
+                'node_modules/bn.js/lib/bn.js'
+            ),
         },
     },
     plugins: [

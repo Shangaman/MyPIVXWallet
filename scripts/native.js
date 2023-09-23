@@ -1,4 +1,4 @@
-import { createAlert } from './misc';
+import { createAlert } from './misc.js';
 
 // Register a service worker, if it's supported
 export function registerWorker() {
