@@ -267,10 +267,8 @@ export class ExplorerNetwork extends Network {
                 await retryWrapper(fetchBlockbook, `/api/v2/utxo/${publicKey}`)
             ).json();
             // Update the maximum path
-
             for (const utxo of arrUTXOs) {
                 if (utxo.path) {
-                    console.log('ok:', utxo);
                     this.lastWallet = Math.max(
                         parseInt(utxo.path.split('/')[5]),
                         this.lastWallet
