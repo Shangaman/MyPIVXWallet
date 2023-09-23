@@ -30,7 +30,14 @@ import { Account } from './accounts.js';
 import { debug, fAdvancedMode } from './settings.js';
 import { bytesToHex, hexToBytes } from './utils.js';
 import { strHardwareName, getHardwareWalletKeys } from './ledger.js';
-import { isP2CS, isP2PKH, getAddressFromPKH } from './script.js';
+import {
+    isP2CS,
+    isP2PKH,
+    getAddressFromPKH,
+    COLD_START_INDEX,
+    P2PK_START_INDEX,
+    OWNER_START_INDEX,
+} from './script.js';
 export let fWalletLoaded = false;
 
 export const UTXO_WALLET_STATE = {
@@ -272,29 +279,53 @@ class Wallet {
         let addresses = [];
         const dataBytes = hexToBytes(script);
         if (isP2PKH(dataBytes)) {
-            addresses.push(this.updatePkhMap(bytesToHex(dataBytes.slice(3, 23))))
+            addresses.push(
+                this.updatePkhMap(
+                    bytesToHex(
+                        dataBytes.slice(P2PK_START_INDEX, P2PK_START_INDEX + 20)
+                    )
+                )
+            );
             const path = await this.isOwnAddress(addresses[0]);
             if (path) {
                 return [UTXO_WALLET_STATE.SPENDABLE, path];
             }
         } else if (isP2CS(dataBytes)) {
-            addresses.push(this.updatePkhMap(bytesToHex((dataBytes.slice(6, 26)))));
-            addresses.push(this.updatePkhMap(bytesToHex((dataBytes.slice(28, 48)))))
-            const path1 = await this.isOwnAddress(addresses[0]);
-            const path2 = await this.isOwnAddress(addresses[1]);
-            if (path1) {
+            addresses.push(
+                this.updatePkhMap(
+                    bytesToHex(
+                        dataBytes.slice(
+                            OWNER_START_INDEX,
+                            OWNER_START_INDEX + 20
+                        )
+                    )
+                )
+            );
+            addresses.push(
+                this.updatePkhMap(
+                    bytesToHex(
+                        dataBytes.slice(COLD_START_INDEX, COLD_START_INDEX + 20)
+                    )
+                )
+            );
+
+            //path corresponding to the key to cold stake (i.e owner address)
+            const coldReceivedPath = await this.isOwnAddress(addresses[0]);
+            //path corresponding to the key to spend the cold stake collateral
+            const coldSpendablePath = await this.isOwnAddress(addresses[1]);
+            if (coldReceivedPath) {
                 // TODO: update isOwnADdress to take in consideration of cold stake addresses
-                return [UTXO_WALLET_STATE.COLD_RECEIVED, path1];
-            } else if (path2) {
-                return [UTXO_WALLET_STATE.SPENDABLE_COLD, path2];
+                return [UTXO_WALLET_STATE.COLD_RECEIVED, coldReceivedPath];
+            } else if (coldSpendablePath) {
+                return [UTXO_WALLET_STATE.SPENDABLE_COLD, coldSpendablePath];
             }
         }
         return [UTXO_WALLET_STATE.NOT_MINE, null];
     }
     // Avoid calculating over and over the same getAddressFromPKH by saving the result in a map
-    updatePkhMap(pkh_hex){
-        if(!this.#knownPKH.has(pkh_hex)){
-            this.#knownPKH.set(pkh_hex, getAddressFromPKH(hexToBytes(pkh_hex)))
+    updatePkhMap(pkh_hex) {
+        if (!this.#knownPKH.has(pkh_hex)) {
+            this.#knownPKH.set(pkh_hex, getAddressFromPKH(hexToBytes(pkh_hex)));
         }
         return this.#knownPKH.get(pkh_hex);
     }

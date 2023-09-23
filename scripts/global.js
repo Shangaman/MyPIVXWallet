@@ -1105,7 +1105,7 @@ export async function importMasternode() {
         return;
     }
     if (!mnPrivKey) {
-        createAlert('warning', 'You must provide a private key', 5000);
+        createAlert('warning', ALERTS.MN_BAD_PRIVKEY, 5000);
         return;
     }
 
@@ -2422,8 +2422,6 @@ async function refreshMasternodeData(cMasternode, fAlert = false) {
                 doms.domMnTextErrors.innerHTML = ALERTS.MN_START_FAILED;
                 createAlert('warning', ALERTS.MN_START_FAILED, 6000);
             }
-        } else {
-            createAlert('warning', 'You must disable the view only mode', 6000);
         }
     } else if (
         cMasternodeData.status === 'ENABLED' ||

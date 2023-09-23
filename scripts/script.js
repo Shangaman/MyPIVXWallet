@@ -4,6 +4,10 @@ import { cChainParams } from './chain_params';
 import { dSHA256 } from './utils.js';
 import { wallet } from './wallet';
 
+export const P2PK_START_INDEX = 3;
+export const OWNER_START_INDEX = 6;
+export const COLD_START_INDEX = 28;
+
 export const OP = {
     // push value
     0: 0x00,
