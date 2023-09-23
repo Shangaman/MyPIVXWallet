@@ -9,14 +9,14 @@ export class CTxOut {
     /**
      * @param {Object} CTxOut
      * @param {Number} CTxOut.n - Position inside the transaction
-     * @param {String} CTxOut.script - Reedem script, in hex
+     * @param {String} CTxOut.script - Redeem script, in HEX
      * @param {Number} CTxOut.value - Value in satoshi
      */
     constructor({ n, script, value } = {}) {
         /** Position inside the transaction
          *  @type {Number} */
         this.n = n;
-        /** Reedem script, in hex
+        /** Redeem script, in hex
          * @type {String} */
         this.script = script;
         /** Value in satoshi
@@ -55,7 +55,7 @@ export class Transaction {
         /** Block height of the transaction (-1 if is pending)
          * @param {Number} */
         this.blockHeight = blockHeight;
-        /** Outputs of the transaction
+        /** Inputs of the transaction
          *  @type {Array<CTxIn>}*/
         this.vin = vin;
         /** Outputs of the transaction
@@ -155,7 +155,13 @@ export class Mempool {
      * @type {boolean}
      */
     #isLoaded = false;
+    /**
+     * @type {number} - Our Public balance in Satoshis
+     */
     #balance = 0;
+    /**
+     * @type {number} - Our Cold Staking balance in Satoshis
+     */
     #coldBalance = 0;
     /**
      * @type {Number}
@@ -301,7 +307,10 @@ export class Mempool {
             }
         }
         const endTime = new Date();
-        console.log('Finished calculating total balance',(endTime - startTime)/1000);
+        console.log(
+            'Finished calculating total balance',
+            (endTime - startTime) / 1000
+        );
         return totBalance;
     }
     /**
