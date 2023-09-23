@@ -267,11 +267,15 @@ export class ExplorerNetwork extends Network {
                 await retryWrapper(fetchBlockbook, `/api/v2/utxo/${publicKey}`)
             ).json();
             // Update the maximum path
+
             for (const utxo of arrUTXOs) {
-                this.lastWallet = Math.max(
-                    parseInt(utxo.path.split('/')[5]),
-                    this.lastWallet
-                );
+                if (utxo.path) {
+                    console.log('ok:', utxo);
+                    this.lastWallet = Math.max(
+                        parseInt(utxo.path.split('/')[5]),
+                        this.lastWallet
+                    );
+                }
             }
             // If using MPW's wallet, then sync the UTXOs in MPW's state
             if (!strAddress) getEventEmitter().emit('utxo', arrUTXOs);
