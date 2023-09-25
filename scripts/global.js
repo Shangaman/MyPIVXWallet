@@ -9,6 +9,7 @@ import {
     decryptWallet,
     getNewAddress,
     UTXO_WALLET_STATE,
+    Wallet,
 } from './wallet.js';
 import { LegacyMasterKey } from './masterkey.js';
 import { getNetwork, HistoricalTxType } from './network.js';
@@ -1519,7 +1520,6 @@ export async function sweepAddress(arrUTXOs, sweepingMasterKey, nFixedFee = 0) {
             txid: cUTXO.id,
             index: cUTXO.vout,
             script: cUTXO.script,
-            path: cUTXO.path,
         });
     }
 
@@ -1533,7 +1533,9 @@ export async function sweepAddress(arrUTXOs, sweepingMasterKey, nFixedFee = 0) {
     cTx.addoutput(strAddress, (nTotal - nFee) / COIN);
 
     // Sign using the given Master Key, then broadcast the sweep, returning the TXID (or a failure)
-    const sign = await signTransaction(cTx, sweepingMasterKey);
+    const sweepingWallet = new Wallet(0, false);
+    await sweepingWallet.setMasterKey(sweepingMasterKey);
+    const sign = await signTransaction(cTx, sweepingWallet);
     return await getNetwork().sendTransaction(sign);
 }
 

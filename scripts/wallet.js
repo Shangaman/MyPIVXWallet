@@ -53,7 +53,7 @@ export const UTXO_WALLET_STATE = {
  * it also remembers which addresses we generated.
  * in future PRs this class will manage balance, UTXOs, masternode etc...
  */
-class Wallet {
+export class Wallet {
     /**
      * @type {import('./masterkey.js').MasterKey}
      */
@@ -76,8 +76,14 @@ class Wallet {
      * @type {Map<String,String>}
      */
     #knownPKH = new Map();
-    constructor(nAccount) {
+    /**
+     * True if this is the global wallet, false otherwise
+     * @type {Boolean}
+     */
+    #isMainWallet;
+    constructor(nAccount, isMainWallet) {
         this.#nAccount = nAccount;
+        this.#isMainWallet = isMainWallet;
     }
 
     getMasterKey() {
@@ -132,8 +138,10 @@ class Wallet {
      */
     async setMasterKey(mk) {
         this.#masterKey = mk;
-        // Update the network master key
-        await getNetwork().setWallet(this);
+        // If this is the global wallet update the network master key
+        if (this.#isMainWallet) {
+            await getNetwork().setWallet(this);
+        }
     }
 
     /**
@@ -274,6 +282,26 @@ class Wallet {
         return await this.#masterKey?.getKeyToExport(this.#nAccount);
     }
 
+    //Get path from a script
+    async getPath(script) {
+        const dataBytes = hexToBytes(script);
+        if (isP2PKH(dataBytes)) {
+            const address = this.updatePkhMap(
+                bytesToHex(
+                    dataBytes.slice(P2PK_START_INDEX, P2PK_START_INDEX + 20)
+                )
+            );
+            return await this.isOwnAddress(address);
+        } else if (isP2CS(dataBytes)) {
+            const address = this.updatePkhMap(
+                bytesToHex(
+                    dataBytes.slice(COLD_START_INDEX, COLD_START_INDEX + 20)
+                )
+            );
+            return await this.isOwnAddress(address);
+        }
+        return null;
+    }
     //TODO: for future return only the enum item and not the address path
     async isMyVout(script) {
         let addresses = [];
@@ -288,7 +316,7 @@ class Wallet {
             );
             const path = await this.isOwnAddress(addresses[0]);
             if (path) {
-                return [UTXO_WALLET_STATE.SPENDABLE, path];
+                return { state: UTXO_WALLET_STATE.SPENDABLE, path: path };
             }
         } else if (isP2CS(dataBytes)) {
             addresses.push(
@@ -315,12 +343,18 @@ class Wallet {
             const coldSpendablePath = await this.isOwnAddress(addresses[1]);
             if (coldReceivedPath) {
                 // TODO: update isOwnADdress to take in consideration of cold stake addresses
-                return [UTXO_WALLET_STATE.COLD_RECEIVED, coldReceivedPath];
+                return {
+                    state: UTXO_WALLET_STATE.COLD_RECEIVED,
+                    path: coldReceivedPath,
+                };
             } else if (coldSpendablePath) {
-                return [UTXO_WALLET_STATE.SPENDABLE_COLD, coldSpendablePath];
+                return {
+                    state: UTXO_WALLET_STATE.SPENDABLE_COLD,
+                    path: coldSpendablePath,
+                };
             }
         }
-        return [UTXO_WALLET_STATE.NOT_MINE, null];
+        return { state: UTXO_WALLET_STATE.NOT_MINE, path: null };
     }
     // Avoid calculating over and over the same getAddressFromPKH by saving the result in a map
     updatePkhMap(pkh_hex) {
@@ -334,7 +368,7 @@ class Wallet {
 /**
  * @type{Wallet}
  */
-export const wallet = new Wallet(0); // For now we are using only the 0-th account, (TODO: update once account system is done)
+export const wallet = new Wallet(0, true); // For now we are using only the 0-th account, (TODO: update once account system is done)
 
 /**
  * Import a wallet (with it's private, public or encrypted data)

@@ -1,6 +1,5 @@
 import { cChainParams, COIN } from './chain_params.js';
 import { createAlert } from './misc.js';
-import { UTXO } from './mempool.js';
 import { getEventEmitter } from './event_bus.js';
 import {
     STATS,
@@ -250,7 +249,7 @@ export class ExplorerNetwork extends Network {
      */
     async getUTXOs(strAddress = '') {
         // If mempool has been already loaded return
-        if (mempool.isLoaded) {
+        if (mempool.isLoaded && !strAddress) {
             // TODO: don't call mempool directly but use the wallet instead
             return;
         }
@@ -286,51 +285,6 @@ export class ExplorerNetwork extends Network {
         } finally {
             this.isSyncing = false;
         }
-    }
-    /**
-     * Fetches UTXOs full info
-     * @param {Object} cUTXO - object-formatted UTXO
-     * @returns {Promise<UTXO>} Promise that resolves with the full info of the UTXO
-     */
-    async getUTXOFullInfo(cUTXO) {
-        //This is still used in promo.js TODO: I'm sure we can get rid of it
-        const cTx = await (
-            await retryWrapper(
-                fetchBlockbook,
-                `/api/v2/tx-specific/${cUTXO.txid}`
-            )
-        ).json();
-        const cVout = cTx.vout[cUTXO.vout];
-
-        let path;
-        if (cUTXO.path) {
-            path = cUTXO.path.split('/');
-            path[2] =
-                (this.wallet.isHardwareWallet()
-                    ? cChainParams.current.BIP44_TYPE_LEDGER
-                    : cChainParams.current.BIP44_TYPE) + "'";
-            this.lastWallet = Math.max(parseInt(path[5]), this.lastWallet);
-            path = path.join('/');
-        }
-
-        const isColdStake = cVout.scriptPubKey.type === 'coldstake';
-        const isStandard = cVout.scriptPubKey.type === 'pubkeyhash';
-        const isReward = cTx.vout[0].scriptPubKey.hex === '';
-        // We don't know what this is
-        if (!isColdStake && !isStandard) {
-            return null;
-        }
-
-        return new UTXO({
-            id: cUTXO.txid,
-            path,
-            sats: Math.round(cVout.value * COIN),
-            script: cVout.scriptPubKey.hex,
-            vout: cVout.n,
-            height: this.cachedBlockCount - (cTx.confirmations - 1),
-            isDelegate: isColdStake,
-            isReward,
-        });
     }
 
     /**

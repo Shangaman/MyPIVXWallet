@@ -384,7 +384,7 @@ export async function createAndSendTransaction({
         for (const out of cTx.outputs) {
             vout.push(
                 new CTxOut({
-                    n: i,
+                    outpoint: new COutpoint({ txid: futureTxid, n: i }),
                     script: bytesToHex(out.script),
                     value: Number(out.value),
                 })
@@ -441,11 +441,7 @@ export async function createMasternode() {
 
 export async function signTransaction(cTx, wallet, outputs, undelegate) {
     if (!wallet.isHardwareWallet()) {
-        return await cTx.sign(
-            wallet.getMasterKey(),
-            1,
-            undelegate ? 'coldstake' : undefined
-        );
+        return await cTx.sign(wallet, 1, undelegate ? 'coldstake' : undefined);
     }
     // Format the inputs how the Ledger SDK prefers
     const arrInputs = [];
@@ -456,7 +452,11 @@ export async function signTransaction(cTx, wallet, outputs, undelegate) {
             await cHardwareWallet.splitTransaction(cInputFull.hex),
             cInput.outpoint.index,
         ]);
-        arrAssociatedKeysets.push(cInput.path);
+        const path = await wallet.getPath(cInput.script);
+        if (path === null) {
+            console.error('ERROR: PATH IS NULL');
+        }
+        arrAssociatedKeysets.push(path);
     }
     const cLedgerTx = await cHardwareWallet.splitTransaction(cTx.serialize());
     const strOutputScriptHex = await cHardwareWallet
@@ -533,18 +533,18 @@ async function chooseUTXOs(
         }
 
         // Does the UTXO meet size requirements?
-        if (cUTXO.sats < nMinInputSize) continue;
+        if (cUTXO.value < nMinInputSize) continue;
 
         // Push UTXO and cache new total value
         cCoinControl.arrSelectedUTXOs.push(cUTXO);
-        cCoinControl.nValue += cUTXO.sats;
+        cCoinControl.nValue += cUTXO.value;
         console.log(
             'Coin Control: Selected input ' +
-                cUTXO.id.substr(0, 6) +
+                cUTXO.outpoint.txid.substr(0, 6) +
                 '(' +
-                cUTXO.vout +
+                cUTXO.outpoint.n +
                 ')... (Added ' +
-                cUTXO.sats / COIN +
+                cUTXO.value / COIN +
                 ' ' +
                 cChainParams.current.TICKER +
                 ' - Total: ' +
@@ -554,10 +554,9 @@ async function chooseUTXOs(
 
         // Stuff UTXO into the TX
         cTx.addinput({
-            txid: cUTXO.id,
-            index: cUTXO.vout,
+            txid: cUTXO.outpoint.txid,
+            index: cUTXO.outpoint.n,
             script: cUTXO.script,
-            path: cUTXO.path,
         });
     }
 

@@ -1,6 +1,6 @@
 import bs58 from 'bs58';
 import { cChainParams } from './chain_params';
-import { dSHA256 } from './utils.js';
+import { bytesToHex, dSHA256, hexToBytes } from './utils.js';
 
 export const P2PK_START_INDEX = 3;
 export const OWNER_START_INDEX = 6;
@@ -213,4 +213,20 @@ export function getAddressFromPKH(pkhBytes) {
         ...Array.from(buffer),
         ...Array.from(checksum.slice(0, 4)),
     ]);
+}
+/**
+ * Generate the P2KH Script from the corresponding public key
+ * @param pubKey public key encoded with base58
+ * @return Script in Hexadecimal
+ */
+export function getP2PKHScript(pubKey) {
+    const pkh = Uint8Array.from(bs58.decode(pubKey).slice(1, 21));
+    let dataBytes = [];
+    dataBytes.push(OP['DUP']);
+    dataBytes.push(OP['HASH160']);
+    dataBytes.push(0x14);
+    dataBytes = dataBytes.concat(Array.prototype.slice.call(pkh));
+    dataBytes.push(OP['EQUALVERIFY']);
+    dataBytes.push(OP['CHECKSIG']);
+    return bytesToHex(dataBytes);
 }

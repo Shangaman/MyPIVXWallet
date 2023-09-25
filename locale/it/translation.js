@@ -353,7 +353,7 @@ export const it_translation = {
     MN_STATUS_IS: 'Lo stato del tuo Masternode è ', //Your masternode status is
     MN_STATE: 'Il tuo masternode è <b>{state}</b>', //Your masternode is in <b>{state}</b> state
     MN_BAD_IP: "L'indirizzo IP non è valido!", //The IP address is invalid!
-    MN_BAD_PRIVKEY: 'The private key is invalid', //The private key is invalid
+    MN_BAD_PRIVKEY: '', //The private key is invalid
     MN_NOT_ENOUGH_COLLAT:
         'Hai bisogno di <b>{amount} altri {ticker}</b> per creare un Masternode!', //You need <b>{amount} more {ticker}</b> to create a Masternode!
     MN_ENOUGH_BUT_NO_COLLAT:
