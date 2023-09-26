@@ -287,46 +287,28 @@ export class Wallet {
     }
 
     async isMyVout(script) {
-        let addresses = [];
+        let address;
         const dataBytes = hexToBytes(script);
         if (isP2PKH(dataBytes)) {
-            addresses.push(
-                this.getAddressFromPKHCache(
-                    bytesToHex(
-                        dataBytes.slice(P2PK_START_INDEX, P2PK_START_INDEX + 20)
-                    )
+            address = this.getAddressFromPKHCache(
+                bytesToHex(
+                    dataBytes.slice(P2PK_START_INDEX, P2PK_START_INDEX + 20)
                 )
             );
-            if (await this.isOwnAddress(addresses[0])) {
+            if (await this.isOwnAddress(address)) {
                 return UTXO_WALLET_STATE.SPENDABLE;
             }
         } else if (isP2CS(dataBytes)) {
-            addresses.push(
-                this.getAddressFromPKHCache(
-                    bytesToHex(
-                        dataBytes.slice(
-                            OWNER_START_INDEX,
-                            OWNER_START_INDEX + 20
-                        )
-                    )
-                )
-            );
-            addresses.push(
-                this.getAddressFromPKHCache(
-                    bytesToHex(
-                        dataBytes.slice(COLD_START_INDEX, COLD_START_INDEX + 20)
-                    )
-                )
-            );
-            //path corresponding to the key to cold stake (i.e owner address)
-            const coldReceivedPath = await this.isOwnAddress(addresses[0]);
-            //path corresponding to the key to spend the cold stake collateral
-            const coldSpendablePath = await this.isOwnAddress(addresses[1]);
-            if (coldReceivedPath) {
-                // TODO: update isOwnAddress to take in consideration of cold stake addresses
-                return UTXO_WALLET_STATE.COLD_RECEIVED;
-            } else if (coldSpendablePath) {
-                return UTXO_WALLET_STATE.SPENDABLE_COLD;
+            for (let i = 0; i < 2; i++) {
+                const iStart = i == 0 ? OWNER_START_INDEX : COLD_START_INDEX;
+                address = this.getAddressFromPKHCache(
+                    bytesToHex(dataBytes.slice(iStart, iStart + 20))
+                );
+                if (await this.isOwnAddress(address)) {
+                    return i == 0
+                        ? UTXO_WALLET_STATE.COLD_RECEIVED
+                        : UTXO_WALLET_STATE.SPENDABLE_COLD;
+                }
             }
         }
         return UTXO_WALLET_STATE.NOT_MINE;
