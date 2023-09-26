@@ -302,7 +302,7 @@ export class Wallet {
         }
         return null;
     }
-    //TODO: for future return only the enum item and not the address path
+
     async isMyVout(script) {
         let addresses = [];
         const dataBytes = hexToBytes(script);
@@ -316,7 +316,7 @@ export class Wallet {
             );
             const path = await this.isOwnAddress(addresses[0]);
             if (path) {
-                return { state: UTXO_WALLET_STATE.SPENDABLE, path: path };
+                return UTXO_WALLET_STATE.SPENDABLE;
             }
         } else if (isP2CS(dataBytes)) {
             addresses.push(
@@ -336,25 +336,18 @@ export class Wallet {
                     )
                 )
             );
-
             //path corresponding to the key to cold stake (i.e owner address)
             const coldReceivedPath = await this.isOwnAddress(addresses[0]);
             //path corresponding to the key to spend the cold stake collateral
             const coldSpendablePath = await this.isOwnAddress(addresses[1]);
             if (coldReceivedPath) {
                 // TODO: update isOwnADdress to take in consideration of cold stake addresses
-                return {
-                    state: UTXO_WALLET_STATE.COLD_RECEIVED,
-                    path: coldReceivedPath,
-                };
+                return UTXO_WALLET_STATE.COLD_RECEIVED;
             } else if (coldSpendablePath) {
-                return {
-                    state: UTXO_WALLET_STATE.SPENDABLE_COLD,
-                    path: coldSpendablePath,
-                };
+                return UTXO_WALLET_STATE.SPENDABLE_COLD;
             }
         }
-        return { state: UTXO_WALLET_STATE.NOT_MINE, path: null };
+        return UTXO_WALLET_STATE.NOT_MINE;
     }
     // Avoid calculating over and over the same getAddressFromPKH by saving the result in a map
     updatePkhMap(pkh_hex) {

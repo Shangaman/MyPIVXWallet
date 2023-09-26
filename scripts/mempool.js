@@ -232,7 +232,7 @@ export class Mempool {
                 if (this.isSpent(vout.outpoint)) {
                     continue;
                 }
-                const UTXO_STATE = (await wallet.isMyVout(vout.script)).state;
+                const UTXO_STATE = await wallet.isMyVout(vout.script);
                 if ((UTXO_STATE & filter) == 0) {
                     continue;
                 }
@@ -265,7 +265,7 @@ export class Mempool {
             return false;
         }
         const vout = tx.vout[op.n];
-        const UTXO_STATE = (await wallet.isMyVout(vout.script)).state;
+        const UTXO_STATE = await wallet.isMyVout(vout.script);
         // Check if the UTXO has the state we wanted
         if ((UTXO_STATE & filter) == 0) {
             return false;
@@ -293,9 +293,7 @@ export class Mempool {
                 if (this.isSpent(vout.outpoint)) {
                     continue;
                 }
-                const { state: UTXO_STATE, _ } = await wallet.isMyVout(
-                    vout.script
-                );
+                const UTXO_STATE = await wallet.isMyVout(vout.script);
                 if ((UTXO_STATE & filter) == 0) {
                     continue;
                 }
