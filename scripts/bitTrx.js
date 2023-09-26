@@ -196,8 +196,7 @@ export default class bitjs {
             const masterKey = wallet.getMasterKey();
             const path = await wallet.getPath(this.inputs[index].script);
             if (path === null) {
-                console.error('ERROR: PATH NOT FOUND');
-                return;
+                throw new Error('Path not found');
             }
             const strWIF = await masterKey.getPrivateKey(path);
             const bPubkeyBytes = hexToBytes(

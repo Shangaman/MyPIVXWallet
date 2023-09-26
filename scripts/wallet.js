@@ -285,22 +285,12 @@ export class Wallet {
     //Get path from a script
     async getPath(script) {
         const dataBytes = hexToBytes(script);
-        if (isP2PKH(dataBytes)) {
-            const address = this.updatePkhMap(
-                bytesToHex(
-                    dataBytes.slice(P2PK_START_INDEX, P2PK_START_INDEX + 20)
-                )
-            );
-            return await this.isOwnAddress(address);
-        } else if (isP2CS(dataBytes)) {
-            const address = this.updatePkhMap(
-                bytesToHex(
-                    dataBytes.slice(COLD_START_INDEX, COLD_START_INDEX + 20)
-                )
-            );
-            return await this.isOwnAddress(address);
-        }
-        return null;
+        // At the moment we support only P2PKH and P2CS
+        const iStart = isP2PKH(dataBytes) ? P2PK_START_INDEX : COLD_START_INDEX;
+        const address = this.getAddressFromPKHCache(
+            bytesToHex(dataBytes.slice(iStart, iStart + 20))
+        );
+        return await this.isOwnAddress(address);
     }
 
     async isMyVout(script) {
@@ -308,19 +298,18 @@ export class Wallet {
         const dataBytes = hexToBytes(script);
         if (isP2PKH(dataBytes)) {
             addresses.push(
-                this.updatePkhMap(
+                this.getAddressFromPKHCache(
                     bytesToHex(
                         dataBytes.slice(P2PK_START_INDEX, P2PK_START_INDEX + 20)
                     )
                 )
             );
-            const path = await this.isOwnAddress(addresses[0]);
-            if (path) {
+            if (await this.isOwnAddress(addresses[0])) {
                 return UTXO_WALLET_STATE.SPENDABLE;
             }
         } else if (isP2CS(dataBytes)) {
             addresses.push(
-                this.updatePkhMap(
+                this.getAddressFromPKHCache(
                     bytesToHex(
                         dataBytes.slice(
                             OWNER_START_INDEX,
@@ -330,7 +319,7 @@ export class Wallet {
                 )
             );
             addresses.push(
-                this.updatePkhMap(
+                this.getAddressFromPKHCache(
                     bytesToHex(
                         dataBytes.slice(COLD_START_INDEX, COLD_START_INDEX + 20)
                     )
@@ -341,7 +330,7 @@ export class Wallet {
             //path corresponding to the key to spend the cold stake collateral
             const coldSpendablePath = await this.isOwnAddress(addresses[1]);
             if (coldReceivedPath) {
-                // TODO: update isOwnADdress to take in consideration of cold stake addresses
+                // TODO: update isOwnAddress to take in consideration of cold stake addresses
                 return UTXO_WALLET_STATE.COLD_RECEIVED;
             } else if (coldSpendablePath) {
                 return UTXO_WALLET_STATE.SPENDABLE_COLD;
@@ -350,7 +339,7 @@ export class Wallet {
         return UTXO_WALLET_STATE.NOT_MINE;
     }
     // Avoid calculating over and over the same getAddressFromPKH by saving the result in a map
-    updatePkhMap(pkh_hex) {
+    getAddressFromPKHCache(pkh_hex) {
         if (!this.#knownPKH.has(pkh_hex)) {
             this.#knownPKH.set(pkh_hex, getAddressFromPKH(hexToBytes(pkh_hex)));
         }

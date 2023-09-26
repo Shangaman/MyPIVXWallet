@@ -503,7 +503,10 @@ async function chooseUTXOs(
     const filter = fColdOnly
         ? UTXO_WALLET_STATE.SPENDABLE_COLD
         : UTXO_WALLET_STATE.SPENDABLE;
-    const arrUTXOs = await mempool.getUTXOs(filter, nTotalSatsRequired);
+    const arrUTXOs = await mempool.getUTXOs({
+        filter: filter,
+        target: nTotalSatsRequired,
+    });
 
     // Select and return UTXO pointers (filters applied)
     const cCoinControl = { nValue: 0, nChange: 0, arrSelectedUTXOs: [] };

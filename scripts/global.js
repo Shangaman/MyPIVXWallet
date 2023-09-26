@@ -1119,11 +1119,10 @@ export async function importMasternode() {
     if (!wallet.isHD()) {
         // Find the first UTXO matching the expected collateral size
         const cCollaUTXO = (
-            await mempool.getUTXOs(
-                UTXO_WALLET_STATE.SPENDABLE,
-                getBalance(),
-                true
-            )
+            await mempool.getUTXOs({
+                filter: UTXO_WALLET_STATE.SPENDABLE,
+                onlyConfiemd: true,
+            })
         ).find(
             (cUTXO) => cUTXO.value === cChainParams.current.collateralInSats
         );
@@ -1166,11 +1165,10 @@ export async function importMasternode() {
     } else {
         const path = doms.domMnTxId.value;
         let masterUtxo;
-        const utxos = await mempool.getUTXOs(
-            UTXO_WALLET_STATE.SPENDABLE,
-            getBalance(),
-            true
-        );
+        const utxos = await mempool.getUTXOs({
+            filter: UTXO_WALLET_STATE.SPENDABLE,
+            onlyConfiemd: true,
+        });
         for (const u of utxos) {
             if ((await wallet.getPath(u.script)) === path) {
                 masterUtxo = u;
@@ -2319,11 +2317,10 @@ export async function updateMasternodeTab() {
         doms.domMnTxId.style.display = 'none';
         // Find the first UTXO matching the expected collateral size
         const cCollaUTXO = (
-            await mempool.getUTXOs(
-                UTXO_WALLET_STATE.SPENDABLE,
-                getBalance(),
-                true
-            )
+            await mempool.getUTXOs({
+                filter: UTXO_WALLET_STATE.SPENDABLE,
+                onlyConfiemd: true,
+            })
         ).find(
             (cUTXO) => cUTXO.value === cChainParams.current.collateralInSats
         );
@@ -2360,11 +2357,10 @@ export async function updateMasternodeTab() {
         const mapCollateralAddresses = new Map();
 
         // Aggregate all valid Masternode collaterals into a map of Address <--> Collateral
-        for (const cUTXO of await mempool.getUTXOs(
-            UTXO_WALLET_STATE.SPENDABLE,
-            getBalance(),
-            true
-        )) {
+        for (const cUTXO of await mempool.getUTXOs({
+            filter: UTXO_WALLET_STATE.SPENDABLE,
+            onlyConfiemd: true,
+        })) {
             if (cUTXO.value !== cChainParams.current.collateralInSats) continue;
             mapCollateralAddresses.set(
                 await wallet.getPath(cUTXO.script),

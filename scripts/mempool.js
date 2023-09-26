@@ -172,10 +172,8 @@ export class Mempool {
                 }
             }
             this.#isLoaded = true;
-            this.#balance = await this.getBalanceNew(
-                UTXO_WALLET_STATE.SPENDABLE
-            );
-            this.#coldBalance = await this.getBalanceNew(
+            this.#balance = await this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
+            this.#coldBalance = await this.getBalance(
                 UTXO_WALLET_STATE.SPENDABLE_COLD
             );
             getBalance(true);
@@ -223,7 +221,7 @@ export class Mempool {
     /**
      * Get the total wallet balance
      */
-    async getBalanceNew(filter) {
+    async getBalance(filter) {
         const startTime = new Date();
         console.log('Starting calculating total balance');
         let totBalance = 0;
@@ -275,12 +273,13 @@ export class Mempool {
 
     /**
      * Get a list of UTXOs
-     * @param {Number} filter enum element of UTXO_WALLET_STATE
-     * @param {Number} target PIVs in satoshi that we want to spend
-     * @param {Boolean} onlyConfiemd Consider only confirmed transactions
+     * @param {Object} o
+     * @param {Number} o.filter enum element of UTXO_WALLET_STATE
+     * @param {Number | null} o.target PIVs in satoshi that we want to spend
+     * @param {Boolean} o.onlyConfiemd Consider only confirmed transactions
      * @returns {Promise<CTxOut[]>} Array of fetched UTXOs
      */
-    async getUTXOs(filter, target, onlyConfirmed = false) {
+    async getUTXOs({ filter, target, onlyConfirmed = false }) {
         const startTime = new Date();
         let totFound = 0;
         console.log('Starting fetching UTXOs from wallet data:');
@@ -300,7 +299,7 @@ export class Mempool {
                 utxos.push(vout);
                 // Return early if you found enough PIVs (11/10 is to make sure to pay fee)
                 totFound += vout.value;
-                if (totFound > (11 / 10) * target) {
+                if (target && totFound > (11 / 10) * target) {
                     const endTime = new Date();
                     console.log(
                         'Finished early fetching UTXOs from wallet data:',
@@ -339,8 +338,8 @@ export class Mempool {
                 getNetwork().cachedBlockCount -
                 (tx.confirmations - 1) -
                 tx.confirmations,
-            vin: vin,
-            vout: vout,
+            vin,
+            vout,
         });
     }
     /**
@@ -355,8 +354,8 @@ export class Mempool {
                 this.spent.set(op.txid, op);
             }
         }
-        this.#balance = await this.getBalanceNew(UTXO_WALLET_STATE.SPENDABLE);
-        this.#coldBalance = await this.getBalanceNew(
+        this.#balance = await this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
+        this.#coldBalance = await this.getBalance(
             UTXO_WALLET_STATE.SPENDABLE_COLD
         );
         getBalance(true);
