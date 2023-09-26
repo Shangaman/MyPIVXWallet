@@ -11,9 +11,15 @@ import {
     guiSetColdStakingAddress,
 } from './global.js';
 import { cHardwareWallet, strHardwareName } from './ledger.js';
-import { UTXO_WALLET_STATE, wallet } from './wallet.js';
+import { wallet } from './wallet.js';
 import { HdMasterKey } from './masterkey.js';
-import { COutpoint, CTxIn, CTxOut, Transaction } from './mempool.js';
+import {
+    COutpoint,
+    CTxIn,
+    CTxOut,
+    Transaction,
+    UTXO_WALLET_STATE,
+} from './mempool.js';
 import { getNetwork } from './network.js';
 import { cChainParams, COIN, COIN_DECIMALS } from './chain_params.js';
 import {

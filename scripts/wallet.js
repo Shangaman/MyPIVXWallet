@@ -30,6 +30,7 @@ import { Account } from './accounts.js';
 import { debug, fAdvancedMode } from './settings.js';
 import { bytesToHex, hexToBytes } from './utils.js';
 import { strHardwareName, getHardwareWalletKeys } from './ledger.js';
+import { UTXO_WALLET_STATE } from './mempool.js';
 import {
     isP2CS,
     isP2PKH,
@@ -39,14 +40,6 @@ import {
     OWNER_START_INDEX,
 } from './script.js';
 export let fWalletLoaded = false;
-
-export const UTXO_WALLET_STATE = {
-    NOT_MINE: 0, // Don't have the key to spend this utxo
-    SPENDABLE: 1, // Have the key to spend this (P2PKH) utxo
-    SPENDABLE_COLD: 2, // Have the key to spend this (P2CS) utxo
-    COLD_RECEIVED: 4, // Have the staking key of this (P2CS) utxo
-    SPENDABLE_TOTAL: 1 | 2,
-};
 
 /**
  * Class Wallet, at the moment it is just a "realization" of Masterkey with a given nAccount

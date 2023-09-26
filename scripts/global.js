@@ -1,4 +1,4 @@
-import { COutpoint, Mempool } from './mempool.js';
+import { COutpoint, Mempool, UTXO_WALLET_STATE } from './mempool.js';
 import Masternode from './masternode.js';
 import { ALERTS, tr, start as i18nStart, translation } from './i18n.js';
 import * as jdenticon from 'jdenticon';
@@ -8,7 +8,6 @@ import {
     importWallet,
     decryptWallet,
     getNewAddress,
-    UTXO_WALLET_STATE,
     Wallet,
 } from './wallet.js';
 import { LegacyMasterKey } from './masterkey.js';

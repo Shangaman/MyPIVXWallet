@@ -2,7 +2,7 @@ import { getNetwork } from './network.js';
 import { getBalance, getStakingBalance } from './global.js';
 import { getEventEmitter } from './event_bus.js';
 import Multimap from 'multimap';
-import { UTXO_WALLET_STATE, wallet } from './wallet.js';
+import { wallet } from './wallet.js';
 import { COIN } from './chain_params.js';
 
 export class CTxOut {
@@ -82,6 +82,14 @@ export class COutpoint {
         this.n = n;
     }
 }
+
+export const UTXO_WALLET_STATE = {
+    NOT_MINE: 0, // Don't have the key to spend this utxo
+    SPENDABLE: 1, // Have the key to spend this (P2PKH) utxo
+    SPENDABLE_COLD: 2, // Have the key to spend this (P2CS) utxo
+    COLD_RECEIVED: 4, // Have the staking key of this (P2CS) utxo
+    SPENDABLE_TOTAL: 1 | 2,
+};
 
 /** A Mempool instance, stores and handles UTXO data for the wallet */
 export class Mempool {
