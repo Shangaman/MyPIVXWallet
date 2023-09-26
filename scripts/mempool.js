@@ -272,31 +272,7 @@ export class Mempool {
         }
         return true;
     }
-    // a bit a copy and paste from getBalanceNew, TODO: remove the copy and paste
-    async getAllUTXOsWithValue(val, filter, onlyConfirmed) {
-        let utxos = new Map();
-        for (let [_, tx] of this.txmap) {
-            if (onlyConfirmed && !tx.isConfirmed()) {
-                continue;
-            }
-            for (let vout of tx.vout) {
-                if (vout.value != val) {
-                    continue;
-                }
-                if (this.isSpent(vout.outpoint)) {
-                    continue;
-                }
-                const { state: UTXO_STATE, path } = await wallet.isMyVout(
-                    vout.script
-                );
-                if ((UTXO_STATE & filter) == 0) {
-                    continue;
-                }
-                utxos.set(path, vout);
-            }
-        }
-        return utxos;
-    }
+
     /**
      * Get a list of UTXOs
      * @param {Number} filter enum element of UTXO_WALLET_STATE

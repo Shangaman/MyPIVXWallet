@@ -1119,14 +1119,14 @@ export async function importMasternode() {
     if (!wallet.isHD()) {
         // Find the first UTXO matching the expected collateral size
         const cCollaUTXO = (
-            await mempool.getAllUTXOsWithValue(
-                cChainParams.current.collateralInSats,
+            await mempool.getUTXOs(
                 UTXO_WALLET_STATE.SPENDABLE,
+                getBalance(),
                 true
             )
-        )
-            .values()
-            .next().value;
+        ).find(
+            (cUTXO) => cUTXO.value === cChainParams.current.collateralInSats
+        );
         const balance = getBalance(false);
         // If there's no valid UTXO, exit with a contextual message
         if (!cCollaUTXO) {
@@ -1160,24 +1160,29 @@ export async function importMasternode() {
             return;
         }
 
-        collateralTxId = cCollaUTXO.id;
-        outidx = cCollaUTXO.vout;
+        collateralTxId = cCollaUTXO.outpoint.txid;
+        outidx = cCollaUTXO.outpoint.n;
         collateralPrivKeyPath = 'legacy';
     } else {
         const path = doms.domMnTxId.value;
-        const masterUtxo = (
-            await mempool.getUTXOs(
-                UTXO_WALLET_STATE.SPENDABLE,
-                getBalance(),
-                true
-            )
-        ).findLast((u) => u.path === path); // first UTXO for each address in HD
+        let masterUtxo;
+        const utxos = await mempool.getUTXOs(
+            UTXO_WALLET_STATE.SPENDABLE,
+            getBalance(),
+            true
+        );
+        for (const u of utxos) {
+            if ((await wallet.getPath(u.script)) === path) {
+                masterUtxo = u;
+            }
+        }
+
         // sanity check:
-        if (masterUtxo.sats !== cChainParams.current.collateralInSats) {
+        if (masterUtxo.value !== cChainParams.current.collateralInSats) {
             return createAlert('warning', ALERTS.MN_COLLAT_NOT_SUITABLE, 10000);
         }
-        collateralTxId = masterUtxo.id;
-        outidx = masterUtxo.vout;
+        collateralTxId = masterUtxo.outpoint.txid;
+        outidx = masterUtxo.outpoint.n;
         collateralPrivKeyPath = path;
     }
     doms.domMnTxId.value = '';
@@ -2314,14 +2319,15 @@ export async function updateMasternodeTab() {
         doms.domMnTxId.style.display = 'none';
         // Find the first UTXO matching the expected collateral size
         const cCollaUTXO = (
-            await mempool.getAllUTXOsWithValue(
-                cChainParams.current.collateralInSats,
+            await mempool.getUTXOs(
                 UTXO_WALLET_STATE.SPENDABLE,
+                getBalance(),
                 true
             )
-        )
-            .values()
-            .next().value;
+        ).find(
+            (cUTXO) => cUTXO.value === cChainParams.current.collateralInSats
+        );
+
         const balance = getBalance(false);
         if (cCollaUTXO) {
             if (cMasternode) {
@@ -2351,12 +2357,20 @@ export async function updateMasternodeTab() {
         doms.domMnAccessMasternodeText.innerHTML = doms.masternodeHDAccessText;
 
         // First UTXO for each address in HD
-        const mapCollateralAddresses = await mempool.getAllUTXOsWithValue(
-            cChainParams.current.collateralInSats,
-            UTXO_WALLET_STATE.SPENDABLE,
-            true
-        );
+        const mapCollateralAddresses = new Map();
 
+        // Aggregate all valid Masternode collaterals into a map of Address <--> Collateral
+        for (const cUTXO of await mempool.getUTXOs(
+            UTXO_WALLET_STATE.SPENDABLE,
+            getBalance(),
+            true
+        )) {
+            if (cUTXO.value !== cChainParams.current.collateralInSats) continue;
+            mapCollateralAddresses.set(
+                await wallet.getPath(cUTXO.script),
+                cUTXO
+            );
+        }
         const fHasCollateral = mapCollateralAddresses.size > 0;
 
         // If there's no loaded MN, but valid collaterals, display the configuration screen
