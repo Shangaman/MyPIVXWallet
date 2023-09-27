@@ -275,7 +275,9 @@ export class ExplorerNetwork extends Network {
                 }
             }
             // If using MPW's wallet, then sync the UTXOs in MPW's state
-            if (!strAddress) getEventEmitter().emit('utxo', arrUTXOs);
+            // This check is a temporary fix to the toggle explorer call
+            if (this === getNetwork())
+                if (!strAddress) getEventEmitter().emit('utxo', arrUTXOs);
 
             // Return the UTXOs for additional utility use
             return arrUTXOs;

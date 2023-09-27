@@ -146,10 +146,6 @@ export class Mempool {
      */
     subscribeToNetwork() {
         getEventEmitter().on('utxo', async (utxos) => {
-            // For some reasons we are receiving empty [] sometimes  (it happens once the network is switched). In this case bail
-            if (utxos.length == 0) {
-                return;
-            }
             //Should not really happen
             if (this.#isLoaded) {
                 console.error(
@@ -233,8 +229,8 @@ export class Mempool {
         const startTime = new Date();
         console.log('Starting calculating total balance');
         let totBalance = 0;
-        for (let [_, tx] of this.txmap) {
-            for (let vout of tx.vout) {
+        for (const [_, tx] of this.txmap) {
+            for (const vout of tx.vout) {
                 if (this.isSpent(vout.outpoint)) {
                     continue;
                 }
