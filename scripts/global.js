@@ -520,6 +520,19 @@ function subscribeToNetworkEvents() {
         }
     });
 
+    getEventEmitter().on('new-block', (block, oldBlock) => {
+        console.log(`New block detected! ${oldBlock} --> ${block}`);
+        // Fetch latest Activity
+        activityDashboard.update(true);
+        stakingDashboard.update(true);
+
+        // If it's open: update the Governance Dashboard
+        if (doms.domGovTab.classList.contains('active')) {
+            updateGovernanceTab();
+        }
+        getBalance(true);
+    });
+
     getEventEmitter().on('transaction-sent', (success, result) => {
         if (success) {
             doms.domAddress1s.value = '';
@@ -802,7 +815,7 @@ export async function openSendQRScanner() {
  */
 export async function openExplorer(strAddress = '') {
     if (wallet.isLoaded() && wallet.isHD() && !strAddress) {
-        const xpub = await wallet.getxpub();
+        const xpub = await wallet.getXPub();
         window.open(cExplorer.url + '/xpub/' + xpub, '_blank');
     } else {
         const address = strAddress || (await wallet.getAddress());
@@ -2592,17 +2605,8 @@ export function refreshChainData() {
         );
     if (!wallet.isLoaded()) return;
 
-    // Fetch block count + UTXOs, update the UI for new transactions
-    cNet.getBlockCount().then((_) => {
-        // Fetch latest Activity
-        activityDashboard.update(true);
-
-        // If it's open: update the Governance Dashboard
-        if (doms.domGovTab.classList.contains('active')) {
-            updateGovernanceTab();
-        }
-    });
-    getBalance(true);
+    // Fetch block count
+    cNet.getBlockCount().then(() => {});
 }
 
 // A safety mechanism enabled if the user attempts to leave without encrypting/saving their keys
