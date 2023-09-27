@@ -195,6 +195,7 @@ export class ExplorerNetwork extends Network {
         this.arrTxHistory = [];
 
         this.historySyncing = false;
+        this.utxoFetched = false;
     }
 
     error() {
@@ -248,9 +249,8 @@ export class ExplorerNetwork extends Network {
      * @returns {Promise<Array<BlockbookUTXO>>} Resolves when it has finished fetching UTXOs
      */
     async getUTXOs(strAddress = '') {
-        // If mempool has been already loaded return
-        if (mempool.isLoaded && !strAddress) {
-            // TODO: don't call mempool directly but use the wallet instead
+        // If getUTXOs has been already called return
+        if (this.utxoFetched && !strAddress) {
             return;
         }
         // Don't fetch UTXOs if we're already scanning for them!
@@ -277,7 +277,10 @@ export class ExplorerNetwork extends Network {
             // If using MPW's wallet, then sync the UTXOs in MPW's state
             // This check is a temporary fix to the toggle explorer call
             if (this === getNetwork())
-                if (!strAddress) getEventEmitter().emit('utxo', arrUTXOs);
+                if (!strAddress) {
+                    this.utxoFetched = true;
+                    getEventEmitter().emit('utxo', arrUTXOs);
+                }
 
             // Return the UTXOs for additional utility use
             return arrUTXOs;
