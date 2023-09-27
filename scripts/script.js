@@ -204,11 +204,11 @@ export function isP2CS(dataBytes) {
 }
 
 export function getAddressFromPKH(pkhBytes) {
-    let buffer = new Uint8Array([
+    const buffer = new Uint8Array([
         cChainParams.current.PUBKEY_ADDRESS,
         ...pkhBytes,
     ]);
-    let checksum = dSHA256(buffer);
+    const checksum = dSHA256(buffer);
     return bs58.encode([
         ...Array.from(buffer),
         ...Array.from(checksum.slice(0, 4)),

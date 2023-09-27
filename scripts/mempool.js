@@ -1,5 +1,10 @@
 import { getNetwork } from './network.js';
-import { activityDashboard, getBalance, getStakingBalance, stakingDashboard } from './global.js';
+import {
+    activityDashboard,
+    getBalance,
+    getStakingBalance,
+    stakingDashboard,
+} from './global.js';
 import { getEventEmitter } from './event_bus.js';
 import Multimap from 'multimap';
 import { wallet } from './wallet.js';
@@ -182,6 +187,8 @@ export class Mempool {
             );
             getBalance(true);
             getStakingBalance(true);
+            activityDashboard.update();
+            stakingDashboard.update();
             const endTime = new Date();
             console.log('Ended utxo fetch in:', (endTime - startTime) / 1000);
         });
@@ -318,8 +325,6 @@ export class Mempool {
             'Finished fetching UTXOs from wallet data:',
             (endTime - startTime) / 1000
         );
-        activityDashboard.update(true);
-        stakingDashboard.update(true);
         return utxos;
     }
     parseTransaction(tx) {
