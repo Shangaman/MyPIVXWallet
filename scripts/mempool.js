@@ -1,5 +1,5 @@
 import { getNetwork } from './network.js';
-import { getBalance, getStakingBalance } from './global.js';
+import { activityDashboard, getBalance, getStakingBalance, stakingDashboard } from './global.js';
 import { getEventEmitter } from './event_bus.js';
 import Multimap from 'multimap';
 import { wallet } from './wallet.js';
@@ -288,11 +288,11 @@ export class Mempool {
         let totFound = 0;
         console.log('Starting fetching UTXOs from wallet data:');
         let utxos = [];
-        for (let [_, tx] of this.txmap) {
+        for (const [_, tx] of this.txmap) {
             if (onlyConfirmed && !tx.isConfirmed()) {
                 continue;
             }
-            for (let vout of tx.vout) {
+            for (const vout of tx.vout) {
                 if (this.isSpent(vout.outpoint)) {
                     continue;
                 }
@@ -318,6 +318,8 @@ export class Mempool {
             'Finished fetching UTXOs from wallet data:',
             (endTime - startTime) / 1000
         );
+        activityDashboard.update(true);
+        stakingDashboard.update(true);
         return utxos;
     }
     parseTransaction(tx) {
