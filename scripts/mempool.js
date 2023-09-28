@@ -287,7 +287,7 @@ export class Mempool {
      * @param {Object} o
      * @param {Number} o.filter enum element of UTXO_WALLET_STATE
      * @param {Number | null} o.target PIVs in satoshi that we want to spend
-     * @param {Boolean} o.onlyConfiemd Consider only confirmed transactions
+     * @param {Boolean} o.onlyConfirmed Consider only confirmed transactions
      * @returns {Promise<CTxOut[]>} Array of fetched UTXOs
      */
     async getUTXOs({ filter, target, onlyConfirmed = false }) {

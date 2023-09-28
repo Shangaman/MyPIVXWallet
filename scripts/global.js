@@ -1133,7 +1133,7 @@ export async function importMasternode() {
         const cCollaUTXO = (
             await mempool.getUTXOs({
                 filter: UTXO_WALLET_STATE.SPENDABLE,
-                onlyConfiemd: true,
+                onlyConfirmed: true,
             })
         ).find(
             (cUTXO) => cUTXO.value === cChainParams.current.collateralInSats
@@ -1179,7 +1179,7 @@ export async function importMasternode() {
         let masterUtxo;
         const utxos = await mempool.getUTXOs({
             filter: UTXO_WALLET_STATE.SPENDABLE,
-            onlyConfiemd: true,
+            onlyConfirmed: true,
         });
         for (const u of utxos) {
             if ((await wallet.getPath(u.script)) === path) {
@@ -2331,7 +2331,7 @@ export async function updateMasternodeTab() {
         const cCollaUTXO = (
             await mempool.getUTXOs({
                 filter: UTXO_WALLET_STATE.SPENDABLE,
-                onlyConfiemd: true,
+                onlyConfirmed: true,
             })
         ).find(
             (cUTXO) => cUTXO.value === cChainParams.current.collateralInSats
@@ -2371,7 +2371,7 @@ export async function updateMasternodeTab() {
         // Aggregate all valid Masternode collaterals into a map of Address <--> Collateral
         for (const cUTXO of await mempool.getUTXOs({
             filter: UTXO_WALLET_STATE.SPENDABLE,
-            onlyConfiemd: true,
+            onlyConfirmed: true,
         })) {
             if (cUTXO.value !== cChainParams.current.collateralInSats) continue;
             mapCollateralAddresses.set(
