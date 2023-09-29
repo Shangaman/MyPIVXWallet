@@ -7,12 +7,12 @@ import {
     LinearScale,
     Tooltip,
 } from 'chart.js';
-import { cChainParams, COIN } from './chain_params';
-import { doms, mempool } from './global';
+import { cChainParams, COIN } from './chain_params.js';
+import { doms, mempool } from './global.js';
 import { Database } from './database.js';
-import { translation } from './i18n';
-import { UTXO_WALLET_STATE } from './mempool';
-import { COutpoint } from './mempool';
+import { translation } from './i18n.js';
+import { UTXO_WALLET_STATE } from './mempool.js';
+import { COutpoint } from './mempool.js';
 
 Chart.register(
     Colors,
