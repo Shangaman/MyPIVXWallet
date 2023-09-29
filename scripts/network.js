@@ -169,7 +169,6 @@ export class ExplorerNetwork extends Network {
                     this.blocks
                 );
                 this.blocks = backend.blocks;
-                console.log('sync:', this.lastBlockSynced, this.fullSynced);
                 if (this.fullSynced) {
                     await this.getLatestTxs(this.lastBlockSynced);
                     this.lastBlockSynced = this.blocks;
@@ -206,6 +205,7 @@ export class ExplorerNetwork extends Network {
                       this.lastWallet
                   )
                 : this.lastWallet;
+            await this.wallet.loadAddresses();
             for (const tx of iPage.transactions.reverse()) {
                 await mempool.updateMempool(mempool.parseTransaction(tx));
             }
@@ -216,6 +216,7 @@ export class ExplorerNetwork extends Network {
                   this.lastWallet
               )
             : this.lastWallet;
+        await this.wallet.loadAddresses();
         if (firstPage.transactions) {
             for (const tx of firstPage.transactions.reverse()) {
                 await mempool.updateMempool(mempool.parseTransaction(tx));
@@ -233,8 +234,8 @@ export class ExplorerNetwork extends Network {
         this.lastBlockSynced =
             nBlockHeights.length == 0 ? 0 : nBlockHeights.sort().at(-1);
         this.fullSynced = true;
-        activityDashboard.update(10);
-        stakingDashboard.update(10);
+        await activityDashboard.update(50);
+        await stakingDashboard.update(50);
     }
 
     /**

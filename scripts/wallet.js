@@ -246,33 +246,27 @@ export class Wallet {
         return this.#masterKey?.isHardwareWallet === true;
     }
 
-    /**
-     * @param {string} address - address to check
-     * @return {string?} BIP32 path or null if it's not your address
-     */
-    isOwnAddress(address) {
-        if (this.#ownAddresses.has(address)) {
-            return this.#ownAddresses.get(address);
-        }
+    async loadAddresses() {
         const last = getNetwork().lastWallet;
         this.#addressIndex =
             this.#addressIndex > last ? this.#addressIndex : last;
         if (this.isHD()) {
             for (let i = 0; i <= this.#addressIndex + MAX_ACCOUNT_GAP; i++) {
                 const path = this.getDerivationPath(0, i);
-                const testAddress = this.#masterKey.getAddress(path);
-                if (address === testAddress) {
-                    this.#ownAddresses.set(address, path);
-                    return path;
-                }
+                const address = await this.#masterKey.getAddress(path);
+                this.#ownAddresses.set(address, path);
             }
         } else {
-            const value = address === this.getKeyToExport() ? ':)' : null;
-            this.#ownAddresses.set(address, value);
-            return value;
+            this.#ownAddresses.set(await this.getKeyToExport(), ':)');
         }
-        this.#ownAddresses.set(address, null);
-        return null;
+    }
+
+    /**
+     * @param {string} address - address to check
+     * @return {Promise<String?>} BIP32 path or null if it's not your address
+     */
+    async isOwnAddress(address) {
+        return this.#ownAddresses.get(address) ?? null;
     }
 
     /**
