@@ -159,8 +159,6 @@ export class Mempool {
                 return;
             }
             getEventEmitter().emit('sync-status', 'start');
-            const startTime = new Date();
-            console.log('Started utxo fetch: ');
             for (const utxo of utxos) {
                 this.#syncHeight = Math.max(this.#syncHeight, utxo.height);
                 if (this.txmap.has(utxo.txid)) {
@@ -190,9 +188,7 @@ export class Mempool {
             getStakingBalance(true);
             activityDashboard.update();
             stakingDashboard.update();
-            const endTime = new Date();
             getEventEmitter().emit('sync-status', 'stop');
-            console.log('Ended utxo fetch in:', (endTime - startTime) / 1000);
         });
         getEventEmitter().on('recent_txs', async (txs) => {
             // Don't process recent_txs if mempool is not loaded yet
@@ -200,8 +196,6 @@ export class Mempool {
                 return;
             }
             getEventEmitter().emit('sync-status', 'start');
-            const startTime = new Date();
-            console.log('Started recent tx fetch: ');
             for (const tx of txs) {
                 // Do not accept any tx which is below the syncHeight
                 if (this.#syncHeight >= tx.blockHeight) {
@@ -217,11 +211,6 @@ export class Mempool {
                     await this.updateMempool(fullTx);
                 }
             }
-            const endTime = new Date();
-            console.log(
-                'Ended recent tx fetch in:',
-                (endTime - startTime) / 1000
-            );
             getEventEmitter().emit('sync-status', 'stop');
         });
     }
@@ -238,8 +227,6 @@ export class Mempool {
      * @param {UTXO_WALLET_STATE} filter the filter you want to apply
      */
     async getBalance(filter) {
-        const startTime = new Date();
-        console.log('Starting calculating total balance');
         let totBalance = 0;
         for (const [_, tx] of this.txmap) {
             for (const vout of tx.vout) {
@@ -253,11 +240,6 @@ export class Mempool {
                 totBalance += vout.value;
             }
         }
-        const endTime = new Date();
-        console.log(
-            'Finished calculating total balance',
-            (endTime - startTime) / 1000
-        );
         return totBalance;
     }
     /**
@@ -298,9 +280,7 @@ export class Mempool {
      * @returns {Promise<CTxOut[]>} Array of fetched UTXOs
      */
     async getUTXOs({ filter, target, onlyConfirmed = false }) {
-        const startTime = new Date();
         let totFound = 0;
-        console.log('Starting fetching UTXOs from wallet data:');
         let utxos = [];
         for (const [_, tx] of this.txmap) {
             if (onlyConfirmed && !tx.isConfirmed()) {
@@ -318,20 +298,10 @@ export class Mempool {
                 // Return early if you found enough PIVs (11/10 is to make sure to pay fee)
                 totFound += vout.value;
                 if (target && totFound > (11 / 10) * target) {
-                    const endTime = new Date();
-                    console.log(
-                        'Finished early fetching UTXOs from wallet data:',
-                        (endTime - startTime) / 1000
-                    );
                     return utxos;
                 }
             }
         }
-        const endTime = new Date();
-        console.log(
-            'Finished fetching UTXOs from wallet data:',
-            (endTime - startTime) / 1000
-        );
         return utxos;
     }
 
