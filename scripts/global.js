@@ -18,8 +18,6 @@ import {
     debug,
     cMarket,
     strCurrency,
-    setColdStakingAddress,
-    strColdStakingAddress,
     nDisplayDecimals,
     fAdvancedMode,
 } from './settings.js';
@@ -35,6 +33,7 @@ import {
     sleep,
     beautifyNumber,
     isStandardAddress,
+    isColdAddress,
 } from './misc.js';
 import { cChainParams, COIN, MIN_PASS_LENGTH } from './chain_params.js';
 import { decrypt } from './aes-gcm.js';
@@ -106,6 +105,10 @@ export async function start() {
             'guiBalanceStakingTicker'
         ),
         domStakeAmount: document.getElementById('delegateAmount'),
+        domStakeOwnerAddressContainer: document.getElementById(
+            'ownerAddressContainer'
+        ),
+        domStakeOwnerAddress: document.getElementById('delegateOwnerAddress'),
         domUnstakeAmount: document.getElementById('undelegateAmount'),
         domStakeTab: document.getElementById('stakeTab'),
         domAddress1s: document.getElementById('address1s'),
@@ -1572,36 +1575,47 @@ export function isMasternodeUTXO(cUTXO, cMasternode) {
  * Creates a GUI popup for the user to check or customise their Cold Address
  */
 export async function guiSetColdStakingAddress() {
+    // Use the Account's cold address, otherwise use the network's default Cold Staking address
+    const strColdAddress = await wallet.getColdStakingAddress();
+
+    // Display the popup and await a response
     if (
         await confirmPopup({
             title: translation.popupSetColdAddr,
-            html: `<p>${
-                translation.popupCurrentAddress
-            }<br><span class="mono">${strColdStakingAddress}</span><br><br><span style="opacity: 0.65; margin: 10px;">${
-                translation.popupColdStakeNote
-            }</span></p><br><input type="text" id="newColdAddress" placeholder="${
+            html: `
+            <p>
+                <span style="opacity: 0.65; margin: 10px; margin-buttom: 0px;">
+                    ${translation.popupColdStakeNote}
+                </span>
+            </p>
+            <input type="text" id="newColdAddress" placeholder="${
                 translation.popupExample
-            } ${strColdStakingAddress.substring(
+            } ${strColdAddress.substring(
                 0,
                 6
-            )}..." style="text-align: center;">`,
+            )}..." value="${strColdAddress}" style="text-align: center;">`,
         })
     ) {
-        // Fetch address from the popup input
-        const strColdAddress = document.getElementById('newColdAddress').value;
-
-        // If it's empty, just return false
-        if (!strColdAddress) return false;
-
-        // Sanity-check, and set!
+        // Check the Cold Address input
+        const strNewColdAddress = document
+            .getElementById('newColdAddress')
+            .value.trim();
+        const fValidCold = isColdAddress(strNewColdAddress);
         if (
-            strColdAddress[0] === cChainParams.current.STAKING_PREFIX &&
-            strColdAddress.length === 34
+            !strNewColdAddress ||
+            (strNewColdAddress !== strColdAddress && fValidCold)
         ) {
-            await setColdStakingAddress(strColdAddress);
+            // If the input is empty: we'll default back to this network's Cold Staking address (effectively a 'reset')
+            const cDB = await Database.getInstance();
+            const cAccount = await cDB.getAccount();
+
+            // Save to DB (allowDeletion enabled to allow for resetting the Cold Address)
+            cAccount.coldAddress = strNewColdAddress;
+            await cDB.updateAccount(cAccount, true);
+
             createAlert('info', ALERTS.STAKE_ADDR_SET, 5000);
             return true;
-        } else {
+        } else if (!fValidCold) {
             createAlert('warning', ALERTS.STAKE_ADDR_BAD, 2500);
             return false;
         }
