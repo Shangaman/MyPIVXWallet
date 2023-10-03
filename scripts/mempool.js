@@ -158,6 +158,7 @@ export class Mempool {
                 );
                 return;
             }
+            getEventEmitter().emit('sync-status', 'start');
             const startTime = new Date();
             console.log('Started utxo fetch: ');
             for (const utxo of utxos) {
@@ -190,6 +191,7 @@ export class Mempool {
             activityDashboard.update();
             stakingDashboard.update();
             const endTime = new Date();
+            getEventEmitter().emit('sync-status', 'stop');
             console.log('Ended utxo fetch in:', (endTime - startTime) / 1000);
         });
         getEventEmitter().on('recent_txs', async (txs) => {
@@ -197,6 +199,7 @@ export class Mempool {
             if (!this.#isLoaded) {
                 return;
             }
+            getEventEmitter().emit('sync-status', 'start');
             const startTime = new Date();
             console.log('Started recent tx fetch: ');
             for (const tx of txs) {
@@ -219,6 +222,7 @@ export class Mempool {
                 'Ended recent tx fetch in:',
                 (endTime - startTime) / 1000
             );
+            getEventEmitter().emit('sync-status', 'stop');
         });
     }
     /**
@@ -231,6 +235,7 @@ export class Mempool {
 
     /**
      * Get the total wallet balance
+     * @param {UTXO_WALLET_STATE} filter the filter you want to apply
      */
     async getBalance(filter) {
         const startTime = new Date();
@@ -258,6 +263,8 @@ export class Mempool {
     /**
      * Outpoint that we want to fetch
      * @param {COutpoint} op
+     * @param {UTXO_WALLET_STATE} filter the filter you want to apply
+     * @param {Boolean} onlyConfirmed consider only confirmed transactions
      */
     async hasUTXO(op, filter, onlyConfirmed) {
         // If the outpoint is spent return false
@@ -327,9 +334,14 @@ export class Mempool {
         );
         return utxos;
     }
+
+    /**
+     * @param {Object} tx - tx object fetched from the explorer
+     * @returns {Transaction} transaction parsed
+     */
     parseTransaction(tx) {
-        let vout = [];
-        let vin = [];
+        const vout = [];
+        const vin = [];
         for (const out of tx.vout) {
             vout.push(
                 new CTxOut({

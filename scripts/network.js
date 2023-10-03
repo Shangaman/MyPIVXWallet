@@ -211,7 +211,6 @@ export class ExplorerNetwork extends Network {
 
     async getBlockCount() {
         try {
-            getEventEmitter().emit('sync-status', 'start');
             const { backend } = await (
                 await retryWrapper(fetchBlockbook, `/api/v2/api`)
             ).json();
@@ -228,8 +227,6 @@ export class ExplorerNetwork extends Network {
         } catch (e) {
             this.error();
             throw e;
-        } finally {
-            getEventEmitter().emit('sync-status', 'stop');
         }
         return this.blocks;
     }

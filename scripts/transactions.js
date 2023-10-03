@@ -370,33 +370,29 @@ export async function createAndSendTransaction({
     const result = await getNetwork().sendTransaction(sign);
     // Update the mempool
     if (result) {
-        // Remove spent inputs
-
         const futureTxid = bytesToHex(dSHA256(hexToBytes(sign)).reverse());
-
         // Build Transaction object
-        let vin = [];
-        let vout = [];
-        for (const inp of cTx.inputs) {
-            const op = new COutpoint({
-                txid: inp.outpoint.hash,
-                n: inp.outpoint.index,
-            });
-            vin.push(
-                new CTxIn({ outpoint: op, scriptSig: bytesToHex(inp.script) })
-            );
-        }
-        let i = 0;
-        for (const out of cTx.outputs) {
-            vout.push(
+        const vin = cTx.inputs.map(
+            (inp) =>
+                new CTxIn({
+                    outpoint: new COutpoint({
+                        txid: inp.outpoint.hash,
+                        n: inp.outpoint.index,
+                    }),
+                    scriptSig: bytesToHex(inp.script),
+                })
+        );
+        const vout = cTx.outputs.map(
+            (out, i) =>
                 new CTxOut({
-                    outpoint: new COutpoint({ txid: futureTxid, n: i }),
+                    outpoint: new COutpoint({
+                        txid: futureTxid,
+                        n: i,
+                    }),
                     script: bytesToHex(out.script),
                     value: Number(out.value),
                 })
-            );
-            i += 1;
-        }
+        );
         const parsedTx = new Transaction({
             txid: futureTxid,
             blockHeight: -1,

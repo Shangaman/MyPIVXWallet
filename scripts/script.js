@@ -172,7 +172,11 @@ export function getScriptForBurn(data) {
     return cScript;
 }
 
-// Is a given script pay to public key hash?
+/**
+ * Is a given script pay to public key hash?
+ * @param {Uint8Array} dataBytes - script as byte aray
+ * @returns {Boolean} True if the given script is P2PKH
+ */
 export function isP2PKH(dataBytes) {
     return (
         dataBytes.length >= 25 &&
@@ -184,7 +188,11 @@ export function isP2PKH(dataBytes) {
     );
 }
 
-// Is a given script pay to cold stake?
+/**
+ * Is a given script pay to cold stake?
+ * @param {Uint8Array} dataBytes - script as byte aray
+ * @returns {Boolean} True if the given script is P2CS
+ */
 export function isP2CS(dataBytes) {
     return (
         dataBytes.length >= 51 &&
@@ -202,7 +210,11 @@ export function isP2CS(dataBytes) {
         dataBytes[50] == OP['CHECKSIG']
     );
 }
-
+/**
+ * Generate base58 encoded address from a public key hash
+ * @param {Uint8Array} pkhBytes - public key hash
+ * @returns {String} Base58 encoded address
+ */
 export function getAddressFromPKH(pkhBytes) {
     const buffer = new Uint8Array([
         cChainParams.current.PUBKEY_ADDRESS,
@@ -216,8 +228,8 @@ export function getAddressFromPKH(pkhBytes) {
 }
 /**
  * Generate the P2KH Script from the corresponding public key
- * @param pubKey public key encoded with base58
- * @return Script in Hexadecimal
+ * @param {string} pubKey - public key encoded with base58
+ * @return {string} Script in HEX
  */
 export function getP2PKHScript(pubKey) {
     const pkh = Uint8Array.from(bs58.decode(pubKey).slice(1, 21));
