@@ -1,3 +1,5 @@
+import { reactive } from 'vue';
+
 // In most BTC-derived coins, the below parameters can be found in the 'src/chainparams.cpp' Mainnet configuration.
 // These below params share the same names as the CPP params, so finding and editing these is easy-peasy!
 // <[network_byte] [32_byte_payload] [0x01] [4_byte_checksum]>
@@ -17,7 +19,7 @@ export const MIN_PASS_LENGTH = 6;
 export const BIP21_PREFIX = 'pivx';
 
 /* chainparams */
-export const cChainParams = {
+export const cChainParams = reactive({
     current: null,
     main: {
         name: 'mainnet',
@@ -82,6 +84,6 @@ export const cChainParams = {
         maxPayment: 10 * 144 * COIN, // 144 blocks of 10 tPIV
         defaultColdStakingAddress: 'WmNziUEPyhnUkiVdfsiNX93H6rSJnios44', // Sparrow's Testnet Cold Pool
     },
-};
+});
 // Set default chain
 cChainParams.current = cChainParams.main;

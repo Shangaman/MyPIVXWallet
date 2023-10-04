@@ -24,6 +24,7 @@ import {
 } from './i18n.js';
 import { CoinGecko, refreshPriceDisplay } from './prices.js';
 import { Database } from './database.js';
+import { getEventEmitter } from './event_bus.js';
 
 // --- Default Settings
 /** A mode that emits verbose console info for internal MPW operations */
@@ -341,7 +342,7 @@ async function setCurrency(currency) {
     const database = await Database.getInstance();
     database.setSettings({ displayCurrency: strCurrency });
     // Update the UI to reflect the new currency
-    getBalance(true);
+    getEventEmitter().emit('balance-update');
     getStakingBalance(true);
 }
 
@@ -354,7 +355,7 @@ async function setDecimals(decimals) {
     const database = await Database.getInstance();
     database.setSettings({ displayDecimals: nDisplayDecimals });
     // Update the UI to reflect the new decimals
-    getBalance(true);
+    getEventEmitter().emit('balance-update');
     getStakingBalance(true);
 }
 
@@ -507,7 +508,6 @@ export async function toggleTestnet() {
     doms.domTestnet.style.display = cChainParams.current.isTestnet
         ? ''
         : 'none';
-    doms.domGuiBalanceTicker.innerText = cChainParams.current.TICKER;
     doms.domGuiBalanceStakingTicker.innerText = cChainParams.current.TICKER;
     doms.domPrefixNetwork.innerText =
         cChainParams.current.PUBKEY_PREFIX.join(' or ');
@@ -549,7 +549,7 @@ export async function toggleTestnet() {
         doms.domImportWallet.style.display = 'none';
     }
 
-    getBalance(true);
+    getEventEmitter().emit('balance-update');
     getStakingBalance(true);
     await updateEncryptionGUI(wallet.isLoaded());
     await fillExplorerSelect();
