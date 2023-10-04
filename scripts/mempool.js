@@ -1,7 +1,6 @@
 import { getNetwork } from './network.js';
 import {
     activityDashboard,
-    getBalance,
     getStakingBalance,
     stakingDashboard,
 } from './global.js';
@@ -184,7 +183,7 @@ export class Mempool {
             this.#coldBalance = await this.getBalance(
                 UTXO_WALLET_STATE.SPENDABLE_COLD
             );
-            getBalance(true);
+            getEventEmitter().emit('balance-update');
             getStakingBalance(true);
             activityDashboard.update();
             stakingDashboard.update();
@@ -351,7 +350,7 @@ export class Mempool {
         this.#coldBalance = await this.getBalance(
             UTXO_WALLET_STATE.SPENDABLE_COLD
         );
-        getBalance(true);
+        getEventEmitter().emit('balance-update');
         getStakingBalance(true);
     }
 }

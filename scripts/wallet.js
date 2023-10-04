@@ -18,7 +18,6 @@ import {
 import {
     refreshChainData,
     setDisplayForAllWalletOptions,
-    getBalance,
     getStakingBalance,
 } from './global.js';
 import { ALERTS, tr, translation } from './i18n.js';

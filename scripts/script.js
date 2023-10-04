@@ -1,6 +1,6 @@
 import bs58 from 'bs58';
 import { cChainParams } from './chain_params.js';
-import { bytesToHex, dSHA256, hexToBytes } from './utils.js';
+import { bytesToHex, dSHA256 } from './utils.js';
 
 export const P2PK_START_INDEX = 3;
 export const OWNER_START_INDEX = 6;
