@@ -695,9 +695,9 @@ export async function importWallet({
         }
 
         // Fetch state from explorer, if this import was post-startup
+        if (getNetwork.enable) getNetwork().walletFullSync();
         if (getNetwork().enabled && !fStartup) {
             refreshChainData();
-            getNetwork().walletFullSync();
         }
 
         // Hide all wallet starter options
