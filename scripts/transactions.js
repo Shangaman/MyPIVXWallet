@@ -11,7 +11,7 @@ import {
     guiSetColdStakingAddress,
 } from './global.js';
 import { cHardwareWallet, strHardwareName } from './ledger.js';
-import { wallet } from './wallet.js';
+import { wallet, getNewAddress } from './wallet.js';
 import { HdMasterKey } from './masterkey.js';
 import {
     COutpoint,
@@ -232,7 +232,7 @@ export async function undelegateGUI() {
     if (!validateAmount(nAmount)) return;
 
     // Generate a new address to undelegate towards
-    const [address] = await wallet.getNewAddress();
+    const [address] = wallet.getNewAddress();
 
     // Perform the TX
     const cTxRes = await createAndSendTransaction({
@@ -302,7 +302,7 @@ export async function createAndSendTransaction({
 
     // Compute change (or lack thereof)
     const nChange = cCoinControl.nValue - (nFee + amount);
-    const [changeAddress, _] = await wallet.getNewAddress({
+    const [changeAddress, _] = await getNewAddress({
         verify: wallet.isHardwareWallet(),
     });
 
@@ -422,7 +422,7 @@ export async function createMasternode() {
         return;
 
     // Generate the Masternode collateral
-    const [address] = await wallet.getNewAddress();
+    const [address] = getNewAddress({ verify: wallet.isHardwareWallet() });
     const result = await createAndSendTransaction({
         amount: cChainParams.current.collateralInSats,
         address,

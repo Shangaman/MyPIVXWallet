@@ -308,6 +308,7 @@ export default {
 
     INTERNAL_ERROR: 'Erreur interne, veuillez réessayer plus tard', //Internal error, please try again later
     FAILED_TO_IMPORT: "<b>Échec de l'importation !</b> Mot de passe invalide", //<b>Failed to import!</b> Invalid password
+    FAILED_TO_IMPORT_HARDWARE: '', // <b> Failed to import Hardware Wallet</b>.
     UNSUPPORTED_CHARACTER:
         "Le caractère {char} n'est pas pris en charge dans les adresses ! (Non compatible avec Base58)", //The character '{char}' is unsupported in addresses! (Not Base58 compatible)
     UNSUPPORTED_WEBWORKERS:
@@ -427,6 +428,8 @@ export default {
     WALLET_CONFIRM_L: "Confirmez l'importation dans votre Ledger", //Confirm the import on your Ledger
     WALLET_NO_HARDWARE:
         "<b>Aucun dispositif disponible</b><br>Il n'a pas été possible de trouver un portefeuille de hardware; brancher et déverrouiller!", //<b>No device available</b><br>Couldn't find a hardware wallet; please plug it in and unlock!
+    WALLET_HARDWARE_UDEV: '', // <b>The OS denied access</b> Did you add the udev rules?
+    WALLET_HARDWARE_NO_ACCESS: '', // <b>The OS denied access</b> Please check your Operating System settings.
     WALLET_HARDWARE_CONNECTION_LOST:
         "<b>Perte de connexion avec le {hardwareWallet} </b><br>Oops! Il semble que {hardwareWalletProductionName} a été déconnecté au milieu de l'opération.", //<b>Lost connection to {hardwareWallet} </b><br>It seems the {hardwareWalletProductionName} was unplugged mid-operation, oops!
     WALLET_HARDWARE_BUSY:
