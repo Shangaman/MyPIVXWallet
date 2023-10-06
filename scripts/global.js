@@ -1159,7 +1159,7 @@ export async function importMasternode() {
             onlyConfirmed: true,
         });
         for (const u of utxos) {
-            if ((await wallet.getPath(u.script)) === path) {
+            if (wallet.getPath(u.script) === path) {
                 masterUtxo = u;
             }
         }
@@ -2302,7 +2302,7 @@ export async function updateMasternodeTab() {
             txid: cMasternode.collateralTxId,
             n: cMasternode.outidx,
         });
-        if (!(await mempool.hasUTXO(op, UTXO_WALLET_STATE.SPENDABLE, true))) {
+        if (!mempool.hasUTXO(op, UTXO_WALLET_STATE.SPENDABLE, true)) {
             database.removeMasternode();
             cMasternode = null;
         }
@@ -2362,10 +2362,7 @@ export async function updateMasternodeTab() {
             onlyConfirmed: true,
         })) {
             if (cUTXO.value !== cChainParams.current.collateralInSats) continue;
-            mapCollateralAddresses.set(
-                await wallet.getPath(cUTXO.script),
-                cUTXO
-            );
+            mapCollateralAddresses.set(wallet.getPath(cUTXO.script), cUTXO);
         }
         const fHasCollateral = mapCollateralAddresses.size > 0;
 

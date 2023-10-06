@@ -287,17 +287,17 @@ export class Wallet {
     }
 
     //Get path from a script
-    async getPath(script) {
+    getPath(script) {
         const dataBytes = hexToBytes(script);
         // At the moment we support only P2PKH and P2CS
         const iStart = isP2PKH(dataBytes) ? P2PK_START_INDEX : COLD_START_INDEX;
         const address = this.getAddressFromPKHCache(
             bytesToHex(dataBytes.slice(iStart, iStart + 20))
         );
-        return await this.isOwnAddress(address);
+        return this.isOwnAddress(address);
     }
 
-    async isMyVout(script) {
+    isMyVout(script) {
         let address;
         const dataBytes = hexToBytes(script);
         if (isP2PKH(dataBytes)) {
@@ -306,7 +306,7 @@ export class Wallet {
                     dataBytes.slice(P2PK_START_INDEX, P2PK_START_INDEX + 20)
                 )
             );
-            if (await this.isOwnAddress(address)) {
+            if (this.isOwnAddress(address)) {
                 return UTXO_WALLET_STATE.SPENDABLE;
             }
         } else if (isP2CS(dataBytes)) {
@@ -315,7 +315,7 @@ export class Wallet {
                 address = this.getAddressFromPKHCache(
                     bytesToHex(dataBytes.slice(iStart, iStart + 20))
                 );
-                if (await this.isOwnAddress(address)) {
+                if (this.isOwnAddress(address)) {
                     return i == 0
                         ? UTXO_WALLET_STATE.COLD_RECEIVED
                         : UTXO_WALLET_STATE.SPENDABLE_COLD;

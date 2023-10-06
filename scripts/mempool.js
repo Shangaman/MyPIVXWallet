@@ -179,8 +179,8 @@ export class Mempool {
                 }
             }
             this.#isLoaded = true;
-            this.#balance = await this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
-            this.#coldBalance = await this.getBalance(
+            this.#balance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
+            this.#coldBalance = this.getBalance(
                 UTXO_WALLET_STATE.SPENDABLE_COLD
             );
             getEventEmitter().emit('balance-update');
@@ -225,14 +225,14 @@ export class Mempool {
      * Get the total wallet balance
      * @param {UTXO_WALLET_STATE} filter the filter you want to apply
      */
-    async getBalance(filter) {
+    getBalance(filter) {
         let totBalance = 0;
         for (const [_, tx] of this.txmap) {
             for (const vout of tx.vout) {
                 if (this.isSpent(vout.outpoint)) {
                     continue;
                 }
-                const UTXO_STATE = await wallet.isMyVout(vout.script);
+                const UTXO_STATE = wallet.isMyVout(vout.script);
                 if ((UTXO_STATE & filter) == 0) {
                     continue;
                 }
@@ -247,7 +247,7 @@ export class Mempool {
      * @param {UTXO_WALLET_STATE} filter the filter you want to apply
      * @param {Boolean} onlyConfirmed consider only confirmed transactions
      */
-    async hasUTXO(op, filter, onlyConfirmed) {
+    hasUTXO(op, filter, onlyConfirmed) {
         // If the outpoint is spent return false
         if (this.isSpent(op)) {
             return false;
@@ -262,7 +262,7 @@ export class Mempool {
             return false;
         }
         const vout = tx.vout[op.n];
-        const UTXO_STATE = await wallet.isMyVout(vout.script);
+        const UTXO_STATE = wallet.isMyVout(vout.script);
         // Check if the UTXO has the state we wanted
         if ((UTXO_STATE & filter) == 0) {
             return false;
@@ -276,9 +276,9 @@ export class Mempool {
      * @param {Number} o.filter enum element of UTXO_WALLET_STATE
      * @param {Number | null} o.target PIVs in satoshi that we want to spend
      * @param {Boolean} o.onlyConfirmed Consider only confirmed transactions
-     * @returns {Promise<CTxOut[]>} Array of fetched UTXOs
+     * @returns {CTxOut[]} Array of fetched UTXOs
      */
-    async getUTXOs({ filter, target, onlyConfirmed = false }) {
+    getUTXOs({ filter, target, onlyConfirmed = false }) {
         let totFound = 0;
         let utxos = [];
         for (const [_, tx] of this.txmap) {
@@ -289,7 +289,7 @@ export class Mempool {
                 if (this.isSpent(vout.outpoint)) {
                     continue;
                 }
-                const UTXO_STATE = await wallet.isMyVout(vout.script);
+                const UTXO_STATE = wallet.isMyVout(vout.script);
                 if ((UTXO_STATE & filter) == 0) {
                     continue;
                 }
@@ -338,7 +338,7 @@ export class Mempool {
      * Update the mempool status
      * @param {Transaction} tx
      */
-    async updateMempool(tx) {
+    updateMempool(tx) {
         this.txmap.set(tx.txid, tx);
         for (const vin of tx.vin) {
             const op = vin.outpoint;
@@ -346,10 +346,8 @@ export class Mempool {
                 this.spent.set(op.txid, op);
             }
         }
-        this.#balance = await this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
-        this.#coldBalance = await this.getBalance(
-            UTXO_WALLET_STATE.SPENDABLE_COLD
-        );
+        this.#balance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
+        this.#coldBalance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE_COLD);
         getEventEmitter().emit('balance-update');
         getStakingBalance(true);
     }

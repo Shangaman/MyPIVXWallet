@@ -405,7 +405,7 @@ export async function createAndSendTransaction({
             vin: vin,
             vout: vout,
         });
-        await mempool.updateMempool(parsedTx);
+        mempool.updateMempool(parsedTx);
     }
     return { ok: !!result, txid: result };
 }
@@ -460,7 +460,7 @@ export async function signTransaction(cTx, wallet, outputs, undelegate) {
             await cHardwareWallet.splitTransaction(cInputFull.hex),
             cInput.outpoint.index,
         ]);
-        const path = await wallet.getPath(cInput.script);
+        const path = wallet.getPath(cInput.script);
         if (path === null) {
             console.error('ERROR: PATH IS NULL');
         }
@@ -511,7 +511,7 @@ async function chooseUTXOs(
     const filter = fColdOnly
         ? UTXO_WALLET_STATE.SPENDABLE_COLD
         : UTXO_WALLET_STATE.SPENDABLE;
-    const arrUTXOs = await mempool.getUTXOs({
+    const arrUTXOs = mempool.getUTXOs({
         filter: filter,
         target: nTotalSatsRequired,
     });

@@ -72,7 +72,7 @@ async function getWalletDataset() {
             txid: masternode.collateralTxId,
             n: masternode.outidx,
         });
-        if (await mempool.hasUTXO(mnOp, UTXO_WALLET_STATE.SPENDABLE, true)) {
+        if (mempool.hasUTXO(mnOp, UTXO_WALLET_STATE.SPENDABLE, true)) {
             arrBreakdown.push({
                 type: 'Masternode',
                 balance: cChainParams.current.collateralInSats / COIN,

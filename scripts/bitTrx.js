@@ -194,7 +194,7 @@ export default class bitjs {
         /* sign an input */
         async signinput(index, wallet, sigHashType, txType = 'pubkey') {
             const masterKey = wallet.getMasterKey();
-            const path = await wallet.getPath(this.inputs[index].script);
+            const path = wallet.getPath(this.inputs[index].script);
             if (path === null) {
                 throw new Error('Path not found');
             }
