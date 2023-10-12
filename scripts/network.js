@@ -207,7 +207,7 @@ export class ExplorerNetwork extends Network {
                 : this.lastWallet;
             await this.wallet.loadAddresses();
             for (const tx of iPage.transactions.reverse()) {
-                await mempool.updateMempool(mempool.parseTransaction(tx));
+                mempool.updateMempool(mempool.parseTransaction(tx));
             }
         }
         this.lastWallet = firstPage.tokens
@@ -219,10 +219,10 @@ export class ExplorerNetwork extends Network {
         await this.wallet.loadAddresses();
         if (firstPage.transactions) {
             for (const tx of firstPage.transactions.reverse()) {
-                await mempool.updateMempool(mempool.parseTransaction(tx));
+                mempool.updateMempool(mempool.parseTransaction(tx));
             }
         }
-        await mempool.setBalance();
+        mempool.setBalance();
         console.timeEnd('TOTAL');
     }
 
