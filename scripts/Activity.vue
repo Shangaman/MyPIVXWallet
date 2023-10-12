@@ -83,7 +83,7 @@ async function update(txToAdd = 0) {
         newTxs = newTxs.concat(txsAtnHeight);
         found += txsAtnHeight.length;
     }
-    const arrTXs = await wallet.toHistoricalTXs(newTxs);
+    const arrTXs = wallet.toHistoricalTXs(newTxs);
     parseTXs(arrTXs);
     txCount = found;
     updating.value = false;

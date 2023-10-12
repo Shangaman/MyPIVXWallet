@@ -363,9 +363,7 @@ export class Mempool {
     }
     setBalance() {
         this.#balance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
-        this.#coldBalance = this.getBalance(
-            UTXO_WALLET_STATE.SPENDABLE_COLD
-        );
+        this.#coldBalance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE_COLD);
         getEventEmitter().emit('balance-update');
         getStakingBalance(true);
     }

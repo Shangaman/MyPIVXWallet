@@ -265,7 +265,7 @@ export class Wallet {
      * @param {string} address - address to check
      * @return {Promise<String?>} BIP32 path or null if it's not your address
      */
-    async isOwnAddress(address) {
+    isOwnAddress(address) {
         return this.#ownAddresses.get(address) ?? null;
     }
 
@@ -285,7 +285,7 @@ export class Wallet {
     }
 
     //Get path from a script
-    async getPath(script) {
+    getPath(script) {
         const dataBytes = hexToBytes(script);
         // At the moment we support only P2PKH and P2CS
         const iStart = isP2PKH(dataBytes) ? P2PK_START_INDEX : COLD_START_INDEX;
@@ -293,10 +293,10 @@ export class Wallet {
             bytesToHex(dataBytes.slice(iStart, iStart + 20)),
             false
         );
-        return await this.isOwnAddress(address);
+        return this.isOwnAddress(address);
     }
 
-    async isMyVout(script) {
+    isMyVout(script) {
         let address;
         const dataBytes = hexToBytes(script);
         if (isP2PKH(dataBytes)) {
@@ -306,7 +306,7 @@ export class Wallet {
                 ),
                 false
             );
-            if (await this.isOwnAddress(address)) {
+            if (this.isOwnAddress(address)) {
                 return UTXO_WALLET_STATE.SPENDABLE;
             }
         } else if (isP2CS(dataBytes)) {
@@ -316,7 +316,7 @@ export class Wallet {
                     bytesToHex(dataBytes.slice(iStart, iStart + 20)),
                     iStart === OWNER_START_INDEX
                 );
-                if (await this.isOwnAddress(address)) {
+                if (this.isOwnAddress(address)) {
                     return i == 0
                         ? UTXO_WALLET_STATE.COLD_RECEIVED
                         : UTXO_WALLET_STATE.SPENDABLE_COLD;
@@ -340,7 +340,7 @@ export class Wallet {
      * Get the debit of a transaction in satoshi
      * @param {Transaction} tx
      */
-    async getDebit(tx) {
+    getDebit(tx) {
         let debit = 0;
         for (const vin of tx.vin) {
             if (mempool.txmap.has(vin.outpoint.txid)) {
@@ -348,7 +348,7 @@ export class Wallet {
                     vin.outpoint.n
                 ];
                 if (
-                    ((await this.isMyVout(spentVout.script)) &
+                    (this.isMyVout(spentVout.script) &
                         UTXO_WALLET_STATE.SPENDABLE_TOTAL) !=
                     0
                 ) {
@@ -363,10 +363,10 @@ export class Wallet {
      * Get the credit of a transaction in satoshi
      * @param {Transaction} tx
      */
-    async getCredit(tx, filter) {
+    getCredit(tx, filter) {
         let credit = 0;
         for (const vout of tx.vout) {
-            if (((await this.isMyVout(vout.script)) & filter) != 0) {
+            if ((this.isMyVout(vout.script) & filter) != 0) {
                 credit += vout.value;
             }
         }
@@ -377,14 +377,14 @@ export class Wallet {
      * Return true if the transaction contains undelegations regarding the given wallet
      * @param {Transaction} tx
      */
-    async checkForUndelegations(tx) {
+    checkForUndelegations(tx) {
         for (const vin of tx.vin) {
             if (mempool.txmap.has(vin.outpoint.txid)) {
                 const spentVout = mempool.txmap.get(vin.outpoint.txid).vout[
                     vin.outpoint.n
                 ];
                 if (
-                    ((await this.isMyVout(spentVout.script)) &
+                    (this.isMyVout(spentVout.script) &
                         UTXO_WALLET_STATE.SPENDABLE_COLD) !=
                     0
                 ) {
@@ -399,10 +399,10 @@ export class Wallet {
      * Return true if the transaction contains delegations regarding the given wallet
      * @param {Transaction} tx
      */
-    async checkForDelegations(tx) {
+    checkForDelegations(tx) {
         for (const vout of tx.vout) {
             if (
-                ((await this.isMyVout(vout.script)) &
+                (this.isMyVout(vout.script) &
                     UTXO_WALLET_STATE.SPENDABLE_COLD) !=
                 0
             ) {
@@ -416,7 +416,7 @@ export class Wallet {
      * Return the output addresses for a given transaction
      * @param {Transaction} tx
      */
-    async getOutAddress(tx) {
+    getOutAddress(tx) {
         let addresses = [];
         for (const vout of tx.vout) {
             const dataBytes = hexToBytes(vout.script);
@@ -454,34 +454,31 @@ export class Wallet {
      * @returns {Promise<Array<HistoricalTx>>} - A new array of `HistoricalTx`-formatted transactions
      */
     // TODO: add shield data to txs
-    async toHistoricalTXs(arrTXs) {
+    toHistoricalTXs(arrTXs) {
         let histTXs = [];
         for (const tx of arrTXs) {
             // The total 'delta' or change in balance, from the Tx's sums
             let nAmount =
-                ((await this.getCredit(tx, UTXO_WALLET_STATE.SPENDABLE_TOTAL)) -
-                    (await this.getDebit(tx))) /
+                (this.getCredit(tx, UTXO_WALLET_STATE.SPENDABLE_TOTAL) -
+                    this.getDebit(tx)) /
                 COIN;
 
             // The receiver addresses, if any
-            let arrReceivers = await this.getOutAddress(tx);
+            let arrReceivers = this.getOutAddress(tx);
 
             // Figure out the type, based on the Tx's properties
             let type = HistoricalTxType.UNKNOWN;
             if (tx.isCoinStake()) {
                 type = HistoricalTxType.STAKE;
-            } else if (await this.checkForUndelegations(tx)) {
+            } else if (this.checkForUndelegations(tx)) {
                 type = HistoricalTxType.UNDELEGATION;
-            } else if (await this.checkForDelegations(tx)) {
+            } else if (this.checkForDelegations(tx)) {
                 type = HistoricalTxType.DELEGATION;
                 arrReceivers.filter((addr) => {
                     return addr[0] === cChainParams.current.STAKING_PREFIX;
                 });
                 nAmount =
-                    (await this.getCredit(
-                        tx,
-                        UTXO_WALLET_STATE.SPENDABLE_COLD
-                    )) / COIN;
+                    this.getCredit(tx, UTXO_WALLET_STATE.SPENDABLE_COLD) / COIN;
             } else if (nAmount > 0) {
                 type = HistoricalTxType.RECEIVED;
             } else if (nAmount < 0) {

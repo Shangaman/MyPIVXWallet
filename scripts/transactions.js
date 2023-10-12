@@ -405,8 +405,8 @@ export async function createAndSendTransaction({
             vin: vin,
             vout: vout,
         });
-        await mempool.updateMempool(parsedTx);
-        await mempool.setBalance();
+        mempool.updateMempool(parsedTx);
+        mempool.setBalance();
     }
     return { ok: !!result, txid: result };
 }
