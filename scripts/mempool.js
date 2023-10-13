@@ -152,10 +152,6 @@ export const HistoricalTxType = {
 /** A Mempool instance, stores and handles UTXO data for the wallet */
 export class Mempool {
     /**
-     * @type {boolean}
-     */
-    #isLoaded = false;
-    /**
      * @type {number} - Our Public balance in Satoshis
      */
     #balance = 0;
@@ -163,12 +159,6 @@ export class Mempool {
      * @type {number} - Our Cold Staking balance in Satoshis
      */
     #coldBalance = 0;
-    /**
-     * @type {Number}
-     * The maximum block height that we received with the call 'utxos'
-     * We don't want to receive anymore transactions which are below this block
-     */
-    #syncHeight = -1;
     constructor() {
         /**
          * Multimap txid -> spent Coutpoint
@@ -188,18 +178,15 @@ export class Mempool {
     }
 
     reset() {
-        this.#isLoaded = false;
         this.txmap = new Map();
         this.spent = new Multimap();
+        this.orderedTxmap = new Multimap();
     }
     get balance() {
         return this.#balance;
     }
     get coldBalance() {
         return this.#coldBalance;
-    }
-    get isLoaded() {
-        return this.#isLoaded;
     }
 
     /**

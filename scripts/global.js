@@ -2284,7 +2284,8 @@ export async function updateMasternodeTab() {
         return;
     }
 
-    if (!mempool.isLoaded) {
+    const cNet = getNetwork();
+    if (!cNet || !cNet.fullSynced) {
         doms.domMnTextErrors.innerHTML =
             'Your wallet is empty or still loading, re-open the tab in a few seconds!';
         return;
