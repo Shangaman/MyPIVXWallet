@@ -217,7 +217,6 @@ export class Mempool {
      */
     getBalance(filter) {
         let totBalance = 0;
-        let utxoFound = 0;
         for (const [_, tx] of this.txmap) {
             for (const vout of tx.vout) {
                 if (this.isSpent(vout.outpoint)) {
@@ -228,7 +227,6 @@ export class Mempool {
                     continue;
                 }
                 totBalance += vout.value;
-                utxoFound += 1;
             }
         }
         return totBalance;
