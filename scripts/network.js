@@ -182,7 +182,6 @@ export class ExplorerNetwork extends Network {
     }
 
     async getLatestTxs(nStartHeight) {
-        console.time('TOTAL');
         // Form the API call using our wallet information
         const strKey = await this.wallet.getKeyToExport();
         const strRoot = `/api/v2/${
@@ -223,7 +222,6 @@ export class ExplorerNetwork extends Network {
             }
         }
         mempool.setBalance();
-        console.timeEnd('TOTAL');
     }
 
     async walletFullSync() {

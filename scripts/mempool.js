@@ -241,9 +241,7 @@ export class Mempool {
                     continue;
                 }
                 totBalance += vout.value;
-                //console.log(vout.value,utxoFound, "utxo found")
                 utxoFound += 1;
-                //console.log(totBalance,"asd")
             }
         }
         return totBalance;
@@ -357,9 +355,6 @@ export class Mempool {
             }
         }
         this.addToOrderedTxMap(tx);
-        if (tx.isCoinStake()) {
-            console.log('Transaction added!', tx, tx.isCoinStake());
-        }
     }
     setBalance() {
         this.#balance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
