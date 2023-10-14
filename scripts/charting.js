@@ -70,7 +70,7 @@ async function getWalletDataset() {
     if (masternode) {
         if (
             wallet.isCoinLocked(
-                COutpoint({
+                new COutpoint({
                     txid: masternode.collateralTxId,
                     n: masternode.outidx,
                 })
