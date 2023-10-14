@@ -488,6 +488,9 @@ export async function importWallet({
             if (await hasEncryptedWallet()) {
                 doms.domRestoreWallet.hidden = false;
             }
+        } else {
+            // Explicitly ask users to encrypt their wallet
+            doms.domGettingStartedBtn.click();
         }
 
         // For non-HD wallets: hide the 'new address' button, since these are essentially single-address MPW wallets
@@ -572,6 +575,8 @@ export async function generateWallet(noUI = false) {
         getStakingBalance(true);
     }
     doms.domLogOutContainer.style.display = 'block';
+    // Explicitly ask users to encrypt their wallet
+    doms.domGettingStartedBtn.click();
     return wallet;
 }
 
