@@ -1043,8 +1043,17 @@ export async function startMasternode(fRestart = false) {
 
 export async function destroyMasternode() {
     const database = await Database.getInstance();
+    const cMasternode = await database.getMasternode(wallet.getMasterKey());
+    if (cMasternode) {
+        // Unlock the coin and update the balance
+        wallet.unlockCoin(
+            new COutpoint({
+                txid: cMasternode.collateralTxId,
+                n: cMasternode.outidx,
+            })
+        );
+        mempool.setBalance();
 
-    if (await database.getMasternode(wallet.getMasterKey())) {
         database.removeMasternode(wallet.getMasterKey());
         createAlert('success', ALERTS.MN_DESTROYED, 5000);
         updateMasternodeTab();
