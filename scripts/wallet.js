@@ -19,6 +19,7 @@ import {
     refreshChainData,
     setDisplayForAllWalletOptions,
     getStakingBalance,
+    mempool,
 } from './global.js';
 import { ALERTS, tr, translation } from './i18n.js';
 import { encrypt, decrypt } from './aes-gcm.js';
@@ -100,6 +101,7 @@ export class Wallet {
      */
     lockCoin(opt) {
         this.#lockedCoins.add(opt.toUnique());
+        mempool.setBalance();
     }
 
     /**
@@ -199,6 +201,14 @@ export class Wallet {
      */
     getAddress(nReceiving = 0, nIndex = 0) {
         const path = this.getDerivationPath(nReceiving, nIndex);
+        return this.#masterKey.getAddress(path);
+    }
+
+    /**
+     * Derive a generic address (given the full path)
+     * @return {string} Address
+     */
+    getAddressFromPath(path) {
         return this.#masterKey.getAddress(path);
     }
 

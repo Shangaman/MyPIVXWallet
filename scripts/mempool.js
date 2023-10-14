@@ -334,6 +334,9 @@ export class Mempool {
                 if (wallet.isCoinLocked(op)) wallet.unlockCoin(op);
             }
         }
+        setBalance();
+    }
+    setBalance() {
         this.#balance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
         this.#coldBalance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE_COLD);
         getEventEmitter().emit('balance-update');

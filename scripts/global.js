@@ -2360,37 +2360,38 @@ export async function updateMasternodeTab() {
         doms.domMnAccessMasternodeText.innerHTML = doms.masternodeHDAccessText;
 
         // First UTXO for each address in HD
-        const mapCollateralAddresses = new Map();
+        const mapCollateralPath = new Map();
 
-        // Aggregate all valid Masternode collaterals into a map of Address <--> Collateral
+        // Aggregate all valid Masternode collaterals into a map of Path <--> Collateral
         for (const cUTXO of mempool.getUTXOs({
             filter: UTXO_WALLET_STATE.SPENDABLE,
             onlyConfirmed: true,
             includeLocked: false,
         })) {
             if (cUTXO.value !== cChainParams.current.collateralInSats) continue;
-            mapCollateralAddresses.set(wallet.getPath(cUTXO.script), cUTXO);
+            mapCollateralPath.set(wallet.getPath(cUTXO.script), cUTXO);
         }
-        const fHasCollateral = mapCollateralAddresses.size > 0;
+        const fHasCollateral = mapCollateralPath.size > 0;
 
         // If there's no loaded MN, but valid collaterals, display the configuration screen
         if (!cMasternode && fHasCollateral) {
             doms.domMnTxId.style.display = 'block';
             doms.domAccessMasternode.style.display = 'block';
 
-            for (const [key] of mapCollateralAddresses) {
+            for (const [key] of mapCollateralPath) {
                 const option = document.createElement('option');
                 option.value = key;
-                option.innerText = await wallet.getAddress(key);
+                option.innerText = wallet.getAddressFromPath(key);
                 doms.domMnTxId.appendChild(option);
             }
         }
 
         // If there's no collateral found, display the creation UI
-        if (!fHasCollateral) doms.domCreateMasternode.style.display = 'block';
+        if (!fHasCollateral && !cMasternode)
+            doms.domCreateMasternode.style.display = 'block';
 
-        // If we have a collateral and a loaded Masternode, display the Dashboard
-        if (fHasCollateral && cMasternode) {
+        // If we a loaded Masternode, display the Dashboard
+        if (cMasternode) {
             // Refresh the display
             refreshMasternodeData(cMasternode);
             doms.domMnDashboard.style.display = '';
