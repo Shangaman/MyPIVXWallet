@@ -29,7 +29,7 @@ import { Account } from './accounts.js';
 import { debug, fAdvancedMode } from './settings.js';
 import { bytesToHex, hexToBytes } from './utils.js';
 import { strHardwareName, getHardwareWalletKeys } from './ledger.js';
-import { UTXO_WALLET_STATE } from './mempool.js';
+import { COutpoint, UTXO_WALLET_STATE } from './mempool.js';
 import {
     isP2CS,
     isP2PKH,
@@ -74,9 +74,40 @@ export class Wallet {
      * @type {Boolean}
      */
     #isMainWallet;
+    /**
+     * Set of unique representations of Outpoints that keep track of locked utxos.
+     * @type {Set<String>}
+     */
+    #lockedCoins;
     constructor(nAccount, isMainWallet) {
         this.#nAccount = nAccount;
         this.#isMainWallet = isMainWallet;
+        this.#lockedCoins = new Set();
+    }
+
+    /**
+     * Check whether a given outpoint is locked
+     * @param {COutpoint} opt
+     * @return {Boolean} true if opt is locked, false otherwise
+     */
+    isCoinLocked(opt) {
+        return this.#lockedCoins.has(opt.toUnique());
+    }
+
+    /**
+     * Lock a given Outpoint
+     * @param {COutpoint} opt
+     */
+    lockCoin(opt) {
+        this.#lockedCoins.add(opt.toUnique());
+    }
+
+    /**
+     * Unlock a given Outpoint
+     * @param {COutpoint} opt
+     */
+    unlockCoin(opt) {
+        this.#lockedCoins.delete(opt.toUnique());
     }
 
     getMasterKey() {
@@ -479,6 +510,16 @@ export async function importWallet({
             }
         }
 
+        // Lock the masternode, if any
+        const masternode = await (await Database.getInstance()).getMasternode();
+        if (masternode) {
+            wallet.lockCoin(
+                COutpoint({
+                    txid: masternode.collateralTxId,
+                    n: masternode.outidx,
+                })
+            );
+        }
         // Reaching here: the deserialisation was a full cryptographic success, so a wallet is now imported!
         fWalletLoaded = true;
 
