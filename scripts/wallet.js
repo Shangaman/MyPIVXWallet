@@ -514,7 +514,7 @@ export async function importWallet({
         const masternode = await (await Database.getInstance()).getMasternode();
         if (masternode) {
             wallet.lockCoin(
-                COutpoint({
+                new COutpoint({
                     txid: masternode.collateralTxId,
                     n: masternode.outidx,
                 })
