@@ -2434,6 +2434,12 @@ async function refreshMasternodeData(cMasternode, fAlert = false) {
                 createAlert('success', ALERTS.MN_STARTED_ONLINE_SOON, 6000);
                 const database = await Database.getInstance();
                 await database.addMasternode(cMasternode);
+                wallet.lockCoin(
+                    COutpoint({
+                        txid: cMasternode.collateralTxId,
+                        n: cMasternode.outidx,
+                    })
+                );
             } else {
                 doms.domMnTextErrors.innerHTML = ALERTS.MN_START_FAILED;
                 createAlert('warning', ALERTS.MN_START_FAILED, 6000);
@@ -2453,6 +2459,12 @@ async function refreshMasternodeData(cMasternode, fAlert = false) {
             );
         const database = await Database.getInstance();
         await database.addMasternode(cMasternode);
+        wallet.lockCoin(
+            COutpoint({
+                txid: cMasternode.collateralTxId,
+                n: cMasternode.outidx,
+            })
+        );
     } else if (cMasternodeData.status === 'REMOVED') {
         const state = cMasternodeData.status;
         doms.domMnTextErrors.innerHTML = tr(ALERTS.MN_STATE, [
