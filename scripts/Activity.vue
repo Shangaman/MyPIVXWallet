@@ -164,7 +164,7 @@ async function parseTXs(arrTXs) {
         // Coinbase Transactions (rewards) require coinbaseMaturity confs
         const fConfirmed =
             cNet.cachedBlockCount - cTx.blockHeight >= props.rewards
-                ? cChainParams.coinbaseMaturity
+                ? cChainParams.current.coinbaseMaturity
                 : 6;
 
         // Choose the content type, for the Dashboard; use a generative description, otherwise, a TX-ID
