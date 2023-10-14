@@ -334,7 +334,7 @@ export class Mempool {
                 if (wallet.isCoinLocked(op)) wallet.unlockCoin(op);
             }
         }
-        setBalance();
+        this.setBalance();
     }
     setBalance() {
         this.#balance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE);

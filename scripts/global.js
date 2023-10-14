@@ -2341,14 +2341,12 @@ export async function updateMasternodeTab() {
             );
 
         const balance = getBalance(false);
-        if (cCollaUTXO) {
-            if (cMasternode) {
-                await refreshMasternodeData(cMasternode);
-                doms.domMnDashboard.style.display = '';
-            } else {
-                doms.domMnTxId.style.display = 'none';
-                doms.domAccessMasternode.style.display = 'block';
-            }
+        if (cMasternode) {
+            await refreshMasternodeData(cMasternode);
+            doms.domMnDashboard.style.display = '';
+        } else if (cCollaUTXO) {
+            doms.domMnTxId.style.display = 'none';
+            doms.domAccessMasternode.style.display = 'block';
         } else if (balance < cChainParams.current.collateralInSats) {
             // The user needs more funds
             doms.domMnTextErrors.innerHTML =
@@ -2381,7 +2379,6 @@ export async function updateMasternodeTab() {
             mapCollateralPath.set(wallet.getPath(cUTXO.script), cUTXO);
         }
         const fHasCollateral = mapCollateralPath.size > 0;
-
         // If there's no loaded MN, but valid collaterals, display the configuration screen
         if (!cMasternode && fHasCollateral) {
             doms.domMnTxId.style.display = 'block';
