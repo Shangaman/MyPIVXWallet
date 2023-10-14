@@ -481,7 +481,7 @@ export async function importWallet({
 
         // Reaching here: the deserialisation was a full cryptographic success, so a wallet is now imported!
         fWalletLoaded = true;
-
+        doms.domLogOutContainer.style.display = 'block';
         // Hide wipe wallet button if there is no private key
         if (wallet.isViewOnly() || wallet.isHardwareWallet()) {
             doms.domWipeWallet.hidden = true;
@@ -571,7 +571,7 @@ export async function generateWallet(noUI = false) {
         // Refresh the balance UI (why? because it'll also display any 'get some funds!' alerts)
         getStakingBalance(true);
     }
-
+    doms.domLogOutContainer.style.display = 'block';
     return wallet;
 }
 
