@@ -2302,7 +2302,7 @@ export async function updateMasternodeTab() {
     if (cMasternode) {
         if (
             !wallet.isCoinLocked(
-                COutpoint({
+                new COutpoint({
                     txid: cMasternode.collateralTxId,
                     n: cMasternode.outidx,
                 })
@@ -2435,7 +2435,7 @@ async function refreshMasternodeData(cMasternode, fAlert = false) {
                 const database = await Database.getInstance();
                 await database.addMasternode(cMasternode);
                 wallet.lockCoin(
-                    COutpoint({
+                    new COutpoint({
                         txid: cMasternode.collateralTxId,
                         n: cMasternode.outidx,
                     })
@@ -2460,7 +2460,7 @@ async function refreshMasternodeData(cMasternode, fAlert = false) {
         const database = await Database.getInstance();
         await database.addMasternode(cMasternode);
         wallet.lockCoin(
-            COutpoint({
+            new COutpoint({
                 txid: cMasternode.collateralTxId,
                 n: cMasternode.outidx,
             })
