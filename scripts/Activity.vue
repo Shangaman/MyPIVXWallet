@@ -70,7 +70,9 @@ async function update(txToAdd = 0) {
     // Set the updating animation
     updating.value = true;
     let found = 0;
-    const nHeights = Array.from(mempool.orderedTxmap.keys()).sort();
+    const nHeights = Array.from(mempool.orderedTxmap.keys()).sort(
+        (a, b) => a - b
+    );
     while (found < txCount + txToAdd) {
         if (nHeights.length == 0) {
             isHistorySynced.value = true;

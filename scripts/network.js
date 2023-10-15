@@ -231,7 +231,9 @@ export class ExplorerNetwork extends Network {
         await this.getLatestTxs(0);
         const nBlockHeights = Array.from(mempool.orderedTxmap.keys());
         this.lastBlockSynced =
-            nBlockHeights.length == 0 ? 0 : nBlockHeights.sort().at(-1);
+            nBlockHeights.length == 0
+                ? 0
+                : nBlockHeights.sort((a, b) => a - b).at(-1);
         this.fullSynced = true;
         await activityDashboard.update(50);
         await stakingDashboard.update(50);

@@ -690,16 +690,15 @@ export async function importWallet({
             // Hide the encryption UI
             doms.domGenKeyWarning.style.display = 'none';
         }
-
-        // Fetch state from explorer, if this import was post-startup
-        if (getNetwork().enabled) getNetwork().walletFullSync();
-        if (getNetwork().enabled && !fStartup) {
-            refreshChainData();
-        }
-
         // Hide all wallet starter options
         setDisplayForAllWalletOptions('none');
         getEventEmitter().emit('wallet-import');
+
+        // Fetch state from explorer, if this import was post-startup
+        if (getNetwork().enabled) await getNetwork().walletFullSync();
+        if (getNetwork().enabled && !fStartup) {
+            refreshChainData();
+        }
     }
 }
 
