@@ -47,6 +47,7 @@ export const cChainParams = reactive({
             // Network upgrades
             UPGRADE_V6_0: undefined,
         },
+        coinbaseMaturity: 100,
         budgetCycleBlocks: 43200,
         proposalFee: 50 * COIN,
         proposalFeeConfirmRequirement: 6,
@@ -79,6 +80,7 @@ export const cChainParams = reactive({
             // Network upgrades
             UPGRADE_V6_0: undefined,
         },
+        coinbaseMaturity: 15,
         budgetCycleBlocks: 144,
         proposalFee: 50 * COIN,
         proposalFeeConfirmRequirement: 3,

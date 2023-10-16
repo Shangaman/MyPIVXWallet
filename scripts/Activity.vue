@@ -20,7 +20,7 @@ const updating = ref(false);
 const isHistorySynced = ref(false);
 const rewardsText = ref('-');
 const ticker = computed(() => cChainParams.current.TICKER);
-const explorerUrl = computed(() => getNetwork().strUrl);
+const explorerUrl = ref(getNetwork()?.strUrl);
 const txMap = computed(() => {
     return {
         [HistoricalTxType.STAKE]: {
@@ -62,6 +62,8 @@ async function update(txToAdd = 0) {
     if (!cNet || !cNet.fullSynced) {
         return;
     }
+
+    explorerUrl.value = cNet?.strUrl;
 
     // Prevent the user from spamming refreshes
     if (updating.value) return;
@@ -144,9 +146,10 @@ async function parseTXs(arrTXs) {
         // Update the time cache
         prevTimestamp = cTx.time * 1000;
 
-        // Coinbase Transactions (rewards) require 100 confs
+        // Coinbase Transactions (rewards) require coinbaseMaturity confs
         const fConfirmed =
-            cNet.cachedBlockCount - cTx.blockHeight >= props.rewards ? 100 : 6;
+            cNet.cachedBlockCount - cTx.blockHeight >=
+            (props.rewards ? cChainParams.current.coinbaseMaturity : 6);
 
         // Choose the content type, for the Dashboard; use a generative description, otherwise, a TX-ID
         // let txContent = props.rewards ? cTx.id : 'Block Reward';
@@ -168,7 +171,7 @@ async function parseTXs(arrTXs) {
             // Check all addresses to find our own, caching them for performance
             for (const strAddr of cTx.receivers) {
                 // If a previous Tx checked this address, skip it, otherwise, check it against our own address(es)
-                if (!(await wallet.isOwnAddress(strAddr))) {
+                if (!wallet.isOwnAddress(strAddr)) {
                     // External address, this is not a self-only Tx
                     fSendToSelf = false;
                 }
