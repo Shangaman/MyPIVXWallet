@@ -235,7 +235,7 @@ export class Mempool {
         });
     }
     /**
-     * Add op to the spent map and eventually remove it from the lock set
+     * Add op to the spent map and optionally remove it from the lock set
      * @param {String} txid - transaction id
      * @param {COutpoint} op
      */
