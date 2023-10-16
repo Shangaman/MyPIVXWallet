@@ -278,7 +278,7 @@ export class Database {
             .transaction('masternodes', 'readonly')
             .objectStore('masternodes');
         const mnData = await store.get('masternode');
-        return mnData === undefined ? null : new Masternode(mnData);
+        return !mnData ? null : new Masternode(mnData);
     }
 
     /**

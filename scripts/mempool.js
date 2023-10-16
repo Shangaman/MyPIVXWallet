@@ -181,18 +181,12 @@ export class Mempool {
                         (x) => x.txid == op.txid && x.vout == op.n
                     );
                     if (!isMyUTXO && !this.isSpent(op)) {
-                        this.spent.set(tx.txid, op);
-                        if (wallet.isCoinLocked(op)) wallet.unlockCoin(op);
+                        this.setSpent(tx.txid, op);
                     }
                 }
             }
             this.#isLoaded = true;
-            this.#balance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
-            this.#coldBalance = this.getBalance(
-                UTXO_WALLET_STATE.SPENDABLE_COLD
-            );
-            getEventEmitter().emit('balance-update');
-            getStakingBalance(true);
+            this.setBalance();
             activityDashboard.update();
             stakingDashboard.update();
             getEventEmitter().emit('sync-status', 'stop');
@@ -220,6 +214,15 @@ export class Mempool {
             }
             getEventEmitter().emit('sync-status', 'stop');
         });
+    }
+    /**
+     * Add op to the spent map and eventually remove it from the lock set
+     * @param {String} txid - transaction id
+     * @param {COutpoint} op
+     */
+    setSpent(txid, op) {
+        this.spent.set(txid, op);
+        if (wallet.isCoinLocked(op)) wallet.unlockCoin(op);
     }
     /**
      * An Outpoint to check
