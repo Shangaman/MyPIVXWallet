@@ -77,7 +77,7 @@ export class Transaction {
     }
     isCoinBase() {
         // txid undefined happens only for coinbase inputs
-        return this.vin.length == 1 && this.vin[0].outpoint.txid === undefined;
+        return this.vin.length == 1 && !this.vin[0].outpoint.txid;
     }
     isMature() {
         if (!(this.isCoinBase() || this.isCoinStake())) {
