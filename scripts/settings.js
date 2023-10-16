@@ -469,7 +469,20 @@ async function setAnalytics(level, fSilent = false) {
  * Log out from the current wallet
  */
 export async function logOut() {
-    Database.removeIstance();
+    const fContinue = await confirmPopup({
+        title: 'Are you sure?',
+        html: `
+        <b>${tr(translation.netSwitchUnsavedWarningSubtitle, [
+            { network: cChainParams.current.name },
+        ])}</b>
+        <br>
+        This will delete all your data, including masternodes contacts and private keys!
+        <br>
+        <br>
+    `,
+    });
+    if (!fContinue) return;
+    Database.removeInstance();
     mempool.reset();
     wallet.setMasterKey(null);
     // Hide all Dashboard info, kick the user back to the "Getting Started" area
@@ -498,7 +511,7 @@ export async function logOut() {
     activityDashboard.reset();
     stakingDashboard.reset();
     await fillExplorerSelect();
-    createAlert('success', 'Successfully logged out from your account!', 3000);
+    createAlert('success', 'Your account has been successfully deleted!', 3000);
 }
 
 /**
