@@ -17,7 +17,6 @@ import {
     isStandardAddress,
 } from './misc.js';
 import { cChainParams } from './chain_params.js';
-import { mempool } from './global.js';
 import { COIN } from './chain_params.js';
 import {
     refreshChainData,
