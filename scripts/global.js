@@ -415,6 +415,9 @@ export async function start() {
         : 0;
     await settingsStart();
 
+    // After reaching here; we know MPW's base is fully loaded!
+    fIsLoaded = true;
+
     // Customise the UI if a saved wallet exists
     if (await hasEncryptedWallet()) {
         // Hide the 'Generate wallet' buttons
@@ -478,9 +481,6 @@ export async function start() {
         // Fetch the PIVX prices
         refreshPriceDisplay();
     }, 15000);
-
-    // After reaching here; we know MPW's base is fully loaded!
-    fIsLoaded = true;
 
     // Check for recent upgrades, display the changelog
     checkForUpgrades();
