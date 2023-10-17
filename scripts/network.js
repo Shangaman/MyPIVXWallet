@@ -188,10 +188,22 @@ export class ExplorerNetwork extends Network {
             this.wallet.isHD() ? 'xpub/' : 'address/'
         }${strKey}`;
         const strCoreParams = `?details=txs&from=${nStartHeight}`;
-        const firstPage = await (
-            await retryWrapper(fetchBlockbook, `${strRoot + strCoreParams}`)
+        const probePage = await (
+            await retryWrapper(
+                fetchBlockbook,
+                `${strRoot + strCoreParams}&pageSize=1`
+            )
         ).json();
-        for (let i = firstPage.totalPages; i > 1; i--) {
+        const totalPages = Math.ceil(probePage.txs / 1000);
+        for (let i = totalPages; i > 0; i--) {
+            if (!this.fullSynced) {
+                getEventEmitter().emit(
+                    'sync-status-update',
+                    totalPages - i + 1,
+                    totalPages,
+                    false
+                );
+            }
             const iPage = await (
                 await retryWrapper(
                     fetchBlockbook,
@@ -209,19 +221,10 @@ export class ExplorerNetwork extends Network {
                 mempool.updateMempool(mempool.parseTransaction(tx));
             }
         }
-        this.lastWallet = firstPage.tokens
-            ? Math.max(
-                  parseInt(firstPage.tokens.pop()['path'].split('/')[5]),
-                  this.lastWallet
-              )
-            : this.lastWallet;
-        await this.wallet.loadAddresses();
-        if (firstPage.transactions) {
-            for (const tx of firstPage.transactions.reverse()) {
-                mempool.updateMempool(mempool.parseTransaction(tx));
-            }
-        }
         mempool.setBalance();
+        if (!this.fullSynced) {
+            getEventEmitter().emit('sync-status-update', 0, 0, true);
+        }
     }
 
     async walletFullSync() {

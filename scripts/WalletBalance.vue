@@ -22,6 +22,17 @@ import {
 } from './contacts-book';
 import { wallet, getNewAddress } from './wallet';
 
+const totalSyncPages = ref(0);
+const currentSyncPage = ref(0);
+const isSyncing = ref(false);
+const syncStr = computed(() => {
+    return (
+        'Syncing History Chunks ' +
+        currentSyncPage.value +
+        ' of ' +
+        totalSyncPages.value
+    );
+});
 const balance = ref(0);
 const price = ref(0.0);
 const displayDecimals = ref(0);
@@ -64,6 +75,15 @@ getEventEmitter().on('balance-update', async () => {
 getEventEmitter().on('sync-status', (value) => {
     updating.value = value === 'start';
 });
+
+getEventEmitter().on(
+    'sync-status-update',
+    (currentPage, totalPages, finished) => {
+        totalSyncPages.value = totalPages;
+        currentSyncPage.value = currentPage;
+        isSyncing.value = finished === false;
+    }
+);
 
 const isHdWallet = ref(false);
 const isHardwareWallet = ref(false);
@@ -262,5 +282,18 @@ getEventEmitter().on('wallet-import', () => {
                 </div>
             </div>
         </div>
+        <center>
+            <div
+                v-if="isSyncing"
+                style="
+                    background-color: #0000002b;
+                    width: fit-content;
+                    padding: 8px;
+                    border-radius: 15px;
+                "
+            >
+                {{ syncStr }}
+            </div>
+        </center>
     </center>
 </template>
