@@ -351,7 +351,7 @@ export class Mempool {
         for (const vin of tx.vin) {
             const op = vin.outpoint;
             if (!this.isSpent(op)) {
-                this.setSpent();
+                this.setSpent(op.txid, op);
             }
         }
         this.addToOrderedTxMap(tx);
