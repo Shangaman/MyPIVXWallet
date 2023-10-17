@@ -219,6 +219,7 @@ export class Mempool {
     }
 
     /**
+     * Add a transaction to the orderedTxmap, must be called once a new transaction is received.
      * @param {Transaction} tx
      */
     addToOrderedTxMap(tx) {
@@ -345,8 +346,7 @@ export class Mempool {
      * @param {Transaction} tx
      */
     updateMempool(tx) {
-        if (this.txmap.get(tx.txid) && this.txmap.get(tx.txid).isConfirmed())
-            return;
+        if (this.txmap.get(tx.txid)?.isConfirmed()) return;
         this.txmap.set(tx.txid, tx);
         for (const vin of tx.vin) {
             const op = vin.outpoint;
