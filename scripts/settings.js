@@ -521,6 +521,8 @@ export async function toggleTestnet() {
     await fillExplorerSelect();
     await fillNodeSelect();
     mempool.reset();
+    activityDashboard.reset();
+    stakingDashboard.reset();
     if (cNewAccount?.publicKey) {
         // Import the new wallet (overwriting the existing in-memory wallet)
         await importWallet({ newWif: cNewAccount.publicKey });
@@ -555,8 +557,6 @@ export async function toggleTestnet() {
     getStakingBalance(true);
     await updateEncryptionGUI(wallet.isLoaded());
     await updateGovernanceTab();
-    activityDashboard.reset();
-    stakingDashboard.reset();
 }
 
 export function toggleDebug() {
