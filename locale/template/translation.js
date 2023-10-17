@@ -229,7 +229,7 @@ export default {
     activitySentTo: '', //Sent to {}
     activitySelf: '', // self
     activityShieldedAddress: '', //Shielded address
-    activityReceivedWith: '', //Received with {}
+    activityReceivedWith: '', //Received with {s}
     activityDelegatedTo: '', // Delegated to {}
     activityUndelegated: '', //Undelegated
     activityUnknown: '', //Unknown Tx

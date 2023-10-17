@@ -232,7 +232,7 @@ export default {
     activitySentToSelf: 'Umbuchung', //Self
     activityShieldedAddress: 'Geschützte Adresse', //Shielded address
     activityReceivedShield: 'Erhalten von geschützter Adresse', //Received from Shielded address
-    activityReceivedWith: '', //Received with {}
+    activityReceivedWith: '', //Received with {s}
     activityDelegatedTo: 'Delegiert an {r}', //Delegated to {r}
     activityUndelegated: 'Abberufen', //Undelegated
     activityUnknown: 'Unbekannte Trasaktion', //Unknown Tx

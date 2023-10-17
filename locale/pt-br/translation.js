@@ -236,7 +236,7 @@ export default {
     activitySentTo: 'Enviado para {r}', //Sent to
     activitySelf: 'si mesmo', //Self
     activityShieldedAddress: 'Endereço Protegido', //Shielded address
-    activityReceivedWith: '', //Received with {}
+    activityReceivedWith: '', //Received with {s}
     activityDelegatedTo: 'Delegado a {r}', //Delegated to
     activityUndelegated: 'Não é Delegado', //Undelegated
     activityUnknown: 'Tx desconhecido', //Unknown Tx

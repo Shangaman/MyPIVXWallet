@@ -235,7 +235,7 @@ export default {
     activitySentTo: 'Verzonden naar {r}',
     activitySelf: 'zelf',
     activityShieldedAddress: 'Afgeschermd adres',
-    activityReceivedFrom: 'Ontvangen van {s}',
+    activityReceivedWith: '', //Received with {s}
     activityDelegatedTo: 'Gedelegeerd aan {r}',
     activityUndelegated: 'Gedelegeerd ongedaan gemaakt',
     activityUnknown: 'Onbekende transactie',
