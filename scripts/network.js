@@ -224,6 +224,11 @@ export class ExplorerNetwork extends Network {
         mempool.setBalance();
         if (!this.fullSynced) {
             getEventEmitter().emit('sync-status-update', 0, 0, true);
+            createAlert(
+                'success',
+                'Wallet finished syncing, balance and transactions are now updated!',
+                12500
+            );
         }
     }
 

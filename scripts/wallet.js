@@ -745,7 +745,14 @@ export async function importWallet({
         getEventEmitter().emit('wallet-import');
 
         // Fetch state from explorer, if this import was post-startup
-        if (getNetwork().enabled) await getNetwork().walletFullSync();
+        if (getNetwork().enabled) {
+            createAlert(
+                'info',
+                'Wallet started syncing, it might take a while, please wait',
+                12500
+            );
+            await getNetwork().walletFullSync();
+        }
         if (getNetwork().enabled && !fStartup) {
             refreshChainData();
         }
