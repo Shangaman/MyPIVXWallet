@@ -470,13 +470,13 @@ async function setAnalytics(level, fSilent = false) {
  */
 export async function logOut() {
     const fContinue = await confirmPopup({
-        title: 'Are you sure?',
+        title: `${translation.CONFIRM_POPUP_DELETE_ACCOUNT_TITLE}`,
         html: `
         <b>${tr(translation.netSwitchUnsavedWarningSubtitle, [
             { network: cChainParams.current.name },
         ])}</b>
         <br>
-        This will delete all your data, including masternodes contacts and private keys!
+        ${translation.CONFIRM_POPUP_DELETE_ACCOUNT}
         <br>
         <br>
     `,
@@ -511,7 +511,7 @@ export async function logOut() {
     activityDashboard.reset();
     stakingDashboard.reset();
     await fillExplorerSelect();
-    createAlert('success', 'Your account has been successfully deleted!', 3000);
+    createAlert('success', translation.accountDeleted, 3000);
 }
 
 /**
@@ -599,8 +599,6 @@ export async function toggleTestnet() {
         doms.domImportWallet.style.display = 'none';
     }
 
-    getEventEmitter().emit('balance-update');
-    getStakingBalance(true);
     await updateEncryptionGUI(wallet.isLoaded());
     updateLogOutButton();
     await fillExplorerSelect();

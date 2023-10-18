@@ -133,6 +133,10 @@ export class Mempool {
         this.#isLoaded = false;
         this.txmap = new Map();
         this.spent = new Multimap();
+        this.#balance = 0;
+        this.#coldBalance = 0;
+        getEventEmitter().emit('balance-update');
+        getStakingBalance(true);
     }
     get balance() {
         return this.#balance;
