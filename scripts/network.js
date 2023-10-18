@@ -183,33 +183,26 @@ export class ExplorerNetwork extends Network {
     }
 
     async safeFetchFromExplorer(strCommand) {
-        let fetched = false;
-        let res;
         let trials = 0;
-        const maxTrials = 12;
+        const maxTrials = 5;
         while (trials < maxTrials) {
             try {
                 trials += 1;
-                res = await (
-                    await retryWrapper(fetchBlockbook, strCommand)
-                ).json();
-                fetched = true;
-                break;
+                const network_res = await fetchBlockbook(strCommand);
+                if (!network_res.ok) throw network_res;
+                const res = await network_res.json();
+                return res;
             } catch (e) {
                 if (debug) {
                     console.log(
-                        "Block book is being a shit!, let's try again in 5 seconds"
+                        "Block book is being a shit!, let's try again in 30 seconds"
                     );
                     console.log(e);
                 }
-                await sleep(10000);
+                await sleep(30000);
             }
         }
-        if (fetched) {
-            return res;
-        } else {
-            throw new Error('Cannot safe fetch from explorer!');
-        }
+        throw new Error('Cannot safe fetch from explorer!');
     }
     async getLatestTxs(nStartHeight) {
         // Ask some blocks in the past or blockbock might not return a transaction that has just been mined
