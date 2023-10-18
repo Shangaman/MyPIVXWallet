@@ -1535,8 +1535,7 @@ export async function sweepAddress(arrUTXOs, sweepingMasterKey, nFixedFee = 0) {
     // Sign using the given Master Key, then broadcast the sweep, returning the TXID (or a failure)
     const sweepingWallet = new Wallet(0, false);
     await sweepingWallet.setMasterKey(sweepingMasterKey);
-    //this line is a temporary fix to promos and will be removed with tx database
-    await sweepingWallet.loadAddresses();
+
     const sign = await signTransaction(cTx, sweepingWallet);
     return await getNetwork().sendTransaction(sign);
 }

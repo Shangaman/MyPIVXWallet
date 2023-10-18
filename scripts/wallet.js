@@ -200,7 +200,7 @@ export class Wallet {
         this.#highestUsedIndex = 0;
         this.#loadedIndexes = 0;
         this.#ownAddresses = new Map();
-        await this.loadAddresses();
+        this.loadAddresses();
     }
 
     /**
@@ -304,7 +304,7 @@ export class Wallet {
      * Check if the vout is owned and in case update highestUsedIdex
      * @param {CTxOut} vout
      */
-    async updateHighestUsedIndex(vout) {
+    updateHighestUsedIndex(vout) {
         const dataBytes = hexToBytes(vout.script);
         const iStart = isP2PKH(dataBytes) ? P2PK_START_INDEX : COLD_START_INDEX;
         const address = this.getAddressFromHashCache(
@@ -321,7 +321,7 @@ export class Wallet {
                 this.#highestUsedIndex + MAX_ACCOUNT_GAP >=
                 this.#loadedIndexes
             ) {
-                await this.loadAddresses();
+                this.loadAddresses();
             }
         }
     }
@@ -329,7 +329,7 @@ export class Wallet {
     /**
      * Load MAX_ACCOUNT_GAP inside #ownAddresses map.
      */
-    async loadAddresses() {
+    loadAddresses() {
         if (this.isHD()) {
             for (
                 let i = this.#loadedIndexes;
@@ -341,7 +341,7 @@ export class Wallet {
                 this.#ownAddresses.set(address, path);
             }
         } else {
-            this.#ownAddresses.set(await this.getKeyToExport(), ':)');
+            this.#ownAddresses.set(this.getKeyToExport(), ':)');
         }
         this.#loadedIndexes += MAX_ACCOUNT_GAP;
     }
