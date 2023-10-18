@@ -354,6 +354,9 @@ export class Mempool {
                 this.setSpent(op.txid, op);
             }
         }
+        for (const vout of tx.vout) {
+            wallet.updateHighestUsedIndex(vout);
+        }
         this.addToOrderedTxMap(tx);
     }
     setBalance() {

@@ -56,8 +56,6 @@ export class Network {
         }
         this._enabled = true;
         this.wallet = wallet;
-
-        this.lastWallet = 0;
     }
 
     /**
@@ -234,7 +232,6 @@ export class ExplorerNetwork extends Network {
                   `${strRoot + strCoreParams}&pageSize=1`
               )
             : null;
-
         //.txs returns the total number of wallet's transaction regardless the startHeight and we use this for first sync
         // after first sync (so at each new block) we can safely assume that user got less than 1000 new txs
         const txNumber = !this.fullSynced ? probePage.txs : 1;
@@ -254,13 +251,6 @@ export class ExplorerNetwork extends Network {
             const iPage = await this.safeFetchFromExplorer(
                 `${strRoot + strCoreParams}&page=${i}`
             );
-            // Track our last used wallet path (by index)
-            this.lastWallet = iPage.tokens
-                ? Math.max(
-                      parseInt(iPage.tokens.pop()['path'].split('/')[5]),
-                      this.lastWallet
-                  )
-                : this.lastWallet;
 
             // Pre-derive our addresses
             await this.wallet.loadAddresses();
@@ -336,15 +326,7 @@ export class ExplorerNetwork extends Network {
             const arrUTXOs = await (
                 await retryWrapper(fetchBlockbook, `/api/v2/utxo/${publicKey}`)
             ).json();
-            // Update the maximum path
-            for (const utxo of arrUTXOs) {
-                if (utxo.path) {
-                    this.lastWallet = Math.max(
-                        parseInt(utxo.path.split('/')[5]),
-                        this.lastWallet
-                    );
-                }
-            }
+
             // If using MPW's wallet, then sync the UTXOs in MPW's state
             // This check is a temporary fix to the toggle explorer call
             if (this === getNetwork())

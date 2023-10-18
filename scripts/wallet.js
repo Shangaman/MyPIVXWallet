@@ -60,6 +60,16 @@ export class Wallet {
      */
     #nAccount;
     /**
+     * Number of loaded indexes, loaded means that they are in the ownAddresses map
+     * @type {number}
+     */
+    #loadedIndexes = 0;
+    /**
+     * Highest index used, where used means that the corresponding address is on chain (for example in a tx)
+     * @type {number}
+     */
+    #highestUsedIndex = 0;
+    /**
      * @type {number}
      */
     #addressIndex = 0;
@@ -187,6 +197,10 @@ export class Wallet {
         if (this.#isMainWallet) {
             getNetwork().setWallet(this);
         }
+        this.#highestUsedIndex = 0;
+        this.#loadedIndexes = 0;
+        this.#ownAddresses = new Map();
+        await this.loadAddresses();
     }
 
     /**
@@ -270,7 +284,7 @@ export class Wallet {
      * @return [string, string] Address and its BIP32 derivation path
      */
     getNewAddress() {
-        const last = getNetwork().lastWallet;
+        const last = this.#highestUsedIndex;
         this.#addressIndex =
             (this.#addressIndex > last ? this.#addressIndex : last) + 1;
         if (this.#addressIndex - last > MAX_ACCOUNT_GAP) {
@@ -286,19 +300,50 @@ export class Wallet {
         return this.#masterKey?.isHardwareWallet === true;
     }
 
+    /**
+     * Check if the vout is owned and in case update highestUsedIdex
+     * @param {CTxOut} vout
+     */
+    async updateHighestUsedIndex(vout) {
+        const dataBytes = hexToBytes(vout.script);
+        const iStart = isP2PKH(dataBytes) ? P2PK_START_INDEX : COLD_START_INDEX;
+        const address = this.getAddressFromHashCache(
+            bytesToHex(dataBytes.slice(iStart, iStart + 20)),
+            false
+        );
+        const path = this.isOwnAddress(address);
+        if (path) {
+            this.#highestUsedIndex = Math.max(
+                parseInt(path.split('/')[5]),
+                this.#highestUsedIndex
+            );
+            if (
+                this.#highestUsedIndex + MAX_ACCOUNT_GAP >=
+                this.#loadedIndexes
+            ) {
+                await this.loadAddresses();
+            }
+        }
+    }
+
+    /**
+     * Load MAX_ACCOUNT_GAP inside #ownAddresses map.
+     */
     async loadAddresses() {
-        const last = getNetwork().lastWallet;
-        this.#addressIndex =
-            this.#addressIndex > last ? this.#addressIndex : last;
         if (this.isHD()) {
-            for (let i = 0; i <= this.#addressIndex + MAX_ACCOUNT_GAP; i++) {
+            for (
+                let i = this.#loadedIndexes;
+                i <= this.#loadedIndexes + MAX_ACCOUNT_GAP;
+                i++
+            ) {
                 const path = this.getDerivationPath(0, i);
-                const address = await this.#masterKey.getAddress(path);
+                const address = this.#masterKey.getAddress(path);
                 this.#ownAddresses.set(address, path);
             }
         } else {
             this.#ownAddresses.set(await this.getKeyToExport(), ':)');
         }
+        this.#loadedIndexes += MAX_ACCOUNT_GAP;
     }
 
     /**
