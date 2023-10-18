@@ -88,7 +88,7 @@ async function update(txToAdd = 0) {
         found += txsAtnHeight.length;
     }
     const arrTXs = wallet.toHistoricalTXs(newTxs);
-    parseTXs(arrTXs);
+    await parseTXs(arrTXs);
     txCount = found;
     updating.value = false;
 }
@@ -188,14 +188,8 @@ async function parseTXs(arrTXs) {
             } else if (cTx.shieldedOutputs) {
                 who = translation.activityShieldedAddress;
             } else {
-                const arrAddresses = (
-                    await Promise.all(
-                        cTx.receivers.map(async (addr) => [
-                            await wallet.isOwnAddress(addr),
-                            addr,
-                        ])
-                    )
-                )
+                const arrAddresses = cTx.receivers
+                    .map((addr) => [wallet.isOwnAddress(addr), addr])
                     .filter(([isOwnAddress, _]) => {
                         return cTx.type === HistoricalTxType.RECEIVED
                             ? isOwnAddress
