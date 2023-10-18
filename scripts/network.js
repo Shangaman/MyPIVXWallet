@@ -188,10 +188,9 @@ export class ExplorerNetwork extends Network {
         while (trials < maxTrials) {
             try {
                 trials += 1;
-                const network_res = await fetchBlockbook(strCommand);
-                if (!network_res.ok) throw network_res;
-                const res = await network_res.json();
-                return res;
+                const res = await fetchBlockbook(strCommand);
+                if (!res.ok) throw res;
+                return await res.json();
             } catch (e) {
                 if (debug) {
                     console.log(
