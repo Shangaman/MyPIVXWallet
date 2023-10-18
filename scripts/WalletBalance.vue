@@ -1,6 +1,6 @@
 <script setup>
 import { cChainParams, COIN } from './chain_params.js';
-import { translation } from './i18n';
+import { tr, translation } from './i18n';
 import { ref, computed } from 'vue';
 
 import { nDisplayDecimals } from './settings';
@@ -26,12 +26,10 @@ const totalSyncPages = ref(0);
 const currentSyncPage = ref(0);
 const isSyncing = ref(false);
 const syncStr = computed(() => {
-    return (
-        'Syncing History Chunks ' +
-        currentSyncPage.value +
-        ' of ' +
-        totalSyncPages.value
-    );
+    return tr(translation.syncStatusHistoryProgress, [
+        { current: currentSyncPage.value },
+        { total: totalSyncPages.value },
+    ]);
 });
 const balance = ref(0);
 const price = ref(0.0);

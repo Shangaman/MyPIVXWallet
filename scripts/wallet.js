@@ -746,11 +746,7 @@ export async function importWallet({
 
         // Fetch state from explorer, if this import was post-startup
         if (getNetwork().enabled) {
-            createAlert(
-                'info',
-                'Wallet started syncing, it might take a while, please wait',
-                12500
-            );
+            createAlert('info', translation.syncStatusStarting, 12500);
             await getNetwork().walletFullSync();
         }
         if (getNetwork().enabled && !fStartup) {

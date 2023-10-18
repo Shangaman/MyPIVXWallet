@@ -7,8 +7,9 @@ import {
     cAnalyticsLevel,
     setExplorer,
     fAutoSwitch,
+    debug,
 } from './settings.js';
-import { ALERTS } from './i18n.js';
+import { ALERTS, translation } from './i18n.js';
 import { activityDashboard, mempool, stakingDashboard } from './global.js';
 
 /**
@@ -182,6 +183,9 @@ export class ExplorerNetwork extends Network {
     }
 
     async getLatestTxs(nStartHeight) {
+        if (debug) {
+            console.time('getLatestTxsTimer');
+        }
         // Form the API call using our wallet information
         const strKey = await this.wallet.getKeyToExport();
         const strRoot = `/api/v2/${
@@ -194,7 +198,13 @@ export class ExplorerNetwork extends Network {
                 `${strRoot + strCoreParams}&pageSize=1`
             )
         ).json();
-        const totalPages = Math.ceil(probePage.txs / 1000);
+
+        //.txs returns the total number of wallet's transaction regardless the startHeight
+        //.totalPages for pageSize = 1 returns the total number of transaction from the startHeight, but it is 1 even if there are no transactions at all
+        // So we use .txs for full syncing since if the wallet is empty we don't want to show "loading 1 page" to the user.
+        const txNumber = this.fullSynced ? probePage.totalPages : probePage.txs;
+        // Compute the total pages and iterate through them until we've synced everything
+        const totalPages = Math.ceil(txNumber / 1000);
         for (let i = totalPages; i > 0; i--) {
             if (!this.fullSynced) {
                 getEventEmitter().emit(
@@ -204,31 +214,47 @@ export class ExplorerNetwork extends Network {
                     false
                 );
             }
+
+            // Fetch this page of transactions
             const iPage = await (
                 await retryWrapper(
                     fetchBlockbook,
                     `${strRoot + strCoreParams}&page=${i}`
                 )
             ).json();
+
+            // Track our last used wallet path (by index)
             this.lastWallet = iPage.tokens
                 ? Math.max(
                       parseInt(iPage.tokens.pop()['path'].split('/')[5]),
                       this.lastWallet
                   )
                 : this.lastWallet;
+
+            // Pre-derive our addresses
             await this.wallet.loadAddresses();
-            for (const tx of iPage.transactions.reverse()) {
-                mempool.updateMempool(mempool.parseTransaction(tx));
+
+            // Update the internal mempool if there's new transactions
+            // Note: Extra check since Blockbook sucks and removes `.transactions` instead of an empty array if there's no transactions
+            if (iPage?.transactions?.length > 0) {
+                for (const tx of iPage.transactions.reverse()) {
+                    mempool.updateMempool(mempool.parseTransaction(tx));
+                }
             }
+        }
+        if (debug) {
+            console.log(
+                'Fetched latest txs: total number of pages was ',
+                totalPages,
+                ' fullSynced? ',
+                this.fullSynced
+            );
+            console.timeEnd('getLatestTxsTimer');
         }
         mempool.setBalance();
         if (!this.fullSynced) {
             getEventEmitter().emit('sync-status-update', 0, 0, true);
-            createAlert(
-                'success',
-                'Wallet finished syncing, balance and transactions are now updated!',
-                12500
-            );
+            createAlert('success', translation.syncStatusFinished, 12500);
         }
     }
 

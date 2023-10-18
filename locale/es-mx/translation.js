@@ -86,6 +86,9 @@ export default {
     secureYourWallet: 'Asegura tu wallet', //Secure your wallet
     unlockWallet: 'Desbloquear wallet', //Unlock wallet
     lockWallet: 'Bloquear wallet', //Lock wallet
+    syncStatusHistoryProgress: '', //Syncing History Chunks {current} of {total}
+    syncStatusStarting: '', //<b>Your wallet is syncing!</b><br>You\'ll be able to use it fully once this is complete.
+    syncStatusFinished: '', //<b>Sync Finished!</b><br>Your wallet is ready to use!
 
     // Encrypt wallet
     encryptWallet: 'Encriptar wallet', //Encrypt wallet
