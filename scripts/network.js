@@ -194,11 +194,11 @@ export class ExplorerNetwork extends Network {
             } catch (e) {
                 if (debug) {
                     console.log(
-                        "Block book is being a shit!, let's try again in 30 seconds"
+                        "Block book is being a shit!, let's try again in 20 seconds"
                     );
                     console.log(e);
                 }
-                await sleep(30000);
+                await sleep(20000);
             }
         }
         throw new Error('Cannot safe fetch from explorer!');

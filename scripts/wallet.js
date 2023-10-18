@@ -348,7 +348,7 @@ export class Wallet {
 
     /**
      * @param {string} address - address to check
-     * @return {Promise<String?>} BIP32 path or null if it's not your address
+     * @return {string?} BIP32 path or null if it's not your address
      */
     isOwnAddress(address) {
         return this.#ownAddresses.get(address) ?? null;
@@ -559,7 +559,7 @@ export class Wallet {
                 type = HistoricalTxType.UNDELEGATION;
             } else if (this.checkForDelegations(tx)) {
                 type = HistoricalTxType.DELEGATION;
-                arrReceivers.filter((addr) => {
+                arrReceivers = arrReceivers.filter((addr) => {
                     return addr[0] === cChainParams.current.STAKING_PREFIX;
                 });
                 nAmount =
