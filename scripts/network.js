@@ -1,5 +1,5 @@
 import { cChainParams } from './chain_params.js';
-import { createAlert } from './misc.js';
+import { createAlert, sleep } from './misc.js';
 import { getEventEmitter } from './event_bus.js';
 import {
     STATS,
@@ -173,6 +173,8 @@ export class ExplorerNetwork extends Network {
                 if (this.fullSynced) {
                     await this.getLatestTxs(this.lastBlockSynced);
                     this.lastBlockSynced = this.blocks;
+                    activityDashboard.update(0);
+                    stakingDashboard.update(0);
                 }
             }
         } catch (e) {
@@ -182,7 +184,42 @@ export class ExplorerNetwork extends Network {
         return this.blocks;
     }
 
+    async safeFetchFromExplorer(strCommand) {
+        let fetched = false;
+        let res;
+        let trials = 0;
+        const maxTrials = 12;
+        while (trials < maxTrials) {
+            try {
+                trials += 1;
+                res = await (
+                    await retryWrapper(fetchBlockbook, strCommand)
+                ).json();
+                fetched = true;
+                break;
+            } catch (e) {
+                if (debug) {
+                    console.log(
+                        "Block book is being a shit!, let's try again in 5 seconds"
+                    );
+                    console.log(e);
+                }
+                await sleep(10000);
+            }
+        }
+        if (fetched) {
+            return res;
+        } else {
+            throw new Error('Cannot safe fetch from explorer!');
+        }
+    }
     async getLatestTxs(nStartHeight) {
+        // Ask some blocks in the past or blockbock might not return a transaction that has just been mined
+        const blockOffset = 10;
+        nStartHeight =
+            nStartHeight > blockOffset
+                ? nStartHeight - blockOffset
+                : nStartHeight;
         if (debug) {
             console.time('getLatestTxsTimer');
         }
@@ -192,17 +229,15 @@ export class ExplorerNetwork extends Network {
             this.wallet.isHD() ? 'xpub/' : 'address/'
         }${strKey}`;
         const strCoreParams = `?details=txs&from=${nStartHeight}`;
-        const probePage = await (
-            await retryWrapper(
-                fetchBlockbook,
-                `${strRoot + strCoreParams}&pageSize=1`
-            )
-        ).json();
+        const probePage = !this.fullSynced
+            ? await this.safeFetchFromExplorer(
+                  `${strRoot + strCoreParams}&pageSize=1`
+              )
+            : null;
 
-        //.txs returns the total number of wallet's transaction regardless the startHeight
-        //.totalPages for pageSize = 1 returns the total number of transaction from the startHeight, but it is 1 even if there are no transactions at all
-        // So we use .txs for full syncing since if the wallet is empty we don't want to show "loading 1 page" to the user.
-        const txNumber = this.fullSynced ? probePage.totalPages : probePage.txs;
+        //.txs returns the total number of wallet's transaction regardless the startHeight and we use this for first sync
+        // after first sync (so at each new block) we can safely assume that user got less than 1000 new txs
+        const txNumber = !this.fullSynced ? probePage.txs : 1;
         // Compute the total pages and iterate through them until we've synced everything
         const totalPages = Math.ceil(txNumber / 1000);
         for (let i = totalPages; i > 0; i--) {
@@ -216,13 +251,9 @@ export class ExplorerNetwork extends Network {
             }
 
             // Fetch this page of transactions
-            const iPage = await (
-                await retryWrapper(
-                    fetchBlockbook,
-                    `${strRoot + strCoreParams}&page=${i}`
-                )
-            ).json();
-
+            const iPage = await this.safeFetchFromExplorer(
+                `${strRoot + strCoreParams}&page=${i}`
+            );
             // Track our last used wallet path (by index)
             this.lastWallet = iPage.tokens
                 ? Math.max(
