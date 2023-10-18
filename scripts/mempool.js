@@ -7,7 +7,7 @@ import {
 import { getEventEmitter } from './event_bus.js';
 import Multimap from 'multimap';
 import { wallet } from './wallet.js';
-import { COIN } from './chain_params.js';
+import { COIN, cChainParams } from './chain_params.js';
 
 export class CTxOut {
     /**
@@ -26,6 +26,9 @@ export class CTxOut {
         /** Value in satoshi
          *  @type {Number} */
         this.value = value;
+    }
+    isEmpty() {
+        return this.value == 0 && this.script == 'f8';
     }
 }
 export class CTxIn {
@@ -69,6 +72,22 @@ export class Transaction {
     isConfirmed() {
         return this.blockHeight != -1;
     }
+    isCoinStake() {
+        return this.vout.length >= 2 && this.vout[0].isEmpty();
+    }
+    isCoinBase() {
+        // txid undefined happens only for coinbase inputs
+        return this.vin.length == 1 && !this.vin[0].outpoint.txid;
+    }
+    isMature() {
+        if (!(this.isCoinBase() || this.isCoinStake())) {
+            return true;
+        }
+        return (
+            getNetwork().cachedBlockCount - this.blockHeight >
+            cChainParams.current.coinbaseMaturity
+        );
+    }
 }
 /** An Unspent Transaction Output, used as Inputs of future transactions */
 export class COutpoint {
@@ -84,6 +103,13 @@ export class COutpoint {
         /** Outpoint position in the corresponding transaction
          *  @type {Number} */
         this.n = n;
+    }
+    /**
+     * Sadly javascript sucks and we cannot directly compare Objects in Sets
+     * @returns {String} Unique string representation of the COutpoint
+     */
+    toUnique() {
+        return this.txid + this.n.toString();
     }
 }
 
@@ -178,17 +204,12 @@ export class Mempool {
                         (x) => x.txid == op.txid && x.vout == op.n
                     );
                     if (!isMyUTXO && !this.isSpent(op)) {
-                        this.spent.set(tx.txid, op);
+                        this.setSpent(tx.txid, op);
                     }
                 }
             }
             this.#isLoaded = true;
-            this.#balance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
-            this.#coldBalance = this.getBalance(
-                UTXO_WALLET_STATE.SPENDABLE_COLD
-            );
-            getEventEmitter().emit('balance-update');
-            getStakingBalance(true);
+            this.setBalance();
             activityDashboard.update();
             stakingDashboard.update();
             getEventEmitter().emit('sync-status', 'stop');
@@ -218,6 +239,15 @@ export class Mempool {
         });
     }
     /**
+     * Add op to the spent map and optionally remove it from the lock set
+     * @param {String} txid - transaction id
+     * @param {COutpoint} op
+     */
+    setSpent(txid, op) {
+        this.spent.set(txid, op);
+        if (wallet.isCoinLocked(op)) wallet.unlockCoin(op);
+    }
+    /**
      * An Outpoint to check
      * @param {COutpoint} op
      */
@@ -229,64 +259,10 @@ export class Mempool {
      * Get the total wallet balance
      * @param {UTXO_WALLET_STATE} filter the filter you want to apply
      */
-    getBalance(filter) {
+    getBalance(filter, includeLocked = false) {
         let totBalance = 0;
         for (const [_, tx] of this.txmap) {
-            for (const vout of tx.vout) {
-                if (this.isSpent(vout.outpoint)) {
-                    continue;
-                }
-                const UTXO_STATE = wallet.isMyVout(vout.script);
-                if ((UTXO_STATE & filter) == 0) {
-                    continue;
-                }
-                totBalance += vout.value;
-            }
-        }
-        return totBalance;
-    }
-    /**
-     * Outpoint that we want to fetch
-     * @param {COutpoint} op
-     * @param {UTXO_WALLET_STATE} filter the filter you want to apply
-     * @param {Boolean} onlyConfirmed consider only confirmed transactions
-     */
-    hasUTXO(op, filter, onlyConfirmed) {
-        // If the outpoint is spent return false
-        if (this.isSpent(op)) {
-            return false;
-        }
-        // If we don't have the outpoint return false
-        if (!this.txmap.has(op.txid)) {
-            return false;
-        }
-        const tx = this.txmap.get(op.txid);
-        // Check if the tx is confirmed
-        if (onlyConfirmed && !tx.isConfirmed()) {
-            return false;
-        }
-        const vout = tx.vout[op.n];
-        const UTXO_STATE = wallet.isMyVout(vout.script);
-        // Check if the UTXO has the state we wanted
-        if ((UTXO_STATE & filter) == 0) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Get a list of UTXOs
-     * @param {Object} o
-     * @param {Number} o.filter enum element of UTXO_WALLET_STATE
-     * @param {Number | null} o.target PIVs in satoshi that we want to spend
-     * @param {Boolean} o.onlyConfirmed Consider only confirmed transactions
-     * @returns {CTxOut[]} Array of fetched UTXOs
-     */
-    getUTXOs({ filter, target, onlyConfirmed = false }) {
-        let totFound = 0;
-        let utxos = [];
-        for (const [_, tx] of this.txmap) {
-            if (onlyConfirmed && !tx.isConfirmed()) {
+            if (!tx.isMature()) {
                 continue;
             }
             for (const vout of tx.vout) {
@@ -295,6 +271,45 @@ export class Mempool {
                 }
                 const UTXO_STATE = wallet.isMyVout(vout.script);
                 if ((UTXO_STATE & filter) == 0) {
+                    continue;
+                }
+                if (!includeLocked && wallet.isCoinLocked(vout.outpoint)) {
+                    continue;
+                }
+                totBalance += vout.value;
+            }
+        }
+        return totBalance;
+    }
+
+    /**
+     * Get a list of UTXOs
+     * @param {Object} o
+     * @param {Number} o.filter enum element of UTXO_WALLET_STATE
+     * @param {Number | null} o.target PIVs in satoshi that we want to spend
+     * @param {Boolean} o.onlyConfirmed Consider only confirmed transactions
+     * @param {Boolean} o.includeLocked Include locked coins
+     * @returns {CTxOut[]} Array of fetched UTXOs
+     */
+    getUTXOs({ filter, target, onlyConfirmed = false, includeLocked }) {
+        let totFound = 0;
+        let utxos = [];
+        for (const [_, tx] of this.txmap) {
+            if (onlyConfirmed && !tx.isConfirmed()) {
+                continue;
+            }
+            if (!tx.isMature()) {
+                continue;
+            }
+            for (const vout of tx.vout) {
+                if (this.isSpent(vout.outpoint)) {
+                    continue;
+                }
+                const UTXO_STATE = wallet.isMyVout(vout.script);
+                if ((UTXO_STATE & filter) == 0) {
+                    continue;
+                }
+                if (!includeLocked && wallet.isCoinLocked(vout.outpoint)) {
                     continue;
                 }
                 utxos.push(vout);
@@ -348,8 +363,12 @@ export class Mempool {
             const op = vin.outpoint;
             if (!this.isSpent(op)) {
                 this.spent.set(op.txid, op);
+                if (wallet.isCoinLocked(op)) wallet.unlockCoin(op);
             }
         }
+        this.setBalance();
+    }
+    setBalance() {
         this.#balance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
         this.#coldBalance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE_COLD);
         getEventEmitter().emit('balance-update');
