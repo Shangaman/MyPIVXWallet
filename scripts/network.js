@@ -214,7 +214,7 @@ export class ExplorerNetwork extends Network {
             console.time('getLatestTxsTimer');
         }
         // Form the API call using our wallet information
-        const strKey = await this.wallet.getKeyToExport();
+        const strKey = this.wallet.getKeyToExport();
         const strRoot = `/api/v2/${
             this.wallet.isHD() ? 'xpub/' : 'address/'
         }${strKey}`;
@@ -310,7 +310,7 @@ export class ExplorerNetwork extends Network {
             this.isSyncing = true;
         }
         try {
-            let publicKey = strAddress || (await this.wallet.getKeyToExport());
+            let publicKey = strAddress || this.wallet.getKeyToExport();
             // Fetch UTXOs for the key
             const arrUTXOs = await (
                 await retryWrapper(fetchBlockbook, `/api/v2/utxo/${publicKey}`)
