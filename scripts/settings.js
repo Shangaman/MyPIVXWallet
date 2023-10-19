@@ -521,6 +521,7 @@ export async function toggleTestnet() {
     await fillExplorerSelect();
     await fillNodeSelect();
     mempool.reset();
+    wallet.reset();
     activityDashboard.reset();
     stakingDashboard.reset();
     if (cNewAccount?.publicKey) {

@@ -197,6 +197,13 @@ export class Wallet {
         if (this.#isMainWallet) {
             getNetwork().setWallet(this);
         }
+        this.loadAddresses();
+    }
+
+    /**
+     * Reset the wallet, indexes address map and so on
+     */
+    reset() {
         this.#highestUsedIndex = 0;
         this.#loadedIndexes = 0;
         this.#ownAddresses = new Map();
