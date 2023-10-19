@@ -207,7 +207,6 @@ export class Wallet {
         this.#highestUsedIndex = 0;
         this.#loadedIndexes = 0;
         this.#ownAddresses = new Map();
-        this.loadAddresses();
     }
 
     /**
@@ -347,10 +346,10 @@ export class Wallet {
                 const address = this.#masterKey.getAddress(path);
                 this.#ownAddresses.set(address, path);
             }
+            this.#loadedIndexes += MAX_ACCOUNT_GAP;
         } else {
             this.#ownAddresses.set(this.getKeyToExport(), ':)');
         }
-        this.#loadedIndexes += MAX_ACCOUNT_GAP;
     }
 
     /**
@@ -842,6 +841,9 @@ export async function generateWallet(noUI = false) {
 
         // Refresh the balance UI (why? because it'll also display any 'get some funds!' alerts)
         getStakingBalance(true);
+
+        // Wallet has just been generated: set the network status as full synced
+        getNetwork().fullSynced = true;
     }
 
     return wallet;
