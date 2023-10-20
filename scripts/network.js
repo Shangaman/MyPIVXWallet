@@ -182,24 +182,27 @@ export class ExplorerNetwork extends Network {
         return this.blocks;
     }
 
+    /**
+     * Sometimes blockbook might return internal error, in this case this function will sleep for 20 seconds and retry
+     * @param {string} strCommand - The specific Blockbook api to call
+     * @returns {Promise<Object>} Explorer result in json
+     */
     async safeFetchFromExplorer(strCommand) {
         let trials = 0;
         const maxTrials = 5;
         while (trials < maxTrials) {
-            try {
-                trials += 1;
-                const res = await fetchBlockbook(strCommand);
-                if (!res.ok) throw res;
-                return await res.json();
-            } catch (e) {
+            trials += 1;
+            const res = await fetchBlockbook(strCommand);
+            if (!res.ok) {
                 if (debug) {
                     console.log(
-                        "Block book is being a shit!, let's try again in 20 seconds"
+                        'Blockbook internal error! sleeping for 20 seconds'
                     );
-                    console.log(e);
                 }
                 await sleep(20000);
+                continue;
             }
+            return await res.json();
         }
         throw new Error('Cannot safe fetch from explorer!');
     }

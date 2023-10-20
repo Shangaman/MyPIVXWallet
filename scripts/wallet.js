@@ -387,34 +387,50 @@ export class Wallet {
         return this.isOwnAddress(address);
     }
 
-    isMyVout(script) {
-        let address;
+    /**
+     * Get addresses from a script
+     * @returns {{ type: 'p2pkh'|'p2cs'|'unknown', addresses: string[] }}
+     */
+    #getAddressesFromScript(script) {
         const dataBytes = hexToBytes(script);
         if (isP2PKH(dataBytes)) {
-            address = this.getAddressFromHashCache(
+            const address = this.getAddressFromHashCache(
                 bytesToHex(
                     dataBytes.slice(P2PK_START_INDEX, P2PK_START_INDEX + 20)
                 ),
                 false
             );
-            if (this.isOwnAddress(address)) {
-                return UTXO_WALLET_STATE.SPENDABLE;
-            }
+            return {
+                type: 'p2pkh',
+                addresses: [address],
+            };
         } else if (isP2CS(dataBytes)) {
+            const addresses = [];
             for (let i = 0; i < 2; i++) {
                 const iStart = i == 0 ? OWNER_START_INDEX : COLD_START_INDEX;
-                address = this.getAddressFromHashCache(
-                    bytesToHex(dataBytes.slice(iStart, iStart + 20)),
-                    iStart === OWNER_START_INDEX
+                addresses.push(
+                    this.getAddressFromHashCache(
+                        bytesToHex(dataBytes.slice(iStart, iStart + 20)),
+                        iStart === OWNER_START_INDEX
+                    )
                 );
-                if (this.isOwnAddress(address)) {
-                    return i == 0
-                        ? UTXO_WALLET_STATE.COLD_RECEIVED
-                        : UTXO_WALLET_STATE.SPENDABLE_COLD;
-                }
             }
+            return { type: 'p2cs', addresses };
+        } else {
+            return { type: 'unknown', addresses: [] };
         }
-        return UTXO_WALLET_STATE.NOT_MINE;
+    }
+
+    isMyVout(script) {
+        const { type, addresses } = this.#getAddressesFromScript(script);
+        const index = addresses.findIndex((s) => this.isOwnAddress(s));
+        if (index === -1) return UTXO_WALLET_STATE.NOT_MINE;
+        if (type === 'p2pkh') return UTXO_WALLET_STATE.SPENDABLE;
+        if (type === 'p2cs') {
+            return index === 0
+                ? UTXO_WALLET_STATE.COLD_RECEIVED
+                : UTXO_WALLET_STATE.SPENDABLE_COLD;
+        }
     }
     // Avoid calculating over and over the same getAddressFromHash by saving the result in a map
     getAddressFromHashCache(pkh_hex, isColdStake) {
@@ -508,35 +524,13 @@ export class Wallet {
      * @param {Transaction} tx
      */
     getOutAddress(tx) {
-        let addresses = [];
-        for (const vout of tx.vout) {
-            const dataBytes = hexToBytes(vout.script);
-            if (isP2PKH(dataBytes)) {
-                addresses.push(
-                    this.getAddressFromHashCache(
-                        bytesToHex(
-                            dataBytes.slice(
-                                P2PK_START_INDEX,
-                                P2PK_START_INDEX + 20
-                            )
-                        ),
-                        false
-                    )
-                );
-            } else if (isP2CS(dataBytes)) {
-                for (let i = 0; i < 2; i++) {
-                    const iStart =
-                        i == 0 ? OWNER_START_INDEX : COLD_START_INDEX;
-                    addresses.push(
-                        this.getAddressFromHashCache(
-                            bytesToHex(dataBytes.slice(iStart, iStart + 20)),
-                            iStart === OWNER_START_INDEX
-                        )
-                    );
-                }
-            }
-        }
-        return addresses;
+        return tx.vout.reduce(
+            (acc, vout) => [
+                ...acc,
+                ...this.#getAddressesFromScript(vout.script).addresses,
+            ],
+            []
+        );
     }
 
     /**
