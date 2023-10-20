@@ -71,6 +71,10 @@ async function update(txToAdd = 0) {
 
     // Set the updating animation
     updating.value = true;
+
+    // If there are less than 10 txs loaded, append rather than update the list
+    if (txCount < 10 && txToAdd == 0) txToAdd = 10;
+
     let found = 0;
     const nHeights = Array.from(mempool.orderedTxmap.keys()).sort(
         (a, b) => a - b
