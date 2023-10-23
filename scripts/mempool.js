@@ -385,9 +385,11 @@ export class Mempool {
             if (this.#highestSavedHeight > nHeight) {
                 break;
             }
-            this.orderedTxmap.get(nHeight).forEach(async function (tx) {
-                await database.storeTx(tx);
-            });
+            await Promise.all(
+                this.orderedTxmap.get(nHeight).map(async function (tx) {
+                    await database.storeTx(tx);
+                })
+            );
         }
         this.#highestSavedHeight = nBlockHeights[0];
     }
