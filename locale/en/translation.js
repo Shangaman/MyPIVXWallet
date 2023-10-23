@@ -228,7 +228,7 @@ export default {
     ID: 'ID',
     time: 'Time',
     description: 'Description',
-    accountDeleted: 'Your accoun has been successfully deleted!',
+    accountDeleted: 'Your account has been successfully deleted!',
     activityBlockReward: 'Block Reward',
     activitySentTo: 'Sent to {r}',
     activitySelf: 'self',
