@@ -568,13 +568,22 @@ export async function toggleTestnet() {
     // Check if the new network has an Account
     const cNewDB = await Database.getInstance();
     const cNewAccount = await cNewDB.getAccount();
+    await fillExplorerSelect();
+    await fillNodeSelect();
     mempool.reset();
+    wallet.reset();
+    activityDashboard.reset();
+    stakingDashboard.reset();
     if (cNewAccount?.publicKey) {
         // Import the new wallet (overwriting the existing in-memory wallet)
         await importWallet({ newWif: cNewAccount.publicKey });
     } else {
         // Nuke the Master Key
         wallet.setMasterKey(null);
+
+        // Clear the transaction DB
+        const database = await Database.getInstance();
+        await database.removeAllTxs();
 
         // Hide all Dashboard info, kick the user back to the "Getting Started" area
         doms.domGenKeyWarning.style.display = 'none';
@@ -601,11 +610,7 @@ export async function toggleTestnet() {
 
     await updateEncryptionGUI(wallet.isLoaded());
     updateLogOutButton();
-    await fillExplorerSelect();
-    await fillNodeSelect();
     await updateGovernanceTab();
-    activityDashboard.reset();
-    stakingDashboard.reset();
 }
 
 export function toggleDebug() {
