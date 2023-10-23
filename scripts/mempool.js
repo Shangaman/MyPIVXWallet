@@ -5,7 +5,6 @@ import { getEventEmitter } from './event_bus.js';
 import Multimap from 'multimap';
 import { wallet } from './wallet.js';
 import { COIN, cChainParams } from './chain_params.js';
-
 export class CTxOut {
     /**
      * @param {Object} CTxOut
@@ -417,6 +416,7 @@ export class Mempool {
         const cNet = getNetwork();
         cNet.fullSynced = true;
         cNet.lastBlockSynced = nBlockHeights.at(-1);
+        this.#highestSavedHeight = nBlockHeights.at(-1);
         this.setBalance();
         return true;
     }
