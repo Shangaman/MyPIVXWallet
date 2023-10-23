@@ -5,6 +5,7 @@ import { getEventEmitter } from './event_bus.js';
 import Multimap from 'multimap';
 import { wallet } from './wallet.js';
 import { COIN, cChainParams } from './chain_params.js';
+
 export class CTxOut {
     /**
      * @param {Object} CTxOut
