@@ -482,8 +482,11 @@ export async function logOut() {
     `,
     });
     if (!fContinue) return;
-    await Database.removeInstance();
+    const database = await Database.getInstance();
+    await database.removeAllTxs();
+    await database.removeAccount({ publicKey: null });
     mempool.reset();
+    wallet.reset();
     wallet.setMasterKey(null);
     // Hide all Dashboard info, kick the user back to the "Getting Started" area
     doms.domGenKeyWarning.style.display = 'none';

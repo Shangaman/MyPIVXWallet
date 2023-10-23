@@ -506,11 +506,4 @@ export class Database {
 
         return this.#instances.get(name);
     }
-
-    static async removeInstance() {
-        const name = cChainParams.current.name;
-        const instance = this.#instances.get(name);
-        if (instance) await instance.removeAccount({ publicKey: null });
-        this.#instances.delete(name);
-    }
 }
