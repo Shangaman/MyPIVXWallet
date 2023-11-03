@@ -1,4 +1,5 @@
 import { validateMnemonic } from 'bip39';
+import { decrypt } from './aes-gcm.js';
 import { beforeUnloadListener } from './global.js';
 import { getNetwork } from './network.js';
 import { MAX_ACCOUNT_GAP } from './chain_params.js';
@@ -250,6 +251,31 @@ export class Wallet {
         return !!this.#masterKey;
     }
 
+    /**
+     * Check if the current encrypted keyToBackup can be decrypted with the given password
+     * @param {string} strPassword
+     * @return {Promise<boolean>}
+     */
+    async decryptWallet(strPassword = '') {
+        // Check if there's any encrypted WIF available
+        const database = await Database.getInstance();
+        const { encWif: strEncWIF } = await database.getAccount();
+        if (!strEncWIF || strEncWIF.length < 1) return false;
+
+        // Prompt to decrypt it via password
+        const strDecWIF = await decrypt(strEncWIF, strPassword);
+        if (!strDecWIF || strDecWIF === 'decryption failed!') {
+            if (strDecWIF)
+                return createAlert('warning', ALERTS.INCORRECT_PASSWORD, 6000);
+        }
+        return true;
+    }
+
+    /**
+     * Encrypt the keyToBackup with a given password
+     * @param {string} strPassword
+     * @returns {Promise<boolean}
+     */
     async encryptWallet(strPassword = '') {
         // Encrypt the wallet WIF with AES-GCM and a user-chosen password - suitable for browser storage
         let strEncWIF = await encrypt(this.#masterKey.keyToBackup, strPassword);
