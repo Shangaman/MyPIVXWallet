@@ -255,7 +255,7 @@ async function restoreWallet(strReason) {
 /**
  * Lock the wallet by deleting masterkey private data
  */
-async function wipePrivateData() {
+async function lockWallet() {
     const isEncrypted = await hasEncryptedWallet();
     const title = isEncrypted
         ? translation.popupWalletLock
@@ -520,10 +520,7 @@ defineExpose({
             <!-- Lock wallet -->
             <div class="col-12" v-if="!isViewOnly && !needsToEncrypt">
                 <center>
-                    <div
-                        class="dcWallet-warningMessage"
-                        @click="wipePrivateData()"
-                    >
+                    <div class="dcWallet-warningMessage" @click="lockWallet()">
                         <div class="shieldLogo">
                             <div class="shieldBackground">
                                 <span
