@@ -486,7 +486,10 @@ defineExpose({
             <br />
 
             <!-- Unlock wallet -->
-            <div class="col-12 p-0" v-if="isViewOnly && !needsToEncrypt">
+            <div
+                class="col-12 p-0"
+                v-if="isViewOnly && !needsToEncrypt && isImported"
+            >
                 <center>
                     <div
                         class="dcWallet-warningMessage"
@@ -518,7 +521,10 @@ defineExpose({
             <!-- // Unlock Wallet -->
 
             <!-- Lock wallet -->
-            <div class="col-12" v-if="!isViewOnly && !needsToEncrypt">
+            <div
+                class="col-12"
+                v-if="!isViewOnly && !needsToEncrypt && isImported"
+            >
                 <center>
                     <div class="dcWallet-warningMessage" @click="lockWallet()">
                         <div class="shieldLogo">
