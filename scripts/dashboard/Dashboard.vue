@@ -58,6 +58,7 @@ const showTransferMenu = ref(false);
 const advancedMode = ref(false);
 const showExportModal = ref(false);
 const showEncryptModal = ref(false);
+const isEncrypt = ref(false);
 const keyToBackup = ref('');
 const jdenticonValue = ref('');
 const transferAddress = ref('');
@@ -174,9 +175,9 @@ async function importWallet({ type, secret, password = '' }) {
         wallet.setMasterKey(key);
         isImported.value = true;
         jdenticonValue.value = wallet.getAddress();
+        isEncrypt.value = await hasEncryptedWallet();
         if (!wallet.isHardwareWallet()) {
-            needsToEncrypt.value =
-                !wallet.isViewOnly() && !(await hasEncryptedWallet());
+            needsToEncrypt.value = !wallet.isViewOnly() && !isEncrypt.value;
         } else {
             needsToEncrypt.value = false;
         }
@@ -200,13 +201,17 @@ async function importWallet({ type, secret, password = '' }) {
  */
 async function encryptWallet(password, currentPassword = '') {
     if (await hasEncryptedWallet()) {
-        if (!(await wallet.decryptWallet(currentPassword))) return;
+        if (!(await wallet.decrypt(currentPassword))) {
+            createAlert('warning', ALERTS.INCORRECT_PASSWORD, 6000);
+            return false;
+        }
     }
-    const res = await wallet.encryptWallet(password);
+    const res = await wallet.encrypt(password);
     if (res) {
         createAlert('success', ALERTS.NEW_PASSWORD_SUCCESS, 5500);
     }
     needsToEncrypt.value = false;
+    isEncrypt.value = await hasEncryptedWallet();
     // TODO: refactor once settings is written
     await updateEncryptionGUI();
 }
@@ -882,6 +887,7 @@ defineExpose({
                     @close="showEncryptModal = false"
                     :showModal="showEncryptModal"
                     :showBox="needsToEncrypt"
+                    :isEncrypt="isEncrypt"
                 />
                 <div class="row p-0">
                     <!-- Balance in PIVX & USD-->

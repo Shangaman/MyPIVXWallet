@@ -256,19 +256,14 @@ export class Wallet {
      * @param {string} strPassword
      * @return {Promise<boolean>}
      */
-    async decryptWallet(strPassword = '') {
+    async decrypt(strPassword) {
         // Check if there's any encrypted WIF available
         const database = await Database.getInstance();
         const { encWif: strEncWIF } = await database.getAccount();
         if (!strEncWIF || strEncWIF.length < 1) return false;
 
-        // Prompt to decrypt it via password
         const strDecWIF = await decrypt(strEncWIF, strPassword);
-        if (!strDecWIF || strDecWIF === 'decryption failed!') {
-            if (strDecWIF)
-                return createAlert('warning', ALERTS.INCORRECT_PASSWORD, 6000);
-        }
-        return true;
+        return !strDecWIF ? false : true;
     }
 
     /**
@@ -276,7 +271,7 @@ export class Wallet {
      * @param {string} strPassword
      * @returns {Promise<boolean}
      */
-    async encryptWallet(strPassword = '') {
+    async encrypt(strPassword) {
         // Encrypt the wallet WIF with AES-GCM and a user-chosen password - suitable for browser storage
         let strEncWIF = await encrypt(this.#masterKey.keyToBackup, strPassword);
         if (!strEncWIF) return false;
