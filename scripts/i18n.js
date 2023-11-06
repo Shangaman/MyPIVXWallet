@@ -83,7 +83,7 @@ export async function switchTranslation(langName) {
         if (wallet.isLoaded() && cNet) {
             await updateEncryptionGUI();
         }
-        loadAlerts();
+        ALERTS = translation['ALERTS'];
         fillAnalyticSelect();
         if (wallet.isLoaded()) {
             await guiToggleReceiveType(cReceiveType);
@@ -145,13 +145,6 @@ export function translateStaticHTML(i18nLangs) {
             }
         }
     });
-    loadAlerts();
-}
-
-/**
- * Translates the alerts by loading the data into the ALERTS object
- */
-export function loadAlerts() {
     ALERTS = translation['ALERTS'];
 }
 
