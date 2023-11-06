@@ -179,8 +179,8 @@ async function importWallet({ type, secret, password = '' }) {
         } else {
             needsToEncrypt.value = false;
         }
-        if (!(await mempool.loadFromDisk()))
-            await getNetwork().walletFullSync();
+        await mempool.loadFromDisk();
+        await getNetwork().walletFullSync();
         getEventEmitter().emit('wallet-import');
         if (needsToEncrypt.value) showEncryptModal.value = true;
         return true;
