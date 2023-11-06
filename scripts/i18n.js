@@ -11,7 +11,7 @@ import { negotiateLanguages } from '@fluent/langneg';
 /**
  * @type {translation_template}
  */
-export const ALERTS = {};
+export let ALERTS = {};
 
 /**
  * @type {translation_template}
@@ -152,15 +152,7 @@ export function translateStaticHTML(i18nLangs) {
  * Translates the alerts by loading the data into the ALERTS object
  */
 export function loadAlerts() {
-    // Alerts are designated by a special 'ALERTS' entry in each translation file
-    let fFoundAlerts = false;
-    for (const [alert_key, alert_translation] of Object.entries(translation)) {
-        if (fFoundAlerts) {
-            ALERTS[alert_key] = alert_translation;
-        }
-        // Skip all entries until we find the ALERTS flag
-        if (alert_key === 'ALERTS') fFoundAlerts = true;
-    }
+    ALERTS = translation['ALERTS'];
 }
 
 export const arrActiveLangs = [
