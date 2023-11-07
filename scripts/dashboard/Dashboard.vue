@@ -185,8 +185,9 @@ async function importWallet({ type, secret, password = '' }) {
         if (needsToEncrypt.value) showEncryptModal.value = true;
         isViewOnly.value = wallet.isViewOnly();
 
-        if (!(await mempool.loadFromDisk()))
-            await getNetwork().walletFullSync();
+        await mempool.loadFromDisk();
+        await getNetwork().walletFullSync();
+
         getEventEmitter().emit('wallet-import');
         return true;
     }
