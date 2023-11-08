@@ -202,7 +202,7 @@ async function importWallet({ type, secret, password = '' }) {
  */
 async function encryptWallet(password, currentPassword = '') {
     if (await hasEncryptedWallet()) {
-        if (!(await wallet.decrypt(currentPassword))) {
+        if (!(await wallet.checkDecryptPassword(currentPassword))) {
             createAlert('warning', ALERTS.INCORRECT_PASSWORD, 6000);
             return false;
         }

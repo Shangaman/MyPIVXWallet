@@ -256,14 +256,14 @@ export class Wallet {
      * @param {string} strPassword
      * @return {Promise<boolean>}
      */
-    async decrypt(strPassword) {
+    async checkDecryptPassword(strPassword) {
         // Check if there's any encrypted WIF available
         const database = await Database.getInstance();
         const { encWif: strEncWIF } = await database.getAccount();
         if (!strEncWIF || strEncWIF.length < 1) return false;
 
         const strDecWIF = await decrypt(strEncWIF, strPassword);
-        return !strDecWIF ? false : true;
+        return !!strDecWIF;
     }
 
     /**
