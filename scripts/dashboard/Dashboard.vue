@@ -501,7 +501,7 @@ defineExpose({
             <!-- Unlock wallet -->
             <div
                 class="col-12 p-0"
-                v-if="isViewOnly && !needsToEncrypt && isImported"
+                v-if="isViewOnly && isEncrypt && isImported"
             >
                 <center>
                     <div
