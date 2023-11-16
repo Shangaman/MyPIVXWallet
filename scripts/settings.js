@@ -496,7 +496,6 @@ export async function logOut() {
     });
     if (!fContinue) return;
     const database = await Database.getInstance();
-    await database.removeAllTxs();
     await database.removeAccount({ publicKey: null });
 
     getEventEmitter().emit('toggle-network');

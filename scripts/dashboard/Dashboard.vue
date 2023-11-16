@@ -379,7 +379,6 @@ getEventEmitter().on('toggle-network', async () => {
         await importWallet({ type: 'hd', secret: account.publicKey });
     } else {
         isImported.value = false;
-        await (await Database.getInstance()).removeAllTxs();
     }
     await updateEncryptionGUI(wallet.isLoaded());
     updateLogOutButton();
@@ -405,8 +404,6 @@ onMounted(async () => {
             transferAmount.value = reqAmount;
             showTransferMenu.value = true;
         }
-    } else {
-        await (await Database.getInstance()).removeAllTxs();
     }
     updateLogOutButton();
 });

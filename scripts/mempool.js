@@ -375,6 +375,7 @@ export class Mempool {
      * Save txs on database
      */
     async saveOnDisk() {
+        console.log(wallet.getKeyToExport());
         const nBlockHeights = Array.from(this.orderedTxmap.keys())
             .sort((a, b) => a - b)
             .reverse();
@@ -400,6 +401,14 @@ export class Mempool {
      */
     async loadFromDisk() {
         const database = await Database.getInstance();
+        // Check if the stored txs are linked to this wallet
+        if ((await database.getTxDbIdentifier()) != wallet.getKeyToExport()) {
+            await database.removeAllTxs();
+            await database.storeTxDbIdentifier(wallet.getKeyToExport());
+            console.log('D E S T R O Y E D');
+            return;
+        }
+        console.log('passed');
         const txs = await database.getTxs();
         if (txs.length == 0) {
             return false;
