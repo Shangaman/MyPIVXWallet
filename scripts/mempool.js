@@ -170,6 +170,10 @@ export const HistoricalTxType = {
 /** A Mempool instance, stores and handles UTXO data for the wallet */
 export class Mempool {
     /**
+     * @type {number} - Immature balance
+     */
+    #immatureBalance = 0;
+    /**
      * @type {number} - Our Public balance in Satoshis
      */
     #balance = 0;
@@ -213,6 +217,9 @@ export class Mempool {
     get coldBalance() {
         return this.#coldBalance;
     }
+    get immatureBalance() {
+        return this.#immatureBalance;
+    }
 
     /**
      * An Outpoint to check
@@ -250,10 +257,10 @@ export class Mempool {
      * Get the total wallet balance
      * @param {UTXO_WALLET_STATE} filter the filter you want to apply
      */
-    getBalance(filter, includeLocked = false) {
+    getBalance(filter, includeLocked = false, includeImmature = false) {
         let totBalance = 0;
         for (const [_, tx] of this.txmap) {
-            if (!tx.isMature()) {
+            if (!tx.isMature() && !includeImmature) {
                 continue;
             }
             for (const vout of tx.vout) {
@@ -367,6 +374,9 @@ export class Mempool {
     setBalance() {
         this.#balance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE);
         this.#coldBalance = this.getBalance(UTXO_WALLET_STATE.SPENDABLE_COLD);
+        this.#immatureBalance =
+            this.getBalance(UTXO_WALLET_STATE.SPENDABLE, false, true) -
+            this.#balance;
         getEventEmitter().emit('balance-update');
         getStakingBalance(true);
     }

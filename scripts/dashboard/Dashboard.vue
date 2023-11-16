@@ -412,6 +412,7 @@ onMounted(async () => {
 });
 
 const balance = ref(0);
+const immatureBalance = ref(0);
 const currency = ref('USD');
 const price = ref(0.0);
 const displayDecimals = ref(0);
@@ -426,6 +427,7 @@ getEventEmitter().on('new-tx', (status) => {
 
 getEventEmitter().on('balance-update', async () => {
     balance.value = mempool.balance;
+    immatureBalance.value = mempool.immatureBalance;
     currency.value = strCurrency.toUpperCase();
     price.value = await cMarket.getPrice(strCurrency);
     displayDecimals.value = nDisplayDecimals;
@@ -899,6 +901,7 @@ defineExpose({
                     <!-- Balance in PIVX & USD-->
                     <WalletBalance
                         :balance="balance"
+                        :immatureBalance="immatureBalance"
                         :jdenticonValue="jdenticonValue"
                         :isHdWallet="wallet.isHD()"
                         :isHardwareWallet="wallet.isHardwareWallet()"

@@ -2277,6 +2277,10 @@ a {
   font-size: 17px;
 }
 
+.dcWallet-balances .dcWallet-pivxImmatureBalance {
+    font-size: 17px;
+}
+
 .dcWallet-balances .dcWallet-usdBalance {
   display: block;
   margin-top: -9px;
