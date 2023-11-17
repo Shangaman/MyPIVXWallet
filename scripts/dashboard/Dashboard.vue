@@ -242,6 +242,7 @@ async function restoreWallet(strReason) {
         if (key) {
             wallet.setMasterKey(key);
             isViewOnly.value = wallet.isViewOnly();
+            createAlert('success', 'Wallet successfully unlocked!', 1500);
             return true;
         } else {
             // Password is invalid
@@ -272,6 +273,7 @@ async function lockWallet() {
     ) {
         wallet.wipePrivateData();
         isViewOnly.value = wallet.isViewOnly();
+        createAlert('success', 'Wallet successfully locked!', 1500);
     }
 }
 
