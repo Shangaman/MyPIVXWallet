@@ -254,8 +254,7 @@ function reload() {
                     style="opacity: 0.5; position: relative; left: 2px"
                 ></i>
                 <span
-                    class="dcWallet-pivxImmatureBalance"
-                    style="position: relative; left: 4px"
+                    style="position: relative; left: 4px; font-size: 17px"
                     v-html="immatureBalanceStr"
                 ></span>
                 <span
