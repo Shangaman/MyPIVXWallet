@@ -77,17 +77,6 @@ export class Database {
     }
 
     /**
-     *
-     * @param {String} keyToExport - A key that uniquely identifies a wallet
-     */
-    async storeTxDbIdentifier(keyToExport) {
-        const store = this.#db
-            .transaction('txs', 'readwrite')
-            .objectStore('txs');
-        await store.put(keyToExport, 'keyToExport');
-    }
-
-    /**
      * Remove a tx from the database
      * @param {String} txid - transaction id
      */
@@ -327,17 +316,6 @@ export class Database {
     }
 
     /**
-     *
-     * @returns {Promise<String>} The TxDb Unique identifier
-     */
-    async getTxDbIdentifier() {
-        const store = this.#db
-            .transaction('txs', 'readonly')
-            .objectStore('txs');
-        return await store.get('keyToExport');
-    }
-
-    /**
      * Get all txs from the database
      * @returns {Promise<Transaction>}
      */
@@ -345,12 +323,7 @@ export class Database {
         const store = this.#db
             .transaction('txs', 'readonly')
             .objectStore('txs');
-        const txs = [];
-        for (let tx of await store.getAll()) {
-            // Skip the db identifier
-            if (!tx.vin) {
-                continue;
-            }
+        return (await store.getAll()).map((tx) => {
             const vin = tx.vin.map(
                 (x) =>
                     new CTxIn({
@@ -372,17 +345,14 @@ export class Database {
                         value: x.value,
                     })
             );
-            txs.push(
-                new Transaction({
-                    txid: tx.txid,
-                    blockHeight: tx.blockHeight,
-                    blockTime: tx.blockTime,
-                    vin: vin,
-                    vout: vout,
-                })
-            );
-        }
-        return txs;
+            return new Transaction({
+                txid: tx.txid,
+                blockHeight: tx.blockHeight,
+                blockTime: tx.blockTime,
+                vin: vin,
+                vout: vout,
+            });
+        });
     }
     /**
      * Remove all txs from db

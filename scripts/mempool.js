@@ -5,6 +5,7 @@ import { getEventEmitter } from './event_bus.js';
 import Multimap from 'multimap';
 import { wallet } from './wallet.js';
 import { cChainParams } from './chain_params.js';
+import { Account } from './accounts.js';
 
 export class CTxOut {
     /**
@@ -401,9 +402,15 @@ export class Mempool {
     async loadFromDisk() {
         const database = await Database.getInstance();
         // Check if the stored txs are linked to this wallet
-        if ((await database.getTxDbIdentifier()) != wallet.getKeyToExport()) {
+        if (
+            (await database.getAccount())?.publicKey != wallet.getKeyToExport()
+        ) {
             await database.removeAllTxs();
-            await database.storeTxDbIdentifier(wallet.getKeyToExport());
+            await database.removeAccount({ publicKey: null });
+            const cAccount = new Account({
+                publicKey: wallet.getKeyToExport(),
+            });
+            await database.addAccount(cAccount);
             return;
         }
         const txs = await database.getTxs();

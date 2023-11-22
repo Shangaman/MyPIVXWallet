@@ -369,7 +369,7 @@ getEventEmitter().on('toggle-network', async () => {
     wallet.setMasterKey(null);
     activity.value?.reset();
 
-    if (account) {
+    if (await hasEncryptedWallet()) {
         await importWallet({ type: 'hd', secret: account.publicKey });
     } else {
         isImported.value = false;
