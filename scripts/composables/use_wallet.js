@@ -52,10 +52,6 @@ export function useWallet() {
         price.value = await cMarket.getPrice(strCurrency);
     });
 
-    getEventEmitter().on('toggle-network', async () => {
-        //isEncrypted.value = await hasEncryptedWallet();
-    });
-
     return {
         isImported,
         isViewOnly,
