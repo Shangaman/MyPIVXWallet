@@ -170,7 +170,7 @@ async function importWallet({ type, secret, password = '' }) {
         key = await parseSecret(secret, password);
     }
     if (key) {
-        wallet.setMasterKey(key);
+        await wallet.setMasterKey(key);
         jdenticonValue.value = wallet.getAddress();
 
         if (needsToEncrypt.value) showEncryptModal.value = true;
@@ -228,7 +228,7 @@ async function restoreWallet(strReason) {
         // Attempt to unlock the wallet with the provided password
         const key = await parseSecret(encWif, strPassword);
         if (key) {
-            wallet.setMasterKey(key);
+            await wallet.setMasterKey(key);
             createAlert('success', ALERTS.WALLET_UNLOCKED, 1500);
             return true;
         } else {
@@ -363,10 +363,10 @@ async function send(address, amount) {
 getEventEmitter().on('toggle-network', async () => {
     const database = await Database.getInstance();
     const account = await database.getAccount();
-    wallet.setMasterKey(null);
+    await wallet.setMasterKey(null);
     activity.value?.reset();
 
-    if (await hasEncryptedWallet()) {
+    if (wallet.isEncrypted.value) {
         await importWallet({ type: 'hd', secret: account.publicKey });
     }
     await updateEncryptionGUI(wallet.isImported.value);
