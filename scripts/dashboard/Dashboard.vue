@@ -269,7 +269,7 @@ async function lockWallet() {
  * @param {number} amount - Amount of PIVs to send
  */
 async function send(address, amount) {
-    // Ensure a wallet is loaded
+    // Ensure a wallet is unlocked
     if (wallet.isViewOnly.value) {
         return createAlert(
             'warning',
@@ -280,16 +280,14 @@ async function send(address, amount) {
                         : 'import/create',
                 },
             ]),
-            3500
+            3000
         );
     }
 
-    // Ensure the wallet is unlocked
-    if (
-        wallet.isViewOnly.value &&
-        !(await restoreWallet(translation.walletUnlockTx))
-    )
-        return;
+    // Ensure wallet is synced
+    if (!getNetwork()?.fullSynced) {
+        return createAlert('warning', `${ALERTS.WALLET_NOT_SYNCED}`, 3000);
+    }
 
     // Sanity check the receiver
     address = address.trim();
