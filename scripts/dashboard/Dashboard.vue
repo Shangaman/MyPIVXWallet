@@ -352,6 +352,11 @@ async function send(address, amount) {
     const nValue = Math.round(amount * COIN);
     if (!validateAmount(nValue)) return;
 
+    // Close the send screen and clear inputs
+    showTransferMenu.value = false;
+    transferAddress.value = '';
+    transferAmount.value = '';
+
     // Create and send the TX
     await createAndSendTransaction({
         address,
