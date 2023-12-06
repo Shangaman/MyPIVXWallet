@@ -1011,6 +1011,11 @@ export function isMasternodeUTXO(cUTXO, cMasternode) {
  * Creates a GUI popup for the user to check or customise their Cold Address
  */
 export async function guiSetColdStakingAddress() {
+    // This operation cannot be done for view only wallets
+    if (wallet.isViewOnly()) {
+        createAlert('warning', ALERTS.PROPOSAL_IMPORT_FIRST, 2500);
+        return false;
+    }
     // Use the Account's cold address, otherwise use the network's default Cold Staking address
     const strColdAddress = await wallet.getColdStakingAddress();
 

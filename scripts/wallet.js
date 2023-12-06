@@ -149,7 +149,7 @@ export class Wallet {
     }
 
     isViewOnly() {
-        if (!this.#masterKey) return false;
+        if (!this.#masterKey) return true;
         return this.#masterKey.isViewOnly;
     }
 
