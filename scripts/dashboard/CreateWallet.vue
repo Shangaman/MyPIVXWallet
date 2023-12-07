@@ -49,7 +49,11 @@ async function generateWallet() {
                 </p>
             </div>
 
-            <button class="pivx-button-big" @click="generateWallet()" data-testid="generateWallet">
+            <button
+                class="pivx-button-big"
+                @click="generateWallet()"
+                data-testid="generateWallet"
+            >
                 <span class="buttoni-icon" v-html="pLogo"> </span>
                 <span class="buttoni-text">
                     {{ translation.dCardOneButton }}
