@@ -138,5 +138,35 @@ describe('access wallet tests', () => {
         expect(wrapper.emitted('import-wallet')).toStrictEqual([
             ['dog pig', 'myPass'],
         ]);
+
+        // Round 2, this time the user  wants to insert his private key
+        // but the user by mistake begins inserting the seedphrase
+        secretInp.element.value = 'dog pig';
+        secretInp.trigger('input');
+        await nextTick();
+        expect(secretInp.attributes('type')).toBe('text');
+        expect(passwordInp.isVisible()).toBeTruthy();
+        passwordInp.element.value = 'myPass';
+        passwordInp.trigger('input');
+        await nextTick();
+
+        // Oops I inserted the bip39! let me change
+        secretInp.element.value = 'xprivkey';
+        secretInp.trigger('input');
+        await nextTick();
+        expect(secretInp.attributes('type')).toBe('password');
+        // Password field must be cleared and invisible
+        expect(passwordInp.isVisible()).toBeFalsy();
+        expect(passwordInp.element.value).toBe('');
+        await nextTick();
+
+        await importWalletButton.trigger('click');
+        expect(secretInp.element.value).toBe('');
+        expect(passwordInp.element.value).toBe('');
+        expect(wrapper.emitted('import-wallet')).toHaveLength(2);
+        expect(wrapper.emitted('import-wallet')[1]).toStrictEqual([
+            'xprivkey',
+            '',
+        ]);
     });
 });
