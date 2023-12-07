@@ -251,10 +251,12 @@ function reload() {
                 <span class="dcWallet-pivxBalance" v-html="balanceStr"> </span>
                 <i
                     class="fa-solid fa-plus"
+                    v-if="immatureBalance != 0"
                     style="opacity: 0.5; position: relative; left: 2px"
                 ></i>
                 <span
                     style="position: relative; left: 4px; font-size: 17px"
+                    v-if="immatureBalance != 0"
                     v-html="immatureBalanceStr"
                 ></span>
                 <span
