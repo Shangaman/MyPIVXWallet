@@ -162,7 +162,8 @@ describe('GenKeyWarning tests', () => {
         );
 
         // Ok now the length has been changed to the minimum allowed value but passwords dont match!
-        newPassword.element.value = 'secure';
+        const safePassword = new Array(MIN_PASS_LENGTH + 1).join('x');
+        newPassword.element.value = safePassword;
         newPassword.trigger('input');
         await nextTick();
         await submitBtn.trigger('click');
@@ -172,13 +173,15 @@ describe('GenKeyWarning tests', () => {
         expect(misc.createAlert).toHaveBeenCalled();
         expect(misc.createAlert).toHaveReturnedWith('pass_doesnt_match');
         // Finally passwords match
-        confirmPassword.element.value = 'secure';
+        confirmPassword.element.value = safePassword;
         confirmPassword.trigger('input');
         await nextTick();
         await submitBtn.trigger('click');
         await nextTick();
         checkEventsEmitted(wrapper, 1, 1, 0);
-        expect(wrapper.emitted('onEncrypt')).toStrictEqual([['secure', '']]);
+        expect(wrapper.emitted('onEncrypt')).toStrictEqual([
+            [safePassword, ''],
+        ]);
         expect(wrapper.emitted('close')).toStrictEqual([[]]);
 
         // Test the close button
@@ -242,7 +245,8 @@ describe('GenKeyWarning tests', () => {
         );
 
         // Ok now the length has been changed to the minimum allowed value but passwords dont match!
-        newPassword.element.value = 'secure';
+        const safePassword = new Array(MIN_PASS_LENGTH + 1).join('x');
+        newPassword.element.value = safePassword;
         newPassword.trigger('input');
         await nextTick();
         await submitBtn.trigger('click');
@@ -255,14 +259,14 @@ describe('GenKeyWarning tests', () => {
         currentPassword.element.value = 'panleon';
         currentPassword.trigger('input');
         await nextTick();
-        confirmPassword.element.value = 'secure';
+        confirmPassword.element.value = safePassword;
         confirmPassword.trigger('input');
         await nextTick();
         await submitBtn.trigger('click');
         await nextTick();
         checkEventsEmitted(wrapper, 1, 1, 0);
         expect(wrapper.emitted('onEncrypt')).toStrictEqual([
-            ['secure', 'panleon'],
+            [safePassword, 'panleon'],
         ]);
         expect(wrapper.emitted('close')).toStrictEqual([[]]);
         // Test the close button
