@@ -81,11 +81,7 @@ function submit() {
     </div>
 
     <Teleport to="body">
-        <Modal
-            :show="showModal"
-            @close="close()"
-            modalClass="exportKeysModalColor"
-        >
+        <Modal :show="showModal" modalClass="exportKeysModalColor">
             <template #header>
                 <h5 class="modal-title">{{ translation.encryptWallet }}</h5>
                 <button
