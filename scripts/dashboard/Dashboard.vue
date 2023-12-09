@@ -875,6 +875,7 @@ defineExpose({
                 <GenKeyWarning
                     @onEncrypt="encryptWallet"
                     @close="showEncryptModal = false"
+                    @open="showEncryptModal = true"
                     :showModal="showEncryptModal"
                     :showBox="needsToEncrypt"
                     :isEncrypt="wallet.isEncrypted.value"
