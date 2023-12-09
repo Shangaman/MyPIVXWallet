@@ -1,11 +1,12 @@
 import { mount } from '@vue/test-utils';
-import { expect } from 'vitest';
+import { beforeEach, expect } from 'vitest';
 import GenKeyWarning from '../../scripts/dashboard/GenKeyWarning.vue';
 import Modal from '../../scripts/Modal.vue';
 import { vi, it, describe } from 'vitest';
 import { nextTick } from 'vue';
 import * as translation from '../../scripts/i18n.js';
 import * as misc from '../../scripts/misc.js';
+import { MIN_PASS_LENGTH } from '../../scripts/chain_params.js';
 // We need to attach the component to a HTML,
 // or .isVisible() function does not work
 document.body.innerHTML = `
@@ -55,6 +56,21 @@ const checkModalExistence = (wrapper, exist) => {
 };
 
 describe('GenKeyWarning tests', () => {
+    beforeEach(() => {
+        // Mock translate and createAlert and the two translations used
+        vi.spyOn(translation, 'tr').mockImplementation((message, variables) => {
+            return message + variables[0].MIN_PASS_LENGTH;
+        });
+        vi.spyOn(misc, 'createAlert').mockImplementation(
+            (type, message, timeout = 0) => {
+                return message;
+            }
+        );
+        vi.spyOn(translation, 'ALERTS', 'get').mockReturnValue({
+            PASSWORD_TOO_SMALL: 'pass_too_small',
+            PASSWORD_DOESNT_MATCH: 'pass_doesnt_match',
+        });
+    });
     afterEach(() => vi.clearAllMocks());
     it('GenKeyWarning (no box)', async () => {
         const wrapper = mount(GenKeyWarning, {
@@ -92,19 +108,6 @@ describe('GenKeyWarning tests', () => {
         checkEventsEmitted(wrapper, 0, 0, 1);
     });
     it('GenKeyWarning (no encrypt)', async () => {
-        // Mock translate and createAlert and the two translations used
-        vi.spyOn(translation, 'tr').mockImplementation((message, variables) => {
-            return message + variables[0].MIN_PASS_LENGTH;
-        });
-        vi.spyOn(misc, 'createAlert').mockImplementation(
-            (type, message, timeout = 0) => {
-                return message;
-            }
-        );
-        vi.spyOn(translation, 'ALERTS', 'get').mockReturnValue({
-            PASSWORD_TOO_SMALL: 'pass_too_small',
-            PASSWORD_DOESNT_MATCH: 'pass_doesnt_match',
-        });
         const wrapper = mount(GenKeyWarning, {
             props: {
                 showModal: true,
@@ -154,9 +157,11 @@ describe('GenKeyWarning tests', () => {
         // no event should have been emitted
         checkEventsEmitted(wrapper, 0, 0, 0);
         expect(misc.createAlert).toHaveBeenCalled();
-        expect(misc.createAlert).toHaveReturnedWith('pass_too_small6');
+        expect(misc.createAlert).toHaveReturnedWith(
+            'pass_too_small' + MIN_PASS_LENGTH
+        );
 
-        // Ok now the lenght has been changed to the minimum allowed value but passwords dont match!
+        // Ok now the length has been changed to the minimum allowed value but passwords dont match!
         newPassword.element.value = 'secure';
         newPassword.trigger('input');
         await nextTick();
@@ -183,19 +188,6 @@ describe('GenKeyWarning tests', () => {
         expect(wrapper.emitted('close')).toStrictEqual([[], []]);
     });
     it('GenKeyWarning (with encrypt)', async () => {
-        // Mock translate and createAlert and the two translations used
-        vi.spyOn(translation, 'tr').mockImplementation((message, variables) => {
-            return message + variables[0].MIN_PASS_LENGTH;
-        });
-        vi.spyOn(misc, 'createAlert').mockImplementation(
-            (type, message, timeout = 0) => {
-                return message;
-            }
-        );
-        vi.spyOn(translation, 'ALERTS', 'get').mockReturnValue({
-            PASSWORD_TOO_SMALL: 'pass_too_small',
-            PASSWORD_DOESNT_MATCH: 'pass_doesnt_match',
-        });
         const wrapper = mount(GenKeyWarning, {
             props: {
                 showModal: true,
@@ -245,9 +237,11 @@ describe('GenKeyWarning tests', () => {
         // no event should have been emitted
         checkEventsEmitted(wrapper, 0, 0, 0);
         expect(misc.createAlert).toHaveBeenCalled();
-        expect(misc.createAlert).toHaveReturnedWith('pass_too_small6');
+        expect(misc.createAlert).toHaveReturnedWith(
+            'pass_too_small' + MIN_PASS_LENGTH
+        );
 
-        // Ok now the lenght has been changed to the minimum allowed value but passwords dont match!
+        // Ok now the length has been changed to the minimum allowed value but passwords dont match!
         newPassword.element.value = 'secure';
         newPassword.trigger('input');
         await nextTick();
