@@ -17,6 +17,7 @@ const { advancedMode } = toRefs(props);
 <template>
     <div class="row m-0">
         <CreateWallet
+            :advanced-mode="advancedMode"
             @import-wallet="
                 (mnemonic, password) =>
                     $emit('import-wallet', {
