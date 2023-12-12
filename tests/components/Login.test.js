@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils';
+import { shallowMount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import { expect } from 'vitest';
 import Login from '../../scripts/dashboard/Login.vue';
@@ -18,7 +18,7 @@ document.body.innerHTML = `
 describe('Login tests', () => {
     afterEach(() => vi.clearAllMocks());
     test('Create wallet login (no advanced)', async () => {
-        const wrapper = mount(Login, {
+        const wrapper = shallowMount(Login, {
             props: {
                 advancedMode: false,
             },
@@ -32,7 +32,7 @@ describe('Login tests', () => {
             advancedMode: false,
         });
         // We can just emit the event: CreateWallet has already been unit tested!
-        createWalletComponent.vm.emit('import-wallet', 'mySecret', '');
+        createWalletComponent.vm.$emit('import-wallet', 'mySecret', '');
         // Make sure the Login component relays the right event
         expect(wrapper.emitted('import-wallet')).toHaveLength(1);
         expect(wrapper.emitted('import-wallet')).toStrictEqual([
@@ -40,7 +40,7 @@ describe('Login tests', () => {
         ]);
     });
     test('Create wallet login (advanced)', async () => {
-        const wrapper = mount(Login, {
+        const wrapper = shallowMount(Login, {
             props: {
                 advancedMode: true,
             },
@@ -54,7 +54,7 @@ describe('Login tests', () => {
             advancedMode: true,
         });
         // We can just emit the event: CreateWallet has already been unit tested!
-        createWalletComponent.vm.emit('import-wallet', 'mySecret', 'myPass');
+        createWalletComponent.vm.$emit('import-wallet', 'mySecret', 'myPass');
         // Make sure the Login component relays the right event
         expect(wrapper.emitted('import-wallet')).toHaveLength(1);
         expect(wrapper.emitted('import-wallet')).toStrictEqual([
@@ -62,7 +62,7 @@ describe('Login tests', () => {
         ]);
     });
     test('Vanity gen login', async () => {
-        const wrapper = mount(Login, {
+        const wrapper = shallowMount(Login, {
             props: {
                 advancedMode: false,
             },
@@ -75,7 +75,7 @@ describe('Login tests', () => {
         // Vanity gen is easy: it has no props
         expect(vanityGenComponent.props()).toStrictEqual({});
         // We can just emit a complete random event: VanityGen has already been unit tested!
-        vanityGenComponent.vm.emit('import-wallet', 'mySecret');
+        vanityGenComponent.vm.$emit('import-wallet', 'mySecret');
         // Make sure the Login component relays the right event
         expect(wrapper.emitted('import-wallet')).toHaveLength(1);
         expect(wrapper.emitted('import-wallet')).toStrictEqual([
@@ -83,7 +83,7 @@ describe('Login tests', () => {
         ]);
     });
     test('Access wallet login (no advanced)', async () => {
-        const wrapper = mount(Login, {
+        const wrapper = shallowMount(Login, {
             props: {
                 advancedMode: false,
             },
@@ -96,7 +96,7 @@ describe('Login tests', () => {
             advancedMode: false,
         });
         // We can just emit a complete random event: AccessWallet has already been unit tested!
-        accessWalletComponent.vm.emit('import-wallet', 'mySecret', '');
+        accessWalletComponent.vm.$emit('import-wallet', 'mySecret', '');
         // Make sure the Login component relays the right event
         expect(wrapper.emitted('import-wallet')).toHaveLength(1);
         expect(wrapper.emitted('import-wallet')).toStrictEqual([
@@ -104,7 +104,7 @@ describe('Login tests', () => {
         ]);
     });
     test('Access wallet login (advanced)', async () => {
-        const wrapper = mount(Login, {
+        const wrapper = shallowMount(Login, {
             props: {
                 advancedMode: true,
             },
@@ -117,7 +117,7 @@ describe('Login tests', () => {
             advancedMode: true,
         });
         // We can just emit a complete random event: AccessWallet has already been unit tested!
-        accessWalletComponent.vm.emit('import-wallet', 'mySecret', 'myPass');
+        accessWalletComponent.vm.$emit('import-wallet', 'mySecret', 'myPass');
         // Make sure the Login component relays the right event
         expect(wrapper.emitted('import-wallet')).toHaveLength(1);
         expect(wrapper.emitted('import-wallet')).toStrictEqual([
@@ -125,7 +125,7 @@ describe('Login tests', () => {
         ]);
     });
     test('HardwareWallet login', async () => {
-        const wrapper = mount(Login, {
+        const wrapper = shallowMount(Login, {
             props: {
                 advancedMode: false,
             },
