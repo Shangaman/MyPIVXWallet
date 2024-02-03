@@ -12,7 +12,7 @@ let transport;
  * @type {AppBtc?}
  */
 export let cHardwareWallet = null;
-export let strHardwareName = '';
+export let strHardwareName = 'asd';
 /**
  * Get hardware wallet keys.
  * @param {string} path - bip32 path to the key
