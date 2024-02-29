@@ -1012,6 +1012,11 @@ export class Wallet {
         if (transaction.version !== 3) {
             throw new Error('`signShield` was called with a non-shield tx');
         }
+        if (!this.hasShield()) {
+            throw new Error(
+                'trying to create a shield transaction without having shield enable'
+            );
+        }
 
         const periodicFunction = setInterval(async () => {
             const percentage = 5 + (await this.#shield.getTxStatus()) * 95;
