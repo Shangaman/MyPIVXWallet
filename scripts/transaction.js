@@ -214,7 +214,8 @@ export class Transaction {
         }
 
         this.lockTime = Number(bytesToNum(bytes.slice(offset, (offset += 4))));
-
+        this.shieldSpend = []
+        this.shieldOutput = []
         if (this.hasSaplingVersion) {
             const hasShield = bytesToNum(bytes.slice(offset, (offset += 1)));
             if (hasShield) {
