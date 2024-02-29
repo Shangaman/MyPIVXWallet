@@ -1077,7 +1077,7 @@ export class Wallet {
      * @param {Transaction} transaction
      */
     finalizeTransaction(transaction) {
-        if (transaction.hasShieldData()) {
+        if (transaction.hasShieldData) {
             wallet.#shield.finalizeTransaction(transaction.txid);
         }
 

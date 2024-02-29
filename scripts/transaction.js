@@ -116,10 +116,7 @@ export class Transaction {
     }
 
     get hasSaplingVersion() {
-        return (
-            typeof this.version == typeof 3 &&
-            this.__original.version >= SAPLING_TX_VERSION
-        );
+        return this.version >= SAPLING_TX_VERSION;
     }
 
     get txid() {
@@ -131,7 +128,7 @@ export class Transaction {
         return this.__original.#txid;
     }
 
-    hasShieldData() {
+    get hasShieldData() {
         return this.bindingSig !== '';
     }
 
@@ -337,7 +334,7 @@ export class Transaction {
             valueBalance.writeBigInt64LE(BigInt(this.valueBalance));
             buffer = [
                 ...buffer,
-                Number(this.hasShieldData()),
+                Number(this.hasShieldData),
                 ...valueBalance,
                 ...numToVarInt(BigInt(this.shieldSpend.length)),
             ];
