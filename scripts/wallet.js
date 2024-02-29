@@ -1009,8 +1009,10 @@ export class Wallet {
      * @param {Transaction} transaction
      */
     async #signShield(transaction) {
-        if (transaction.version !== 3) {
-            throw new Error('`signShield` was called with a non-shield tx');
+        if (!transaction.hasSaplingVersion) {
+            throw new Error(
+                '`signShield` was called with a tx that cannot have shield data'
+            );
         }
         if (!this.hasShield()) {
             throw new Error(
@@ -1054,7 +1056,8 @@ export class Wallet {
         if (this.isViewOnly()) {
             throw new Error('Cannot sign with a view only wallet');
         }
-        if (transaction.version === 3) {
+        if (!transaction.vin.length || transaction.shieldOutput[0]) {
+            // TODO: separate signing and building process for shield?
             return await this.#signShield(transaction);
         }
         for (let i = 0; i < transaction.vin.length; i++) {
@@ -1074,7 +1077,7 @@ export class Wallet {
      * @param {Transaction} transaction
      */
     finalizeTransaction(transaction) {
-        if (transaction.version === 3) {
+        if (transaction.hasShieldData()) {
             wallet.#shield.finalizeTransaction(transaction.txid);
         }
 
