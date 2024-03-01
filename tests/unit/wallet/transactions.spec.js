@@ -44,13 +44,13 @@ describe('Wallet transaction tests', () => {
                 scriptSig: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac', // Script sig must be the UTXO script since it's not signed
             })
         );
-        expect(tx.vout[0]).toStrictEqual(
+        expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                value: 4992400,
+                value: 4997740,
             })
         );
-        expect(tx.vout[1]).toStrictEqual(
+        expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: '76a914a95cc6408a676232d61ec29dc56a180b5847835788ac',
                 value: 5000000,
@@ -73,13 +73,13 @@ describe('Wallet transaction tests', () => {
                 scriptSig: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac', // Script sig must be the UTXO script since it's not signed
             })
         );
-        expect(tx.vout[0]).toStrictEqual(
+        expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                value: 4992400,
+                value: 4997740,
             })
         );
-        expect(tx.vout[1]).toStrictEqual(
+        expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: '76a914a95cc6408a676232d61ec29dc56a180b5847835788ac',
                 value: 5000000,
@@ -105,13 +105,13 @@ describe('Wallet transaction tests', () => {
                 scriptSig: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac', // Script sig must be the UTXO script since it's not signed
             })
         );
-        expect(tx.vout[0]).toStrictEqual(
+        expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a91421ff8214d09d60713b89809bb413a0651ee6931488ac',
-                value: 4992400,
+                value: 4997730,
             })
         );
-        expect(tx.vout[1]).toStrictEqual(
+        expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: 'e076a9141c62aa5fb5bc8a4932491fcfc1832fb5422e0cd288ac',
                 value: 5000000,
@@ -135,13 +135,13 @@ describe('Wallet transaction tests', () => {
                 scriptSig: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac', // Script sig must be the UTXO script since it's not signed
             })
         );
-        expect(tx.vout[0]).toStrictEqual(
+        expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                value: 4992400,
+                value: 4997650,
             })
         );
-        expect(tx.vout[1]).toStrictEqual(
+        expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: '6a20bcea39f87b1dd7a5ba9d11d3d956adc6ce57dfff9397860cc30c11f08b3aa7c8',
                 value: 5000000,
@@ -165,13 +165,13 @@ describe('Wallet transaction tests', () => {
                 scriptSig: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac', // Script sig must be the UTXO script since it's not signed
             })
         );
-        expect(tx.vout[0]).toStrictEqual(
+        expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                value: 4992400,
+                value: 4997480,
             })
         );
-        expect(tx.vout[1]).toStrictEqual(
+        expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: '76a97b63d114291a25b5b4d1802e0611e9bf724a1e57d9210e826714f49b25384b79685227be5418f779b98a6be4c7386888ac',
                 value: 5000000,
