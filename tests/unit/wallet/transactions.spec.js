@@ -221,12 +221,6 @@ describe('Wallet transaction tests', () => {
                             '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
                     }),
                 ],
-                vout: [
-                    new CTxOut({
-                        script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                        value: 4992400,
-                    }),
-                ],
                 shieldOutput: [
                     {
                         address: addr,
