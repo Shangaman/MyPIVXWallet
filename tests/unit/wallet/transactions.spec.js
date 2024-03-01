@@ -200,7 +200,7 @@ describe('Wallet transaction tests', () => {
         expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: '76a97b63d114291a25b5b4d1802e0611e9bf724a1e57d9210e826714f49b25384b79685227be5418f779b98a6be4c7386888ac',
-                value: 9992400, // 0.1 PIV - fee
+                value: 9997820, // 0.1 PIV - fee
             })
         );
     });

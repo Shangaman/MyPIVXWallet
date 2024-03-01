@@ -6,7 +6,7 @@ import { ExplorerNetwork, getNetwork } from './network.js';
 import { MAX_ACCOUNT_GAP, SHIELD_BATCH_SYNC_SIZE } from './chain_params.js';
 import { HistoricalTx, HistoricalTxType } from './mempool.js';
 import { Transaction } from './transaction.js';
-import { confirmPopup, createAlert } from './misc.js';
+import { confirmPopup, createAlert, isShieldAddress } from './misc.js';
 import { cChainParams } from './chain_params.js';
 import { COIN } from './chain_params.js';
 import { mempool } from './global.js';
@@ -932,6 +932,7 @@ export class Wallet {
             delegateChange = false,
             changeDelegationAddress = null,
             isProposal = false,
+            subtractFeeFromAmt = true,
             changeAddress = '',
             returnAddress = '',
         } = {}
@@ -952,35 +953,7 @@ export class Wallet {
                 '`delegateChange` was set to true, but no `changeDelegationAddress` was provided.'
             );
         const transactionBuilder = TransactionBuilder.create();
-        if (!useShieldInputs) {
-            const filter = useDelegatedInputs
-                ? UTXO_WALLET_STATE.SPENDABLE_COLD
-                : UTXO_WALLET_STATE.SPENDABLE;
-            const utxos = mempool.getUTXOs({ filter, target: value });
-            transactionBuilder.addUTXOs(utxos);
-            const fee = transactionBuilder.getFee();
-            const changeValue = transactionBuilder.valueIn - value - fee;
-
-            // Add change output
-            if (changeValue > 0) {
-                if (!changeAddress) [changeAddress] = this.getNewAddress(1);
-                if (delegateChange && changeValue > 1.01 * COIN) {
-                    transactionBuilder.addColdStakeOutput({
-                        address: changeAddress,
-                        value: changeValue,
-                        addressColdStake: changeDelegationAddress,
-                    });
-                } else {
-                    transactionBuilder.addOutput({
-                        address: changeAddress,
-                        value: changeValue,
-                    });
-                }
-            } else {
-                // We're sending alot! So we deduct the fee from the send amount. There's not enough change to pay it with!
-                value -= fee;
-            }
-        }
+        const isShieldTx = useShieldInputs || isShieldAddress(address);
 
         // Add primary output
         if (isDelegation) {
@@ -1000,6 +973,45 @@ export class Wallet {
                 address,
                 value,
             });
+        }
+
+        if (!useShieldInputs) {
+            const filter = useDelegatedInputs
+                ? UTXO_WALLET_STATE.SPENDABLE_COLD
+                : UTXO_WALLET_STATE.SPENDABLE;
+            const utxos = mempool.getUTXOs({ filter, target: value });
+            transactionBuilder.addUTXOs(utxos);
+
+            // Shield txs will handle change internally
+            if (isShieldTx) {
+                return transactionBuilder.build();
+            }
+
+            const fee = transactionBuilder.getFee();
+            const changeValue = transactionBuilder.valueIn - value - fee;
+            if (changeValue < 0) {
+                if (!subtractFeeFromAmt) {
+                    throw new Error('Not enough balance');
+                }
+                transactionBuilder.equallySubtractAmt(Math.abs(changeValue));
+            } else if (changeValue > 0) {
+                // TransactionBuilder will internally add the change only if it is not dust
+                if (!changeAddress) [changeAddress] = this.getNewAddress(1);
+                if (delegateChange) {
+                    transactionBuilder.addColdStakeOutput({
+                        address: changeAddress,
+                        value: changeValue,
+                        addressColdStake: changeDelegationAddress,
+                        isChange: true,
+                    });
+                } else {
+                    transactionBuilder.addOutput({
+                        address: changeAddress,
+                        value: changeValue,
+                        isChange: true,
+                    });
+                }
+            }
         }
         return transactionBuilder.build();
     }
