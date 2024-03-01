@@ -48,6 +48,15 @@ export class CTxOut {
     isEmpty() {
         return this.value == 0 && (this.script === 'f8' || this.script === '');
     }
+
+    serialize() {
+        const scriptBytes = hexToBytes(this.script);
+        return [
+            ...numToBytes(BigInt(this.value), 8),
+            ...numToVarInt(BigInt(scriptBytes.length)),
+            ...scriptBytes,
+        ];
+    }
 }
 export class CTxIn {
     /**
@@ -66,7 +75,6 @@ export class CTxIn {
         this.sequence = sequence;
     }
 }
-
 export class Transaction {
     /** @type{number} */
     version;
