@@ -254,11 +254,11 @@ describe('Wallet transaction tests', () => {
         );
     });
 
-    it('it does not insert dust change', async() => {
+    it('it does not insert dust change', async () => {
         // The tipical output has 34 bytes, so a 200 satoshi change is surely going to be dust
         // a P2PKH with 1 input and 1 output will have more or less 190 bytes in size and 1900 satoshi of fees
         // Finally 0.1*10**8 is the value of the UTXO we are spending (0.1 PIVs)
-        const value = 0.1*10 **8 - 1900 - 200;
+        const value = 0.1 * 10 ** 8 - 1900 - 200;
         const tx = wallet.createTransaction(
             'DLabsktzGMnsK5K9uRTMCF6NoYNY6ET4Bb',
             value,
@@ -283,7 +283,7 @@ describe('Wallet transaction tests', () => {
             })
         );
         await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
-    })
+    });
 
     it('creates a s->t tx correctly', async () => {
         const tx = wallet.createTransaction(
