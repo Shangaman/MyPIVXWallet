@@ -9,14 +9,30 @@ import {
     Transaction,
 } from '../../../scripts/transaction.js';
 import { mempool } from '../../../scripts/global';
-import { hexToBytes } from '../../../scripts/utils';
+import { TransactionBuilder } from '../../../scripts/transaction_builder.js';
 
 vi.mock('../../../scripts/global.js');
 vi.mock('../../../scripts/network.js');
 
+async function checkFees(wallet, tx, feesPerBytes) {
+    let fees = 0;
+    for (const vout of tx.vout) {
+        fees -= vout.value;
+    }
+    for (const vin of tx.vin) {
+        fees += mempool
+            .getUTXOs()
+            .find((utxo) => utxo.outpoint.txid === vin.outpoint.txid).value;
+    }
+    // Sign and verify that it pays enough fees, and that it is greedy enough
+    const nBytes = (await wallet.sign(tx)).serialize().length / 2;
+    expect(fees).toBeGreaterThanOrEqual(feesPerBytes * nBytes);
+    expect(fees).toBeLessThanOrEqual((feesPerBytes + 1) * nBytes);
+}
 describe('Wallet transaction tests', () => {
     let wallet;
     let PIVXShield;
+    const MIN_FEE_PER_BYTE = new TransactionBuilder().MIN_FEE_PER_BYTE;
     beforeEach(() => {
         wallet = new Wallet(0, false);
         wallet.setMasterKey(getLegacyMainnet());
@@ -56,6 +72,7 @@ describe('Wallet transaction tests', () => {
                 value: 5000000,
             })
         );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
     it('creates an exchange tx correctly', async () => {
@@ -85,6 +102,7 @@ describe('Wallet transaction tests', () => {
                 value: 5000000,
             })
         );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
     it('Creates a tx with change address', async () => {
@@ -117,6 +135,7 @@ describe('Wallet transaction tests', () => {
                 value: 5000000,
             })
         );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
     it('Creates a proposal tx correctly', async () => {
@@ -147,6 +166,7 @@ describe('Wallet transaction tests', () => {
                 value: 5000000,
             })
         );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
     it('Creates a cold stake tx correctly', async () => {
@@ -177,9 +197,10 @@ describe('Wallet transaction tests', () => {
                 value: 5000000,
             })
         );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
-    it('creates a tx with max balance', () => {
+    it('creates a tx with max balance', async () => {
         const tx = wallet.createTransaction(
             'SR3L4TFUKKGNsnv2Q4hWTuET2a4vHpm1b9',
             0.1 * 10 ** 8,
@@ -203,6 +224,7 @@ describe('Wallet transaction tests', () => {
                 value: 9997820, // 0.1 PIV - fee
             })
         );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
     it('creates a t->s tx correctly', () => {
@@ -300,6 +322,14 @@ describe('Wallet transaction tests', () => {
                 { useShieldInputs: true }
             )
         ).toBeDefined();
+        // MaX balance is set but we don't allow subtracting fee from amount
+        expect(() =>
+            wallet.createTransaction(
+                'DLabsktzGMnsK5K9uRTMCF6NoYNY6ET4Bb',
+                0.1 * 10 ** 8,
+                { subtractFeeFromAmt: false }
+            )
+        ).toThrow(/not enough balance/i);
     });
 
     it('throws when delegateChange is set, but changeDelegationAddress is not', () => {
