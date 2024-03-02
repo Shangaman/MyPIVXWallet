@@ -254,6 +254,37 @@ describe('Wallet transaction tests', () => {
         );
     });
 
+    it('it does not insert dust change', async() => {
+        // The tipical output has 34 bytes, so a 200 satoshi change is surely going to be dust
+        // a P2PKH with 1 input and 1 output will have more or less 190 bytes in size and 1900 satoshi of fees
+        // Finally 0.1*10**8 is the value of the UTXO we are spending (0.1 PIVs)
+        const value = 0.1*10 **8 - 1900 - 200;
+        const tx = wallet.createTransaction(
+            'DLabsktzGMnsK5K9uRTMCF6NoYNY6ET4Bb',
+            value,
+            { subtractFeeFromAmt: false }
+        );
+        expect(tx.version).toBe(1);
+        expect(tx.vin).toHaveLength(1);
+        expect(tx.vin[0]).toStrictEqual(
+            new CTxIn({
+                outpoint: new COutpoint({
+                    txid: 'f8f968d80ac382a7b64591cc166489f66b7c4422f95fbd89f946a5041d285d7c',
+                    n: 1,
+                }),
+                scriptSig: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac', // Script sig must be the UTXO script since it's not signed
+            })
+        );
+        expect(tx.vout).toHaveLength(1);
+        expect(tx.vout[0]).toStrictEqual(
+            new CTxOut({
+                script: '76a914a95cc6408a676232d61ec29dc56a180b5847835788ac',
+                value: value,
+            })
+        );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
+    })
+
     it('creates a s->t tx correctly', async () => {
         const tx = wallet.createTransaction(
             'DLabsktzGMnsK5K9uRTMCF6NoYNY6ET4Bb',
