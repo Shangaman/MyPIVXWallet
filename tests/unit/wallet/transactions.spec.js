@@ -63,7 +63,7 @@ describe('Wallet transaction tests', () => {
         expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                value: 4997740,
+                value: 4997730,
             })
         );
         expect(tx.vout[0]).toStrictEqual(
@@ -93,7 +93,7 @@ describe('Wallet transaction tests', () => {
         expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                value: 4997740,
+                value: 4997730,
             })
         );
         expect(tx.vout[0]).toStrictEqual(
@@ -126,7 +126,7 @@ describe('Wallet transaction tests', () => {
         expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a91421ff8214d09d60713b89809bb413a0651ee6931488ac',
-                value: 4997730,
+                value: 4997720,
             })
         );
         expect(tx.vout[0]).toStrictEqual(
@@ -157,7 +157,7 @@ describe('Wallet transaction tests', () => {
         expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                value: 4997650,
+                value: 4997640,
             })
         );
         expect(tx.vout[0]).toStrictEqual(
@@ -188,7 +188,7 @@ describe('Wallet transaction tests', () => {
         expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                value: 4997480,
+                value: 4997470,
             })
         );
         expect(tx.vout[0]).toStrictEqual(
@@ -221,7 +221,7 @@ describe('Wallet transaction tests', () => {
         expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: '76a97b63d114291a25b5b4d1802e0611e9bf724a1e57d9210e826714f49b25384b79685227be5418f779b98a6be4c7386888ac',
-                value: 9997820, // 0.1 PIV - fee
+                value: 9997810, // 0.1 PIV - fee
             })
         );
         await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
