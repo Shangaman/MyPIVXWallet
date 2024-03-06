@@ -60,7 +60,7 @@ const needsToEncrypt = computed(() => {
     }
 });
 const showTransferMenu = ref(false);
-const { advancedMode, displayDecimals } = useSettings();
+const { advancedMode, displayDecimals, autoLockWallet } = useSettings();
 const showExportModal = ref(false);
 const showEncryptModal = ref(false);
 const keyToBackup = ref('');
@@ -292,8 +292,13 @@ async function restoreWallet(strReason) {
 /**
  * Lock the wallet by deleting masterkey private data
  */
-async function lockWallet() {
+async function lockWallet(forceLocking = false) {
     const isEncrypted = wallet.isEncrypted.value;
+    if (forceLocking && isEncrypted) {
+        wallet.wipePrivateData();
+        createAlert('success', ALERTS.WALLET_LOCKED, 1500);
+        return;
+    }
     const title = isEncrypted
         ? translation.popupWalletLock
         : translation.popupWalletWipe;
@@ -443,6 +448,10 @@ async function send(address, amount, useShieldInputs) {
     await wallet.createAndSendTransaction(getNetwork(), address, nValue, {
         useShieldInputs,
     });
+    // In case automatically lock the wallet
+    if (autoLockWallet.value) {
+        await lockWallet(true);
+    }
 }
 
 /**
