@@ -98,7 +98,7 @@ export class Settings {
      */
     advancedMode;
     /**
-     * {boolean} Whether auto lock feature is enabled or disabled
+     * @type {boolean} Whether auto lock feature is enabled or disabled
      */
     autoLockWallet;
     constructor({

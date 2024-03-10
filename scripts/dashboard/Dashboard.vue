@@ -290,15 +290,10 @@ async function restoreWallet(strReason) {
 }
 
 /**
- * Lock the wallet by deleting masterkey private data
+ * Lock the wallet by deleting masterkey private data, after user confirmation
  */
-async function lockWallet(forceLocking = false) {
+async function displayLockWalletModal() {
     const isEncrypted = wallet.isEncrypted.value;
-    if (forceLocking && isEncrypted) {
-        wallet.wipePrivateData();
-        createAlert('success', ALERTS.WALLET_LOCKED, 1500);
-        return;
-    }
     const title = isEncrypted
         ? translation.popupWalletLock
         : translation.popupWalletWipe;
@@ -311,9 +306,16 @@ async function lockWallet(forceLocking = false) {
             html,
         })
     ) {
-        wallet.wipePrivateData();
-        createAlert('success', ALERTS.WALLET_LOCKED, 1500);
+        lockWallet();
     }
+}
+
+/**
+ * Lock the wallet by deleting masterkey private data
+ */
+function lockWallet() {
+    wallet.wipePrivateData();
+    createAlert('success', ALERTS.WALLET_LOCKED, 1500);
 }
 
 /**
@@ -450,7 +452,7 @@ async function send(address, amount, useShieldInputs) {
     });
     // In case automatically lock the wallet
     if (autoLockWallet.value) {
-        await lockWallet(true);
+        lockWallet();
     }
 }
 
@@ -634,7 +636,10 @@ defineExpose({
                 "
             >
                 <center>
-                    <div class="dcWallet-warningMessage" @click="lockWallet()">
+                    <div
+                        class="dcWallet-warningMessage"
+                        @click="displayLockWalletModal()"
+                    >
                         <div class="shieldLogo">
                             <div class="shieldBackground">
                                 <span
