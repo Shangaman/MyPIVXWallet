@@ -447,12 +447,17 @@ async function send(address, amount, useShieldInputs) {
     transferAmount.value = '';
 
     // Create and send the TX
-    await wallet.createAndSendTransaction(getNetwork(), address, nValue, {
-        useShieldInputs,
-    });
-    // In case automatically lock the wallet
-    if (autoLockWallet.value) {
-        lockWallet();
+    try {
+        await wallet.createAndSendTransaction(getNetwork(), address, nValue, {
+            useShieldInputs,
+        });
+    } catch (e) {
+        console.error(e);
+        createAlert('warning', e);
+    } finally {
+        if (autoLockWallet.value) {
+            lockWallet();
+        }
     }
 }
 

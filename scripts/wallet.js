@@ -5,7 +5,8 @@ import { beforeUnloadListener } from './global.js';
 import { getNetwork } from './network.js';
 import { MAX_ACCOUNT_GAP, SHIELD_BATCH_SYNC_SIZE } from './chain_params.js';
 import { HistoricalTx, HistoricalTxType } from './mempool.js';
-import { confirmPopup, createAlert } from './misc.js';
+import { Transaction } from './transaction.js';
+import { confirmPopup, createAlert, isShieldAddress } from './misc.js';
 import { cChainParams } from './chain_params.js';
 import { COIN } from './chain_params.js';
 import { mempool } from './global.js';
@@ -15,7 +16,7 @@ import { Database } from './database.js';
 import { RECEIVE_TYPES } from './contacts-book.js';
 import { Account } from './accounts.js';
 import { fAdvancedMode } from './settings.js';
-import { bytesToHex, hexToBytes, startBatch } from './utils.js';
+import { bytesToHex, hexToBytes, sleep, startBatch } from './utils.js';
 import { strHardwareName } from './ledger.js';
 import { UTXO_WALLET_STATE } from './mempool.js';
 import { getEventEmitter } from './event_bus.js';
@@ -926,6 +927,7 @@ export class Wallet {
             delegateChange = false,
             changeDelegationAddress = null,
             isProposal = false,
+            subtractFeeFromAmt = true,
             changeAddress = '',
             returnAddress = '',
         } = {}
@@ -946,35 +948,7 @@ export class Wallet {
                 '`delegateChange` was set to true, but no `changeDelegationAddress` was provided.'
             );
         const transactionBuilder = TransactionBuilder.create();
-        if (!useShieldInputs) {
-            const filter = useDelegatedInputs
-                ? UTXO_WALLET_STATE.SPENDABLE_COLD
-                : UTXO_WALLET_STATE.SPENDABLE;
-            const utxos = mempool.getUTXOs({ filter, target: value });
-            transactionBuilder.addUTXOs(utxos);
-            const fee = transactionBuilder.getFee();
-            const changeValue = transactionBuilder.valueIn - value - fee;
-
-            // Add change output
-            if (changeValue > 0) {
-                if (!changeAddress) [changeAddress] = this.getNewAddress(1);
-                if (delegateChange && changeValue > 1.01 * COIN) {
-                    transactionBuilder.addColdStakeOutput({
-                        address: changeAddress,
-                        value: changeValue,
-                        addressColdStake: changeDelegationAddress,
-                    });
-                } else {
-                    transactionBuilder.addOutput({
-                        address: changeAddress,
-                        value: changeValue,
-                    });
-                }
-            } else {
-                // We're sending alot! So we deduct the fee from the send amount. There's not enough change to pay it with!
-                value -= fee;
-            }
-        }
+        const isShieldTx = useShieldInputs || isShieldAddress(address);
 
         // Add primary output
         if (isDelegation) {
@@ -994,6 +968,45 @@ export class Wallet {
                 address,
                 value,
             });
+        }
+
+        if (!useShieldInputs) {
+            const filter = useDelegatedInputs
+                ? UTXO_WALLET_STATE.SPENDABLE_COLD
+                : UTXO_WALLET_STATE.SPENDABLE;
+            const utxos = mempool.getUTXOs({ filter, target: value });
+            transactionBuilder.addUTXOs(utxos);
+
+            // Shield txs will handle change internally
+            if (isShieldTx) {
+                return transactionBuilder.build();
+            }
+
+            const fee = transactionBuilder.getFee();
+            const changeValue = transactionBuilder.valueIn - value - fee;
+            if (changeValue < 0) {
+                if (!subtractFeeFromAmt) {
+                    throw new Error('Not enough balance');
+                }
+                transactionBuilder.equallySubtractAmt(Math.abs(changeValue));
+            } else if (changeValue > 0) {
+                // TransactionBuilder will internally add the change only if it is not dust
+                if (!changeAddress) [changeAddress] = this.getNewAddress(1);
+                if (delegateChange) {
+                    transactionBuilder.addColdStakeOutput({
+                        address: changeAddress,
+                        value: changeValue,
+                        addressColdStake: changeDelegationAddress,
+                        isChange: true,
+                    });
+                } else {
+                    transactionBuilder.addOutput({
+                        address: changeAddress,
+                        value: changeValue,
+                        isChange: true,
+                    });
+                }
+            }
         }
         return transactionBuilder.build();
     }
@@ -1025,20 +1038,31 @@ export class Wallet {
 
         const value =
             transaction.shieldOutput[0]?.value || transaction.vout[0].value;
-        const { hex } = await this.#shield.createTransaction({
-            address:
-                transaction.shieldOutput[0]?.address ||
-                this.getAddressesFromScript(transaction.vout[0].script)
-                    .addresses[0],
-            amount: value,
-            blockHeight: getNetwork().cachedBlockCount,
-            useShieldInputs: transaction.vin.length === 0,
-            utxos: this.#getUTXOsForShield(),
-            transparentChangeAddress: this.getNewAddress(1)[0],
-        });
-        clearInterval(periodicFunction);
-        getEventEmitter().emit('shield-transaction-creation-update', 0.0, true);
-        return transaction.fromHex(hex);
+        try {
+            const { hex } = await this.#shield.createTransaction({
+                address:
+                    transaction.shieldOutput[0]?.address ||
+                    this.getAddressesFromScript(transaction.vout[0].script)
+                        .addresses[0],
+                amount: value,
+                blockHeight: getNetwork().cachedBlockCount,
+                useShieldInputs: transaction.vin.length === 0,
+                utxos: this.#getUTXOsForShield(),
+                transparentChangeAddress: this.getNewAddress(1)[0],
+            });
+            return transaction.fromHex(hex);
+        } catch (e) {
+            // sleep a full period of periodicFunction
+            await sleep(500);
+            throw new Error(e);
+        } finally {
+            clearInterval(periodicFunction);
+            getEventEmitter().emit(
+                'shield-transaction-creation-update',
+                0.0,
+                true
+            );
+        }
     }
 
     /**

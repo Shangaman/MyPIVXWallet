@@ -9,14 +9,30 @@ import {
     Transaction,
 } from '../../../scripts/transaction.js';
 import { mempool } from '../../../scripts/global';
-import { hexToBytes } from '../../../scripts/utils';
+import { TransactionBuilder } from '../../../scripts/transaction_builder.js';
 
 vi.mock('../../../scripts/global.js');
 vi.mock('../../../scripts/network.js');
 
+async function checkFees(wallet, tx, feesPerBytes) {
+    let fees = 0;
+    for (const vout of tx.vout) {
+        fees -= vout.value;
+    }
+    for (const vin of tx.vin) {
+        fees += mempool
+            .getUTXOs()
+            .find((utxo) => utxo.outpoint.txid === vin.outpoint.txid).value;
+    }
+    // Sign and verify that it pays enough fees, and that it is greedy enough
+    const nBytes = (await wallet.sign(tx)).serialize().length / 2;
+    expect(fees).toBeGreaterThanOrEqual(feesPerBytes * nBytes);
+    expect(fees).toBeLessThanOrEqual((feesPerBytes + 1) * nBytes);
+}
 describe('Wallet transaction tests', () => {
     let wallet;
     let PIVXShield;
+    const MIN_FEE_PER_BYTE = new TransactionBuilder().MIN_FEE_PER_BYTE;
     beforeEach(() => {
         wallet = new Wallet(0, false);
         wallet.setMasterKey(getLegacyMainnet());
@@ -44,18 +60,19 @@ describe('Wallet transaction tests', () => {
                 scriptSig: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac', // Script sig must be the UTXO script since it's not signed
             })
         );
-        expect(tx.vout[0]).toStrictEqual(
+        expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                value: 4992400,
+                value: 4997730,
             })
         );
-        expect(tx.vout[1]).toStrictEqual(
+        expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: '76a914a95cc6408a676232d61ec29dc56a180b5847835788ac',
                 value: 5000000,
             })
         );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
     it('creates an exchange tx correctly', async () => {
@@ -73,18 +90,19 @@ describe('Wallet transaction tests', () => {
                 scriptSig: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac', // Script sig must be the UTXO script since it's not signed
             })
         );
-        expect(tx.vout[0]).toStrictEqual(
+        expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                value: 4992400,
+                value: 4997730,
             })
         );
-        expect(tx.vout[1]).toStrictEqual(
+        expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: '76a914a95cc6408a676232d61ec29dc56a180b5847835788ac',
                 value: 5000000,
             })
         );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
     it('Creates a tx with change address', async () => {
@@ -105,18 +123,19 @@ describe('Wallet transaction tests', () => {
                 scriptSig: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac', // Script sig must be the UTXO script since it's not signed
             })
         );
-        expect(tx.vout[0]).toStrictEqual(
+        expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a91421ff8214d09d60713b89809bb413a0651ee6931488ac',
-                value: 4992400,
+                value: 4997720,
             })
         );
-        expect(tx.vout[1]).toStrictEqual(
+        expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: 'e076a9141c62aa5fb5bc8a4932491fcfc1832fb5422e0cd288ac',
                 value: 5000000,
             })
         );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
     it('Creates a proposal tx correctly', async () => {
@@ -135,18 +154,19 @@ describe('Wallet transaction tests', () => {
                 scriptSig: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac', // Script sig must be the UTXO script since it's not signed
             })
         );
-        expect(tx.vout[0]).toStrictEqual(
+        expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                value: 4992400,
+                value: 4997640,
             })
         );
-        expect(tx.vout[1]).toStrictEqual(
+        expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: '6a20bcea39f87b1dd7a5ba9d11d3d956adc6ce57dfff9397860cc30c11f08b3aa7c8',
                 value: 5000000,
             })
         );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
     it('Creates a cold stake tx correctly', async () => {
@@ -165,21 +185,22 @@ describe('Wallet transaction tests', () => {
                 scriptSig: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac', // Script sig must be the UTXO script since it's not signed
             })
         );
-        expect(tx.vout[0]).toStrictEqual(
+        expect(tx.vout[1]).toStrictEqual(
             new CTxOut({
                 script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                value: 4992400,
+                value: 4997470,
             })
         );
-        expect(tx.vout[1]).toStrictEqual(
+        expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: '76a97b63d114291a25b5b4d1802e0611e9bf724a1e57d9210e826714f49b25384b79685227be5418f779b98a6be4c7386888ac',
                 value: 5000000,
             })
         );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
-    it('creates a tx with max balance', () => {
+    it('creates a tx with max balance', async () => {
         const tx = wallet.createTransaction(
             'SR3L4TFUKKGNsnv2Q4hWTuET2a4vHpm1b9',
             0.1 * 10 ** 8,
@@ -200,9 +221,10 @@ describe('Wallet transaction tests', () => {
         expect(tx.vout[0]).toStrictEqual(
             new CTxOut({
                 script: '76a97b63d114291a25b5b4d1802e0611e9bf724a1e57d9210e826714f49b25384b79685227be5418f779b98a6be4c7386888ac',
-                value: 9992400, // 0.1 PIV - fee
+                value: 9997810, // 0.1 PIV - fee
             })
         );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
     it('creates a t->s tx correctly', () => {
@@ -221,12 +243,6 @@ describe('Wallet transaction tests', () => {
                             '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
                     }),
                 ],
-                vout: [
-                    new CTxOut({
-                        script: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac',
-                        value: 4992400,
-                    }),
-                ],
                 shieldOutput: [
                     {
                         address: addr,
@@ -236,6 +252,37 @@ describe('Wallet transaction tests', () => {
                 version: 3,
             })
         );
+    });
+
+    it('it does not insert dust change', async () => {
+        // The tipical output has 34 bytes, so a 200 satoshi change is surely going to be dust
+        // a P2PKH with 1 input and 1 output will have more or less 190 bytes in size and 1900 satoshi of fees
+        // Finally 0.1*10**8 is the value of the UTXO we are spending (0.1 PIVs)
+        const value = 0.1 * 10 ** 8 - 1900 - 200;
+        const tx = wallet.createTransaction(
+            'DLabsktzGMnsK5K9uRTMCF6NoYNY6ET4Bb',
+            value,
+            { subtractFeeFromAmt: false }
+        );
+        expect(tx.version).toBe(1);
+        expect(tx.vin).toHaveLength(1);
+        expect(tx.vin[0]).toStrictEqual(
+            new CTxIn({
+                outpoint: new COutpoint({
+                    txid: 'f8f968d80ac382a7b64591cc166489f66b7c4422f95fbd89f946a5041d285d7c',
+                    n: 1,
+                }),
+                scriptSig: '76a914f49b25384b79685227be5418f779b98a6be4c73888ac', // Script sig must be the UTXO script since it's not signed
+            })
+        );
+        expect(tx.vout).toHaveLength(1);
+        expect(tx.vout[0]).toStrictEqual(
+            new CTxOut({
+                script: '76a914a95cc6408a676232d61ec29dc56a180b5847835788ac',
+                value: value,
+            })
+        );
+        await checkFees(wallet, tx, MIN_FEE_PER_BYTE);
     });
 
     it('creates a s->t tx correctly', async () => {
@@ -306,6 +353,14 @@ describe('Wallet transaction tests', () => {
                 { useShieldInputs: true }
             )
         ).toBeDefined();
+        // MaX balance is set but we don't allow subtracting fee from amount
+        expect(() =>
+            wallet.createTransaction(
+                'DLabsktzGMnsK5K9uRTMCF6NoYNY6ET4Bb',
+                0.1 * 10 ** 8,
+                { subtractFeeFromAmt: false }
+            )
+        ).toThrow(/not enough balance/i);
     });
 
     it('throws when delegateChange is set, but changeDelegationAddress is not', () => {
