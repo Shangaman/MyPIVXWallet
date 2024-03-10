@@ -456,7 +456,11 @@ async function send(address, amount, useShieldInputs) {
         createAlert('warning', e);
     } finally {
         if (autoLockWallet.value) {
-            lockWallet();
+            if (wallet.isEncrypted.value) {
+                lockWallet();
+            } else {
+                await displayLockWalletModal();
+            }
         }
     }
 }
