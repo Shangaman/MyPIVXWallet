@@ -96,6 +96,10 @@ export class Wallet {
 
     #isSynced = false;
     #isFetchingLatestBlocks = false;
+    /**
+     * @type number
+     */
+    #lastProcessedBlock = 0;
 
     constructor({
         nAccount,
@@ -278,6 +282,7 @@ export class Wallet {
         if (this.#isMainWallet) {
             getNetwork().reset();
         }
+        this.#lastProcessedBlock = 0;
     }
 
     /**
@@ -702,7 +707,7 @@ export class Wallet {
             this.#syncing = true;
             await this.loadFromDisk();
             await this.loadShieldFromDisk();
-            await getNetwork().walletFullSync();
+            await this.#transparentSync();
             if (this.hasShield()) {
                 await this.#syncShield();
             }
@@ -711,6 +716,14 @@ export class Wallet {
             this.#syncing = false;
         }
     }
+
+    async #transparentSync() {
+        if (!this.isLoaded() || this.#isSynced) return;
+        const cNet = getNetwork();
+        await cNet.getLatestTxs(this.#lastProcessedBlock, this);
+        getEventEmitter().emit('transparent-sync-status-update', '', true);
+    }
+
     /**
      * Initial block and prover sync for the shield object
      */
@@ -1071,6 +1084,14 @@ export class Wallet {
      * @param {import('./transaction.js').Transaction} transaction
      */
     async addTransaction(transaction, skipDatabase = false) {
+        if (transaction.isConfirmed()) {
+            if (transaction.blockHeight < this.#lastProcessedBlock) {
+                throw new Error(
+                    'Transactions must be added in a monotonically increasing order!'
+                );
+            }
+            this.#lastProcessedBlock = transaction.blockHeight;
+        }
         this.#mempool.addTransaction(transaction);
         let i = 0;
         for (const out of transaction.vout) {

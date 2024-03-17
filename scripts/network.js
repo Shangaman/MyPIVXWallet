@@ -137,7 +137,6 @@ export class ExplorerNetwork extends Network {
          */
         this.blocks = 0;
 
-        this.historySyncing = false;
         this.utxoFetched = false;
         this.fullSynced = false;
         this.lastBlockSynced = 0;
@@ -202,7 +201,7 @@ export class ExplorerNetwork extends Network {
                 //TODO: unify the transparent sync with the shield sync
                 // in particular in place of getLatestTxs read directly from the block as we do for shielding
                 if (this.fullSynced) {
-                    await this.getLatestTxs(this.lastBlockSynced);
+                    await this.getLatestTxs(this.lastBlockSynced, this.wallet);
                     this.lastBlockSynced = this.blocks;
                     stakingDashboard.update(0);
                     getEventEmitter().emit('new-tx');
@@ -245,7 +244,14 @@ export class ExplorerNetwork extends Network {
         }
         throw new Error('Cannot safe fetch from explorer!');
     }
-    async getLatestTxs(nStartHeight) {
+
+    /**
+     * //TODO: do not take the wallet as parameter but instead something weaker like a public key or address?
+     * @param {number} nStartHeight - Minimum block height to get
+     * @param {import('./wallet.js').Wallet} wallet - Wallet that we are getting the txs of
+     * @returns {Promise<void>}
+     */
+    async getLatestTxs(nStartHeight, wallet) {
         // Ask some blocks in the past or blockbock might not return a transaction that has just been mined
         const blockOffset = 10;
         nStartHeight =
@@ -256,9 +262,9 @@ export class ExplorerNetwork extends Network {
             console.time('getLatestTxsTimer');
         }
         // Form the API call using our wallet information
-        const strKey = this.wallet.getKeyToExport();
+        const strKey = wallet.getKeyToExport();
         const strRoot = `/api/v2/${
-            this.wallet.isHD() ? 'xpub/' : 'address/'
+            wallet.isHD() ? 'xpub/' : 'address/'
         }${strKey}`;
         const strCoreParams = `?details=txs&from=${nStartHeight}`;
         const probePage = !this.fullSynced
@@ -270,7 +276,7 @@ export class ExplorerNetwork extends Network {
         // after first sync (so at each new block) we can safely assume that user got less than 1000 new txs
         //in this way we don't have to fetch the probePage after first sync
         const txNumber = !this.fullSynced
-            ? probePage.txs - this.wallet.getTransactions().length
+            ? probePage.txs - wallet.getTransactions().length
             : 1;
         // Compute the total pages and iterate through them until we've synced everything
         const totalPages = Math.ceil(txNumber / 1000);
@@ -298,7 +304,7 @@ export class ExplorerNetwork extends Network {
                     const parsed = Transaction.fromHex(tx.hex);
                     parsed.blockHeight = tx.blockHeight;
                     parsed.blockTime = tx.blockTime;
-                    await this.wallet.addTransaction(parsed);
+                    await wallet.addTransaction(parsed);
                 }
             }
         }
@@ -314,19 +320,6 @@ export class ExplorerNetwork extends Network {
         }
     }
 
-    async walletFullSync() {
-        if (this.fullSynced) return;
-        if (!this.wallet || !this.wallet.isLoaded()) return;
-        this.lastBlockSynced = Math.max(
-            ...this.wallet.getTransactions().map((tx) => tx.blockHeight)
-        );
-        await this.getLatestTxs(this.lastBlockSynced);
-        this.lastBlockSynced = Math.max(
-            ...this.wallet.getTransactions().map((tx) => tx.blockHeight)
-        );
-        this.fullSynced = true;
-        getEventEmitter().emit('transparent-sync-status-update', '', true);
-    }
     reset() {
         this.fullSynced = false;
         this.blocks = 0;
