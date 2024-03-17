@@ -204,8 +204,11 @@ export class ExplorerNetwork extends Network {
      * @param {import('./wallet.js').Wallet} wallet - Wallet that we are getting the txs of
      * @returns {Promise<void>}
      */
-    async getLatestTxs(nStartHeight, wallet) {
+    async getLatestTxs(wallet) {
         const isFirstSync = wallet.isSynced;
+        let nStartHeight = Math.max(
+            ...wallet.getTransactions().map((tx) => tx.blockHeight)
+        );
         // Ask some blocks in the past or blockbock might not return a transaction that has just been mined
         const blockOffset = 10;
         nStartHeight =

@@ -91,10 +91,6 @@ export class Wallet {
 
     #isSynced = false;
     #isFetchingLatestBlocks = false;
-    /**
-     * @type number
-     */
-    #lastProcessedBlock = 0;
 
     constructor({ nAccount, masterKey, shield, mempool = new Mempool() }) {
         this.#nAccount = nAccount;
@@ -263,7 +259,6 @@ export class Wallet {
             this.#addressIndices.set(i, 0);
         }
         this.#mempool = new Mempool();
-        this.#lastProcessedBlock = 0;
     }
 
     /**
@@ -704,7 +699,7 @@ export class Wallet {
     async #transparentSync() {
         if (!this.isLoaded() || this.#isSynced) return;
         const cNet = getNetwork();
-        await cNet.getLatestTxs(this.#lastProcessedBlock, this);
+        await cNet.getLatestTxs(this);
         getEventEmitter().emit('transparent-sync-status-update', '', true);
     }
 
@@ -800,7 +795,7 @@ export class Wallet {
             //TODO: unify the transparent sync with the shield sync
             // in particular in place of getLatestTxs read directly from the block as we do for shielding
             if (this.#isSynced) {
-                await getNetwork().getLatestTxs(this.#lastProcessedBlock, this);
+                await getNetwork().getLatestTxs(this);
                 stakingDashboard.update(0);
                 getEventEmitter().emit('new-tx');
                 await this.getLatestBlocks(block);
@@ -1002,6 +997,7 @@ export class Wallet {
      * @param {import('./transaction.js').Transaction} transaction
      */
     async #signShield(transaction) {
+        const blockHeight = await getNetwork().getBlockCount();
         if (!transaction.hasSaplingVersion) {
             throw new Error(
                 '`signShield` was called with a tx that cannot have shield data'
@@ -1031,7 +1027,7 @@ export class Wallet {
                     this.getAddressesFromScript(transaction.vout[0].script)
                         .addresses[0],
                 amount: value,
-                blockHeight: this.#lastProcessedBlock + 1,
+                blockHeight: blockHeight + 1,
                 useShieldInputs: transaction.vin.length === 0,
                 utxos: this.#getUTXOsForShield(),
                 transparentChangeAddress: this.getNewAddress(1)[0],
@@ -1081,15 +1077,6 @@ export class Wallet {
      * @param {import('./transaction.js').Transaction} transaction
      */
     async addTransaction(transaction, skipDatabase = false) {
-        // TODO: this part will be changed once shield sync is merged with transparent sync
-        if (transaction.isConfirmed()) {
-            if (transaction.blockHeight < this.#lastProcessedBlock) {
-                throw new Error(
-                    'Transactions must be added in a monotonically increasing order!'
-                );
-            }
-            this.#lastProcessedBlock = transaction.blockHeight;
-        }
         this.#mempool.addTransaction(transaction);
         let i = 0;
         for (const out of transaction.vout) {
