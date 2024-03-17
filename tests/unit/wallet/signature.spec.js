@@ -88,7 +88,7 @@ describe('Wallet signature tests', () => {
         expect(PIVXShield.prototype.createTransaction).toHaveBeenCalledWith({
             address: 'ptest1234567',
             amount: 100000,
-            blockHeight: 1,
+            blockHeight: 1504904,
             transparentChangeAddress: 'DTSTGkncpC86sbEUZ2rCBLEe2aXSeZPLnC',
             useShieldInputs: true, // Because vin is empty
             utxos: [
@@ -125,7 +125,7 @@ describe('Wallet signature tests', () => {
         expect(PIVXShield.prototype.createTransaction).toHaveBeenCalledWith({
             address: 'DTSTGkncpC86sbEUZ2rCBLEe2aXSeZPLnC',
             amount: 4992400,
-            blockHeight: 1,
+            blockHeight: 1504904,
             transparentChangeAddress: 'DTSTGkncpC86sbEUZ2rCBLEe2aXSeZPLnC',
             useShieldInputs: true, // Because vin is empty
             utxos: [
@@ -170,7 +170,7 @@ describe('Wallet signature tests', () => {
         expect(PIVXShield.prototype.createTransaction).toHaveBeenCalledWith({
             address: 'ptest1234567',
             amount: 100000,
-            blockHeight: 1,
+            blockHeight: 1504904,
             transparentChangeAddress: 'DTSTGkncpC86sbEUZ2rCBLEe2aXSeZPLnC',
             useShieldInputs: false,
             utxos: [
