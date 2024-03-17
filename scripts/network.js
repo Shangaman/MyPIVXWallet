@@ -12,7 +12,6 @@ import {
 } from './settings.js';
 import { cNode } from './settings.js';
 import { ALERTS, tr, translation } from './i18n.js';
-import { stakingDashboard } from './global.js';
 import { Transaction } from './transaction.js';
 
 /**
@@ -87,10 +86,6 @@ export class Network {
         this.enabled = !this.enabled;
     }
 
-    get cachedBlockCount() {
-        throw new Error('cachedBlockCount must be implemented');
-    }
-
     error() {
         throw new Error('Error must be implemented');
     }
@@ -148,10 +143,6 @@ export class ExplorerNetwork extends Network {
         }
     }
 
-    get cachedBlockCount() {
-        return this.blocks;
-    }
-
     /**
      * Fetch a block from the explorer given the height
      * @param {Number} blockHeight
@@ -190,30 +181,11 @@ export class ExplorerNetwork extends Network {
             const { backend } = await (
                 await retryWrapper(fetchBlockbook, `/api/v2/api`)
             ).json();
-            if (backend.blocks > this.blocks) {
-                getEventEmitter().emit(
-                    'new-block',
-                    backend.blocks,
-                    this.blocks
-                );
-                this.blocks = backend.blocks;
-                //TODO: unify the transparent sync with the shield sync
-                // in particular in place of getLatestTxs read directly from the block as we do for shielding
-                if (this.fullSynced) {
-                    await this.getLatestTxs(this.lastBlockSynced, this.wallet);
-                    this.lastBlockSynced = this.blocks;
-                    stakingDashboard.update(0);
-                    getEventEmitter().emit('new-tx');
-                }
-                if (this.wallet.isSynced) {
-                    await this.wallet.getLatestBlocks();
-                }
-            }
+            return backend.blocks;
         } catch (e) {
             this.error();
             throw e;
         }
-        return this.blocks;
     }
 
     /**

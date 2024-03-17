@@ -109,6 +109,7 @@ watch(translation, async () => await update());
 async function parseTXs(arrTXs) {
     const newTxs = [];
     const cNet = getNetwork();
+    const blockCount = await cNet.getBlockCount();
 
     // Prepare time formatting
     const dateOptions = {
@@ -155,7 +156,7 @@ async function parseTXs(arrTXs) {
 
         // Coinbase Transactions (rewards) require coinbaseMaturity confs
         const fConfirmed =
-            cNet.cachedBlockCount - cTx.blockHeight >=
+            blockCount - cTx.blockHeight >=
             (props.rewards ? cChainParams.current.coinbaseMaturity : 6);
 
         // Choose the content type, for the Dashboard; use a generative description, otherwise, a TX-ID

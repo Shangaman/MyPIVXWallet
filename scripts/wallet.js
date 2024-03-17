@@ -1,7 +1,7 @@
 import { validateMnemonic } from 'bip39';
 import { decrypt } from './aes-gcm.js';
 import { parseWIF } from './encoding.js';
-import { beforeUnloadListener } from './global.js';
+import { beforeUnloadListener, stakingDashboard } from './global.js';
 import { getNetwork } from './network.js';
 import { MAX_ACCOUNT_GAP, SHIELD_BATCH_SYNC_SIZE } from './chain_params.js';
 import { HistoricalTx, HistoricalTxType } from './historical_tx.js';
@@ -117,6 +117,7 @@ export class Wallet {
             this.#highestUsedIndices.set(i, 0);
             this.#loadedIndexes.set(i, 0);
         }
+        this.subscribeToNetworkEvents();
     }
 
     /**
@@ -811,10 +812,29 @@ export class Wallet {
             });
     }
 
+    subscribeToNetworkEvents() {
+        getEventEmitter().on('new-block', async (block) => {
+            //TODO: unify the transparent sync with the shield sync
+            // in particular in place of getLatestTxs read directly from the block as we do for shielding
+            if (this.#isSynced) {
+                if (this.#lastProcessedBlock > block) {
+                    throw new Error(
+                        'Received an older block than the last processed one!'
+                    );
+                }
+                await getNetwork().getLatestTxs(this.#lastProcessedBlock, this);
+                stakingDashboard.update(0);
+                getEventEmitter().emit('new-tx');
+                await this.getLatestBlocks(block);
+                this.#lastProcessedBlock = block;
+            }
+        });
+    }
     /**
      * Update the shield object with the latest blocks
+     * @param{number} blockCount - block count
      */
-    async getLatestBlocks() {
+    async getLatestBlocks(blockCount) {
         // Exit if this function is still processing
         // (this might take some time if we had many consecutive blocks without shield txs)
         if (this.#isFetchingLatestBlocks) return;
@@ -827,7 +847,7 @@ export class Wallet {
         // since it takes around 1 minute for blockbook to make it API available
         for (
             let blockHeight = this.#shield.getLastSyncedBlock() + 1;
-            blockHeight < cNet.cachedBlockCount;
+            blockHeight < blockCount;
             blockHeight++
         ) {
             try {
@@ -1034,7 +1054,7 @@ export class Wallet {
                     this.getAddressesFromScript(transaction.vout[0].script)
                         .addresses[0],
                 amount: value,
-                blockHeight: getNetwork().cachedBlockCount,
+                blockHeight: this.#lastProcessedBlock + 1,
                 useShieldInputs: transaction.vin.length === 0,
                 utxos: this.#getUTXOsForShield(),
                 transparentChangeAddress: this.getNewAddress(1)[0],

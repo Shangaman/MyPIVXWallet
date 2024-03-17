@@ -42,6 +42,9 @@ export function isLoaded() {
     return fIsLoaded;
 }
 
+// Block count
+let blockCount = 0;
+
 export let doms = {};
 
 export const dashboard = createApp(Dashboard).mount('#DashboardTab');
@@ -324,14 +327,6 @@ export async function start() {
     // Register native app service
     registerWorker();
     await settingsStart();
-    // Just load the block count, for use in non-wallet areas
-    try {
-        await getNetwork().getBlockCount();
-    } catch (e) {
-        // Block count failed, keep loading the wallet
-        // the network already creates an alert
-        console.error(e);
-    }
 
     subscribeToNetworkEvents();
 
@@ -377,10 +372,11 @@ function subscribeToNetworkEvents() {
         }
     });
 
-    getEventEmitter().on('new-block', (block, oldBlock) => {
-        console.log(`New block detected! ${oldBlock} --> ${block}`);
+    getEventEmitter().on('new-block', (block) => {
+        console.log(`New block detected! ${block}`);
         // Fetch latest Activity
         stakingDashboard.update();
+        blockCount = block;
 
         // If it's open: update the Governance Dashboard
         if (doms.domGovTab.classList.contains('active')) {
@@ -1059,25 +1055,18 @@ export async function updateGovernanceTab() {
     fRenderingGovernance = true;
 
     // Setup the Superblock countdown (if not already done), no need to block thread with await, either.
-    let cNet = getNetwork();
-
-    // When switching to mainnet from testnet or vise versa, you ned to use an await on getBlockCount() or cNet.cachedBlockCount returns 0
     if (!isTestnetLastState == cChainParams.current.isTestnet) {
         // Reset flipdown
         governanceFlipdown = null;
         doms.domFlipdown.innerHTML = '';
-
-        // Get new network blockcount
-        await getNetwork().getBlockCount();
-        cNet = getNetwork();
     }
 
     // Update governance counter when testnet/mainnet has been switched
-    if (!governanceFlipdown && cNet.cachedBlockCount > 0) {
+    if (!governanceFlipdown && blockCount > 0) {
         Masternode.getNextSuperblock().then((nSuperblock) => {
             // The estimated time to the superblock (using the block target and remaining blocks)
             const nTimestamp =
-                Date.now() / 1000 + (nSuperblock - cNet.cachedBlockCount) * 60;
+                Date.now() / 1000 + (nSuperblock - blockCount) * 60;
             governanceFlipdown = new FlipDown(nTimestamp).start();
         });
         isTestnetLastState = cChainParams.current.isTestnet;
@@ -1165,14 +1154,13 @@ async function waitForSubmissionBlockHeight(cProposalCache) {
  * @returns {string} The string status, for display purposes
  */
 function getProposalFinalisationStatus(cPropCache) {
-    const cNet = getNetwork();
     // Confirmations left until finalisation, by network consensus
     const nConfsLeft =
         cPropCache.nSubmissionHeight +
         cChainParams.current.proposalFeeConfirmRequirement -
-        cNet.cachedBlockCount;
+        blockCount;
 
-    if (cPropCache.nSubmissionHeight === 0 || cNet.cachedBlockCount === 0) {
+    if (cPropCache.nSubmissionHeight === 0 || blockCount === 0) {
         return translation.proposalFinalisationConfirming;
     } else if (nConfsLeft > 0) {
         return (
@@ -1986,7 +1974,8 @@ export async function refreshChainData() {
     if (!wallet.isLoaded()) return;
 
     // Fetch block count
-    await cNet.getBlockCount();
+    const blockCount = await cNet.getBlockCount();
+    getEventEmitter().emit('new-block', blockCount);
 }
 
 // A safety mechanism enabled if the user attempts to leave without encrypting/saving their keys
