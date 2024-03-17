@@ -83,11 +83,6 @@ export class Wallet {
      * @type {Map<String,String>}
      */
     #knownPKH = new Map();
-    /**
-     * True if this is the global wallet, false otherwise
-     * @type {Boolean}
-     */
-    #isMainWallet;
 
     /**
      * @type {Mempool}
@@ -101,15 +96,8 @@ export class Wallet {
      */
     #lastProcessedBlock = 0;
 
-    constructor({
-        nAccount,
-        isMainWallet,
-        masterKey,
-        shield,
-        mempool = new Mempool(),
-    }) {
+    constructor({ nAccount, masterKey, shield, mempool = new Mempool() }) {
         this.#nAccount = nAccount;
-        this.#isMainWallet = isMainWallet;
         this.#mempool = mempool;
         this.#masterKey = masterKey;
         this.#shield = shield;
@@ -1188,7 +1176,7 @@ export class Wallet {
 /**
  * @type{Wallet}
  */
-export const wallet = new Wallet({ nAccountL: 0, isMainWallet: true }); // For now we are using only the 0-th account, (TODO: update once account system is done)
+export const wallet = new Wallet({ nAccountL: 0 }); // For now we are using only the 0-th account, (TODO: update once account system is done)
 
 /**
  * Clean a Seed Phrase string and verify it's integrity

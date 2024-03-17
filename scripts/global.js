@@ -958,7 +958,7 @@ export async function sweepAddress(arrUTXOs, sweepingMasterKey, nFixedFee) {
         .build();
 
     // Sign using the given Master Key, then broadcast the sweep, returning the TXID (or a failure)
-    const sweepingWallet = new Wallet({ nAccount: 0, isMainWallet: false });
+    const sweepingWallet = new Wallet({ nAccount: 0 });
     sweepingWallet.setMasterKey(sweepingMasterKey);
 
     await sweepingWallet.sign(tx);
