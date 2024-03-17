@@ -696,6 +696,9 @@ export class Wallet {
         } finally {
             this.#syncing = false;
         }
+        // Update both activities post sync
+        stakingDashboard.update(0);
+        getEventEmitter().emit('new-tx');
     }
 
     async #transparentSync() {
