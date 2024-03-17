@@ -234,10 +234,6 @@ export class Wallet {
         this.#nAccount = nAccount;
         if (isNewAcc) {
             this.reset();
-            // If this is the global wallet update the network master key
-            if (this.#isMainWallet) {
-                getNetwork().setWallet(this);
-            }
             for (let i = 0; i < Wallet.chains; i++) this.loadAddresses(i);
         }
     }

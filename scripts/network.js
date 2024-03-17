@@ -48,16 +48,11 @@ import { Transaction } from './transaction.js';
  *
  */
 export class Network {
-    wallet;
-    /**
-     * @param {import('./wallet.js').Wallet} wallet
-     */
-    constructor(wallet) {
+    constructor() {
         if (this.constructor === Network) {
             throw new Error('Initializing virtual class');
         }
         this._enabled = true;
-        this.wallet = wallet;
     }
 
     /**
@@ -100,10 +95,6 @@ export class Network {
 
     submitAnalytics(_strType, _cData = {}) {
         throw new Error('submitAnalytics must be implemented');
-    }
-
-    setWallet(wallet) {
-        this.wallet = wallet;
     }
 
     async getTxInfo(_txHash) {
