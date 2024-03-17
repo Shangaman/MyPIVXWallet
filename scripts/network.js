@@ -205,7 +205,7 @@ export class ExplorerNetwork extends Network {
      * @returns {Promise<void>}
      */
     async getLatestTxs(wallet) {
-        const isFirstSync = wallet.isSynced;
+        const isFirstSync = !wallet.isSynced;
         let nStartHeight = Math.max(
             ...wallet.getTransactions().map((tx) => tx.blockHeight)
         );
