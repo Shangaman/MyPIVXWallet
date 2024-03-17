@@ -89,7 +89,7 @@ export class Network {
         throw new Error('getBlockCount must be implemented');
     }
 
-    sentTransaction() {
+    sendTransaction() {
         throw new Error('sendTransaction must be implemented');
     }
 
