@@ -797,16 +797,10 @@ export class Wallet {
             //TODO: unify the transparent sync with the shield sync
             // in particular in place of getLatestTxs read directly from the block as we do for shielding
             if (this.#isSynced) {
-                if (this.#lastProcessedBlock > block) {
-                    throw new Error(
-                        'Received an older block than the last processed one!'
-                    );
-                }
                 await getNetwork().getLatestTxs(this.#lastProcessedBlock, this);
                 stakingDashboard.update(0);
                 getEventEmitter().emit('new-tx');
                 await this.getLatestBlocks(block);
-                this.#lastProcessedBlock = block;
             }
         });
     }
@@ -1084,6 +1078,7 @@ export class Wallet {
      * @param {import('./transaction.js').Transaction} transaction
      */
     async addTransaction(transaction, skipDatabase = false) {
+        // TODO: this part will be changed once shield sync is merged with transparent sync
         if (transaction.isConfirmed()) {
             if (transaction.blockHeight < this.#lastProcessedBlock) {
                 throw new Error(
