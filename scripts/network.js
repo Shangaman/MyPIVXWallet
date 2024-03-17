@@ -358,15 +358,6 @@ export class ExplorerNetwork extends Network {
         return blocks;
     }
 
-    /**
-     * Waits for next block
-     * @returns {Promise<Number>} Resolves when the next block is obtained
-     */
-    waitForNextBlock() {
-        return new Promise((res, _rej) => {
-            getEventEmitter().once('new-block', (block) => res(block));
-        });
-    }
     // PIVX Labs Analytics: if you are a user, you can disable this FULLY via the Settings.
     // ... if you're a developer, we ask you to keep these stats to enhance upstream development,
     // ... but you are free to completely strip MPW of any analytics, if you wish, no hard feelings.
