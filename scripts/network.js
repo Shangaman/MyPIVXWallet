@@ -126,14 +126,7 @@ export class ExplorerNetwork extends Network {
          */
         this.strUrl = strUrl;
 
-        /**
-         * @type{Number}
-         * @private
-         */
-        this.blocks = 0;
-
         this.fullSynced = false;
-        this.lastBlockSynced = 0;
     }
 
     error() {
@@ -293,8 +286,6 @@ export class ExplorerNetwork extends Network {
 
     reset() {
         this.fullSynced = false;
-        this.blocks = 0;
-        this.lastBlockSynced = 0;
     }
 
     /**
