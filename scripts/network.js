@@ -137,7 +137,6 @@ export class ExplorerNetwork extends Network {
          */
         this.blocks = 0;
 
-        this.utxoFetched = false;
         this.fullSynced = false;
         this.lastBlockSynced = 0;
     }
@@ -337,42 +336,20 @@ export class ExplorerNetwork extends Network {
 
     /**
      * Fetch UTXOs from the current primary explorer
-     * @param {string} strAddress - Optional address, gets UTXOs without changing MPW's state
+     * @param {string} strAddress -  address of which we want UTXOs
      * @returns {Promise<Array<BlockbookUTXO>>} Resolves when it has finished fetching UTXOs
      */
-    async getUTXOs(strAddress = '') {
-        // If getUTXOs has been already called return
-        if (this.utxoFetched && !strAddress) {
-            return;
-        }
-        // Don't fetch UTXOs if we're already scanning for them!
-        if (!strAddress) {
-            if (!this.wallet || !this.wallet.isLoaded()) return;
-            if (this.isSyncing) return;
-            this.isSyncing = true;
-        }
+    async getUTXOs(strAddress) {
         try {
-            let publicKey = strAddress || this.wallet.getKeyToExport();
+            let publicKey = strAddress;
             // Fetch UTXOs for the key
             const arrUTXOs = await (
                 await retryWrapper(fetchBlockbook, `/api/v2/utxo/${publicKey}`)
             ).json();
-
-            // If using MPW's wallet, then sync the UTXOs in MPW's state
-            // This check is a temporary fix to the toggle explorer call
-            if (this === getNetwork())
-                if (!strAddress) {
-                    this.utxoFetched = true;
-                    getEventEmitter().emit('utxo', arrUTXOs);
-                }
-
-            // Return the UTXOs for additional utility use
             return arrUTXOs;
         } catch (e) {
             console.error(e);
             this.error();
-        } finally {
-            this.isSyncing = false;
         }
     }
 
