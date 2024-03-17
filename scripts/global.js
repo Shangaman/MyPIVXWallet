@@ -1663,8 +1663,7 @@ export async function updateMasternodeTab() {
         return;
     }
 
-    const cNet = getNetwork();
-    if (!cNet || !cNet.fullSynced) {
+    if (!wallet.isSynced) {
         doms.domMnTextErrors.innerHTML =
             'Your wallet is empty or still loading, re-open the tab in a few seconds!';
         return;

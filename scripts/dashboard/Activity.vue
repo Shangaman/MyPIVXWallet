@@ -62,7 +62,7 @@ const txMap = computed(() => {
 async function update(txToAdd = 0) {
     const cNet = getNetwork();
     // Return if wallet is not synced yet
-    if (!cNet || !cNet.fullSynced) {
+    if (!wallet.isSynced) {
         return;
     }
 

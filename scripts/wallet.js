@@ -275,10 +275,6 @@ export class Wallet {
             this.#addressIndices.set(i, 0);
         }
         this.#mempool = new Mempool();
-        // TODO: This needs to be refactored to remove the getNetwork dependency
-        if (this.#isMainWallet) {
-            getNetwork().reset();
-        }
         this.#lastProcessedBlock = 0;
     }
 

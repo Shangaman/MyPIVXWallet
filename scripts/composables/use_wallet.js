@@ -17,6 +17,7 @@ export function useWallet() {
 
     const isImported = ref(wallet.isLoaded());
     const isViewOnly = ref(wallet.isViewOnly());
+    const isSynced = ref(wallet.isSynced);
     const getKeyToBackup = async () => await wallet.getKeyToBackup();
     const isEncrypted = ref(true);
     const loadFromDisk = () => wallet.loadFromDisk();
@@ -32,6 +33,7 @@ export function useWallet() {
         isHD.value = wallet.isHD();
         isViewOnly.value = wallet.isViewOnly();
         isEncrypted.value = await hasEncryptedWallet();
+        isSynced.value = await wallet.isSynced;
     };
     const setExtsk = async (extsk) => {
         await wallet.setExtsk(extsk);
@@ -65,6 +67,7 @@ export function useWallet() {
         balance.value = wallet.balance;
         shieldBalance.value = await wallet.getShieldBalance();
         pendingShieldBalance.value = await wallet.getPendingShieldBalance();
+        isSynced.value = wallet.isSynced;
     };
     getEventEmitter().on('shield-loaded-from-disk', () => {
         hasShield.value = wallet.hasShield();
@@ -101,6 +104,7 @@ export function useWallet() {
         isImported,
         isViewOnly,
         isEncrypted,
+        isSynced,
         getKeyToBackup,
         setMasterKey,
         setExtsk,

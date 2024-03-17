@@ -368,7 +368,7 @@ async function send(address, amount, useShieldInputs) {
     }
 
     // Ensure wallet is synced
-    if (!getNetwork()?.fullSynced) {
+    if (!wallet.isSynced.value) {
         return createAlert('warning', `${ALERTS.WALLET_NOT_SYNCED}`, 3000);
     }
 
