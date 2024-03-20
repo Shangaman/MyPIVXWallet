@@ -33,7 +33,7 @@ export function useWallet() {
         isHD.value = wallet.isHD();
         isViewOnly.value = wallet.isViewOnly();
         isEncrypted.value = await hasEncryptedWallet();
-        isSynced.value = await wallet.isSynced;
+        isSynced.value = wallet.isSynced;
     };
     const setExtsk = async (extsk) => {
         await wallet.setExtsk(extsk);
