@@ -181,7 +181,7 @@ export class ExplorerNetwork extends Network {
         const maxTrials = 6;
         while (trials < maxTrials) {
             trials += 1;
-            const res = await fetchBlockbook(strCommand);
+            const res = await retryWrapper(fetchBlockbook, strCommand);
             if (!res.ok) {
                 if (debug) {
                     console.log(
