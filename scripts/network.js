@@ -1,6 +1,12 @@
 import { cChainParams } from './chain_params.js';
 import { createAlert } from './misc.js';
-import { sleep } from './utils.js';
+import {
+    debugLog,
+    debugTimerEnd,
+    debugTimerStart,
+    DebugTopics,
+    sleep,
+} from './utils.js';
 import { getEventEmitter } from './event_bus.js';
 import {
     STATS,
@@ -8,7 +14,6 @@ import {
     cAnalyticsLevel,
     setExplorer,
     fAutoSwitch,
-    debug,
 } from './settings.js';
 import { cNode } from './settings.js';
 import { ALERTS, tr, translation } from './i18n.js';
@@ -183,13 +188,12 @@ export class ExplorerNetwork extends Network {
             trials += 1;
             const res = await retryWrapper(fetchBlockbook, strCommand);
             if (!res.ok) {
-                if (debug) {
-                    console.log(
-                        'Blockbook internal error! sleeping for ' +
-                            sleepTime +
-                            ' seconds'
-                    );
-                }
+                debugLog(
+                    DebugTopics.NET,
+                    'Blockbook internal error! sleeping for ' +
+                        sleepTime +
+                        ' seconds'
+                );
                 await sleep(sleepTime);
                 continue;
             }
@@ -215,9 +219,7 @@ export class ExplorerNetwork extends Network {
             nStartHeight > blockOffset
                 ? nStartHeight - blockOffset
                 : nStartHeight;
-        if (debug) {
-            console.time('getLatestTxsTimer');
-        }
+        debugTimerStart('getLatestTxsTimer');
         // Form the API call using our wallet information
         const strKey = wallet.getKeyToExport();
         const strRoot = `/api/v2/${
@@ -266,15 +268,14 @@ export class ExplorerNetwork extends Network {
             }
         }
 
-        if (debug) {
-            console.log(
-                'Fetched latest txs: total number of pages was ',
-                totalPages,
-                ' fullSynced? ',
-                !isFirstSync
-            );
-            console.timeEnd('getLatestTxsTimer');
-        }
+        debugLog(
+            DebugTopics.NET,
+            'Fetched latest txs: total number of pages was ',
+            totalPages,
+            ' fullSynced? ',
+            !isFirstSync
+        );
+        debugTimerEnd('getLatestTxsTimer');
     }
 
     /**

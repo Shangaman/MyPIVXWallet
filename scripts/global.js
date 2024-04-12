@@ -22,7 +22,7 @@ import {
     isColdAddress,
 } from './misc.js';
 import { cChainParams, COIN } from './chain_params.js';
-import { sleep } from './utils.js';
+import { debugLog, DebugTopics, sleep } from './utils.js';
 import { registerWorker } from './native.js';
 import { refreshPriceDisplay } from './prices.js';
 import { Address6 } from 'ip-address';
@@ -371,7 +371,7 @@ function subscribeToNetworkEvents() {
     });
 
     getEventEmitter().on('new-block', (block) => {
-        console.log(`New block detected! ${block}`);
+        debugLog(DebugTopics.GLOBAL, `New block detected! ${block}`);
         // Fetch latest Activity
         stakingDashboard.update();
         blockCount = block;
@@ -1743,11 +1743,9 @@ export async function updateMasternodeTab() {
 async function refreshMasternodeData(cMasternode, fAlert = false) {
     const cMasternodeData = await cMasternode.getFullData();
 
-    if (debug) {
-        console.log('---- NEW MASTERNODE DATA (Debug Mode) ----');
-        console.log(cMasternodeData);
-        console.log('---- END MASTERNODE DATA (Debug Mode) ----');
-    }
+    debugLog(DebugTopics.GLOBAL, ' ---- NEW MASTERNODE DATA (Debug Mode) ----');
+    debugLog(DebugTopics.GLOBAL, cMasternodeData);
+    debugLog(DebugTopics.GLOBAL, '---- END MASTERNODE DATA (Debug Mode) ----');
 
     // If we have MN data available, update the dashboard
     if (cMasternodeData && cMasternodeData.status !== 'MISSING') {
