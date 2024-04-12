@@ -162,7 +162,7 @@ export class Wallet {
     }
 
     get isSyncing() {
-        return this.sync.isLocked;
+        return this.sync.isLocked();
     }
 
     wipePrivateData() {
