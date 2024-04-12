@@ -64,7 +64,7 @@ export function useWallet() {
     const currency = ref('USD');
     const price = ref(0.0);
     const sync = async () => {
-        await wallet.sync.tryEval();
+        await wallet.sync();
         balance.value = wallet.balance;
         shieldBalance.value = await wallet.getShieldBalance();
         pendingShieldBalance.value = await wallet.getPendingShieldBalance();

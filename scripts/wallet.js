@@ -19,7 +19,7 @@ import { bytesToHex, hexToBytes, sleep, startBatch } from './utils.js';
 import { strHardwareName } from './ledger.js';
 import { OutpointState, Mempool } from './mempool.js';
 import { getEventEmitter } from './event_bus.js';
-import { LockableFunction } from './lock.js';
+import { lockableFunction } from './lock.js';
 
 import {
     isP2CS,
@@ -683,7 +683,7 @@ export class Wallet {
         }
         return histTXs;
     }
-    sync = new LockableFunction(async () => {
+    sync = lockableFunction(async () => {
         if (this.#isSynced) {
             throw new Error('Attempting to sync when already synced');
         }
@@ -801,7 +801,7 @@ export class Wallet {
                 await getNetwork().getLatestTxs(this);
                 stakingDashboard.update(0);
                 getEventEmitter().emit('new-tx');
-                await this.getLatestBlocks.tryEval(block);
+                await this.getLatestBlocks(block);
             }
         });
     }
@@ -809,10 +809,9 @@ export class Wallet {
      * Update the shield object with the latest blocks
      * @param{number} blockCount - block count
      */
-    getLatestBlocks = new LockableFunction(async (blockCount) => {
+    getLatestBlocks = lockableFunction(async (blockCount) => {
         // Exit if there is no shield loaded
         if (!this.hasShield()) return;
-        console.log(blockCount, 'count');
         const cNet = getNetwork();
         // Don't ask for the exact last block that arrived,
         // since it takes around 1 minute for blockbook to make it API available
@@ -821,7 +820,6 @@ export class Wallet {
             blockHeight < blockCount;
             blockHeight++
         ) {
-            console.log(blockHeight, 'porcodio');
             try {
                 const block = await cNet.getBlock(blockHeight);
                 if (block.txs) {
