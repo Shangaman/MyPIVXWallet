@@ -19,6 +19,7 @@ import { bytesToHex, hexToBytes, sleep, startBatch } from './utils.js';
 import { strHardwareName } from './ledger.js';
 import { OutpointState, Mempool } from './mempool.js';
 import { getEventEmitter } from './event_bus.js';
+import { LockableFunction } from './lock.js';
 
 import {
     isP2CS,
@@ -90,7 +91,6 @@ export class Wallet {
     #mempool;
 
     #isSynced = false;
-    #isFetchingLatestBlocks = false;
 
     constructor({ nAccount, masterKey, shield, mempool = new Mempool() }) {
         this.#nAccount = nAccount;
@@ -162,7 +162,7 @@ export class Wallet {
     }
 
     get isSyncing() {
-        return this.#syncing;
+        return this.sync.isLocked;
     }
 
     wipePrivateData() {
@@ -683,28 +683,21 @@ export class Wallet {
         }
         return histTXs;
     }
-    #syncing = false;
-
-    async sync() {
-        if (this.#isSynced || this.#syncing) {
+    sync = new LockableFunction(async () => {
+        if (this.#isSynced) {
             throw new Error('Attempting to sync when already synced');
         }
-        try {
-            this.#syncing = true;
-            await this.loadFromDisk();
-            await this.loadShieldFromDisk();
-            await this.#transparentSync();
-            if (this.hasShield()) {
-                await this.#syncShield();
-            }
-            this.#isSynced = true;
-        } finally {
-            this.#syncing = false;
+        await this.loadFromDisk();
+        await this.loadShieldFromDisk();
+        await this.#transparentSync();
+        if (this.hasShield()) {
+            await this.#syncShield();
         }
+        this.#isSynced = true;
         // Update both activities post sync
         stakingDashboard.update(0);
         getEventEmitter().emit('new-tx');
-    }
+    });
 
     async #transparentSync() {
         if (!this.isLoaded() || this.#isSynced) return;
@@ -808,7 +801,7 @@ export class Wallet {
                 await getNetwork().getLatestTxs(this);
                 stakingDashboard.update(0);
                 getEventEmitter().emit('new-tx');
-                await this.getLatestBlocks(block);
+                await this.getLatestBlocks.tryEval(block);
             }
         });
     }
@@ -816,14 +809,10 @@ export class Wallet {
      * Update the shield object with the latest blocks
      * @param{number} blockCount - block count
      */
-    async getLatestBlocks(blockCount) {
-        // Exit if this function is still processing
-        // (this might take some time if we had many consecutive blocks without shield txs)
-        if (this.#isFetchingLatestBlocks) return;
+    getLatestBlocks = new LockableFunction(async (blockCount) => {
         // Exit if there is no shield loaded
         if (!this.hasShield()) return;
-        this.#isFetchingLatestBlocks = true;
-
+        console.log(blockCount, 'count');
         const cNet = getNetwork();
         // Don't ask for the exact last block that arrived,
         // since it takes around 1 minute for blockbook to make it API available
@@ -832,6 +821,7 @@ export class Wallet {
             blockHeight < blockCount;
             blockHeight++
         ) {
+            console.log(blockHeight, 'porcodio');
             try {
                 const block = await cNet.getBlock(blockHeight);
                 if (block.txs) {
@@ -844,9 +834,8 @@ export class Wallet {
                 break;
             }
         }
-        this.#isFetchingLatestBlocks = false;
         await this.saveShieldOnDisk();
-    }
+    });
     /**
      * Save shield data on database
      */
