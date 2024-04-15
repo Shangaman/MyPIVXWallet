@@ -91,7 +91,11 @@ export class Wallet {
     #mempool;
 
     #isSynced = false;
-
+    /**
+     * The height of the last processed block in the wallet
+     * @type {number}
+     */
+    #lastProcessedBlock = 0;
     constructor({ nAccount, masterKey, shield, mempool = new Mempool() }) {
         this.#nAccount = nAccount;
         this.#mempool = mempool;
