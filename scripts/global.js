@@ -43,7 +43,7 @@ export function isLoaded() {
 }
 
 // Block count
-let blockCount = 0;
+export let blockCount = 0;
 
 export let doms = {};
 
@@ -374,7 +374,6 @@ function subscribeToNetworkEvents() {
         console.log(`New block detected! ${block}`);
         // Fetch latest Activity
         stakingDashboard.update();
-        blockCount = block;
 
         // If it's open: update the Governance Dashboard
         if (doms.domGovTab.classList.contains('active')) {
@@ -1956,8 +1955,11 @@ export async function refreshChainData() {
     if (!wallet.isLoaded()) return;
 
     // Fetch block count
-    const blockCount = await cNet.getBlockCount();
-    getEventEmitter().emit('new-block', blockCount);
+    const newBlockCount = await cNet.getBlockCount();
+    if (newBlockCount !== blockCount) {
+        blockCount = newBlockCount;
+        getEventEmitter().emit('new-block', blockCount);
+    }
 }
 
 // A safety mechanism enabled if the user attempts to leave without encrypting/saving their keys

@@ -1,7 +1,11 @@
 import { validateMnemonic } from 'bip39';
 import { decrypt } from './aes-gcm.js';
 import { parseWIF } from './encoding.js';
-import { beforeUnloadListener, stakingDashboard } from './global.js';
+import {
+    beforeUnloadListener,
+    blockCount,
+    stakingDashboard,
+} from './global.js';
 import { getNetwork } from './network.js';
 import { MAX_ACCOUNT_GAP, SHIELD_BATCH_SYNC_SIZE } from './chain_params.js';
 import { HistoricalTx, HistoricalTxType } from './historical_tx.js';
@@ -700,7 +704,7 @@ export class Wallet {
             // Let's set the last processed block 5 blocks behind the actual chain tip
             // This is just to be sure since blockbook (as we know)
             // usually does not return txs of the actual last block.
-            this.#lastProcessedBlock = (await getNetwork().getBlockCount()) - 5;
+            this.#lastProcessedBlock = blockCount - 5;
             await this.#transparentSync();
             if (this.hasShield()) {
                 await this.#syncShield();
@@ -1024,7 +1028,6 @@ export class Wallet {
      * @param {import('./transaction.js').Transaction} transaction
      */
     async #signShield(transaction) {
-        const blockHeight = await getNetwork().getBlockCount();
         if (!transaction.hasSaplingVersion) {
             throw new Error(
                 '`signShield` was called with a tx that cannot have shield data'
@@ -1054,7 +1057,7 @@ export class Wallet {
                     this.getAddressesFromScript(transaction.vout[0].script)
                         .addresses[0],
                 amount: value,
-                blockHeight: blockHeight + 1,
+                blockHeight: blockCount + 1,
                 useShieldInputs: transaction.vin.length === 0,
                 utxos: this.#getUTXOsForShield(),
                 transparentChangeAddress: this.getNewAddress(1)[0],
