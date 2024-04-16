@@ -137,7 +137,6 @@ export class ExplorerNetwork extends Network {
                 `/api/v2/block/${blockHeight}`
             );
             const newTxs = [];
-            const txsToAdd = block.txs;
             // This is bad. We're making so many requests
             // This is a quick fix to try to be compliant with the blockbook
             // API, and not the PIVX extension.
