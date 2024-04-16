@@ -806,49 +806,53 @@ export class Wallet {
             }
         });
     }
-    /**
-     * Update the shield object with the latest blocks
-     * @param{number} blockCount - block count
-     */
-    getLatestBlocks = lockableFunction(async (blockCount) => {
-        // Exit if there is no shield loaded
-        if (!this.hasShield()) return;
-        const cNet = getNetwork();
-        // Don't ask for the exact last block that arrived,
-        // since it takes around 1 minute for blockbook to make it API available
-        for (
-            let blockHeight = this.#lastProcessedBlock + 1;
-            blockHeight < blockCount;
-            blockHeight++
-        ) {
-            try {
-                const block = await cNet.getBlock(blockHeight);
-                if (block.txs) {
-                    if (this.hasShield()) {
-                        if (blockHeight > this.#shield.getLastSyncedBlock()) {
-                            await this.#shield.handleBlock(block);
+    getLatestBlocks = lockableFunction(
+        /**
+         * Update the shield object with the latest blocks
+         * @param{number} blockCount - block count
+         */
+        async (blockCount) => {
+            // Exit if there is no shield loaded
+            if (!this.hasShield()) return;
+            const cNet = getNetwork();
+            // Don't ask for the exact last block that arrived,
+            // since it takes around 1 minute for blockbook to make it API available
+            for (
+                let blockHeight = this.#lastProcessedBlock + 1;
+                blockHeight < blockCount;
+                blockHeight++
+            ) {
+                try {
+                    const block = await cNet.getBlock(blockHeight);
+                    if (block.txs) {
+                        if (this.hasShield()) {
+                            if (
+                                blockHeight > this.#shield.getLastSyncedBlock()
+                            ) {
+                                await this.#shield.handleBlock(block);
+                            }
                         }
-                    }
-                    for (const tx of block.txs) {
-                        const parsed = Transaction.fromHex(tx.hex);
-                        parsed.blockHeight = blockHeight;
-                        parsed.blockTime = tx.blocktime;
-                        // Avoid wasting memory on txs that do not regard our wallet
-                        if (this.#mempool.ownTransaction(parsed)) {
-                            await wallet.addTransaction(parsed);
+                        for (const tx of block.txs) {
+                            const parsed = Transaction.fromHex(tx.hex);
+                            parsed.blockHeight = blockHeight;
+                            parsed.blockTime = tx.blocktime;
+                            // Avoid wasting memory on txs that do not regard our wallet
+                            if (this.#mempool.ownTransaction(parsed)) {
+                                await wallet.addTransaction(parsed);
+                            }
                         }
+                    } else {
+                        break;
                     }
-                } else {
+                    this.#lastProcessedBlock = blockHeight;
+                } catch (e) {
+                    console.error(e);
                     break;
                 }
-                this.#lastProcessedBlock = blockHeight;
-            } catch (e) {
-                console.error(e);
-                break;
             }
+            await this.saveShieldOnDisk();
         }
-        await this.saveShieldOnDisk();
-    });
+    );
     /**
      * Save shield data on database
      */

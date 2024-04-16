@@ -1,6 +1,8 @@
 /**
  * Implement a lockable object
- * @param {Function} f - the function on which we perform the lock
+ * @template T
+ * @param {T} f - the function on which we perform the lock
+ * @returns T & { isLocked: () => bool }
  */
 export const lockableFunction = (f) => {
     let lock = false;
