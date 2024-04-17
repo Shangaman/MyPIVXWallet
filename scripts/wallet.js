@@ -1,11 +1,7 @@
 import { validateMnemonic } from 'bip39';
 import { decrypt } from './aes-gcm.js';
 import { parseWIF } from './encoding.js';
-import {
-    beforeUnloadListener,
-    blockCount,
-    stakingDashboard,
-} from './global.js';
+import { beforeUnloadListener, blockCount } from './global.js';
 import { getNetwork } from './network.js';
 import { MAX_ACCOUNT_GAP, SHIELD_BATCH_SYNC_SIZE } from './chain_params.js';
 import { HistoricalTx, HistoricalTxType } from './historical_tx.js';
@@ -714,7 +710,6 @@ export class Wallet {
             this.#syncing = false;
         }
         // Update both activities post sync
-        stakingDashboard.update(0);
         getEventEmitter().emit('new-tx');
     }
 
@@ -815,9 +810,8 @@ export class Wallet {
     subscribeToNetworkEvents() {
         getEventEmitter().on('new-block', async (block) => {
             if (this.#isSynced) {
-                stakingDashboard.update(0);
-                getEventEmitter().emit('new-tx');
                 await this.getLatestBlocks(block);
+                getEventEmitter().emit('new-tx');
             }
         });
     }

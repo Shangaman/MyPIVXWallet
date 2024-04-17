@@ -5,8 +5,7 @@ import Activity from './Activity.vue';
 import GenKeyWarning from './GenKeyWarning.vue';
 import TransferMenu from './TransferMenu.vue';
 import ExportPrivKey from './ExportPrivKey.vue';
-import { cleanAndVerifySeedPhrase } from '../wallet.js';
-import { parseWIF, verifyWIF } from '../encoding.js';
+import RestoreWallet from './RestoreWallet.vue';
 import {
     createAlert,
     isBase64,
@@ -17,19 +16,14 @@ import {
     sanitizeHTML,
 } from '../misc.js';
 import { ALERTS, translation, tr } from '../i18n.js';
-import {
-    LegacyMasterKey,
-    HardwareWalletMasterKey,
-    HdMasterKey,
-} from '../masterkey';
-import { decrypt } from '../aes-gcm.js';
-import { cChainParams, COIN } from '../chain_params';
+import { HardwareWalletMasterKey, HdMasterKey } from '../masterkey';
+import { COIN } from '../chain_params';
 import { onMounted, ref, watch, computed } from 'vue';
-import { mnemonicToSeed } from 'bip39';
 import { getEventEmitter } from '../event_bus';
 import { Database } from '../database';
 import { start, doms, updateLogOutButton } from '../global';
 import { refreshChainData } from '../global.js';
+import { validateAmount } from '../legacy';
 import {
     confirmPopup,
     isXPub,
@@ -40,18 +34,18 @@ import { getNetwork } from '../network.js';
 import { strHardwareName } from '../ledger';
 import { guiAddContactPrompt } from '../contacts-book';
 import { scanQRCode } from '../scanner';
-import { PIVXShield } from 'pivx-shield';
 import { useWallet } from '../composables/use_wallet.js';
 import { useSettings } from '../composables/use_settings.js';
-import { validateAmount } from '../legacy.js';
+import { ParsedSecret } from '../parsed_secret.js';
+import { storeToRefs } from 'pinia';
 
 const wallet = useWallet();
 const activity = ref(null);
 const needsToEncrypt = computed(() => {
-    if (wallet.isHardwareWallet.value) {
+    if (wallet.isHardwareWallet) {
         return false;
     } else {
-        return !wallet.isViewOnly.value && !wallet.isEncrypted.value;
+        return !wallet.isViewOnly && !wallet.isEncrypted;
     }
 });
 const showTransferMenu = ref(false);
@@ -63,6 +57,8 @@ const jdenticonValue = ref('');
 const transferAddress = ref('');
 const transferDescription = ref('');
 const transferAmount = ref('');
+const showRestoreWallet = ref(false);
+const restoreWalletReason = ref('');
 watch(showExportModal, async (showExportModal) => {
     if (showExportModal) {
         keyToBackup.value = await wallet.getKeyToBackup();
@@ -71,127 +67,6 @@ watch(showExportModal, async (showExportModal) => {
         keyToBackup.value = '';
     }
 });
-
-class ParsedSecret {
-    /**
-     * @type {import('../masterkey.js').MasterKey} masterkey - Masterkey object derived from the secret
-     */
-    masterKey;
-    /**
-     * @type {PIVXShield} shield - Shield object associated with the secret. Only provided if the secret contains a seed
-     */
-    shield;
-    constructor(masterKey, shield = null) {
-        this.masterKey = masterKey;
-        this.shield = shield;
-    }
-}
-/**
- * Parses whatever the secret is to a MasterKey
- * @param {string|number[]|Uint8Array} secret
- * @returns {Promise<ParsedSecret?>}
- */
-async function parseSecret(secret, password = '') {
-    const rules = [
-        {
-            test: (s) => Array.isArray(s) || s instanceof Uint8Array,
-            f: (s) => new ParsedSecret(new LegacyMasterKey({ pkBytes: s })),
-        },
-        {
-            test: (s) => isBase64(s) && s.length >= 128,
-            f: async (s, p) => parseSecret(await decrypt(s, p)),
-        },
-        {
-            test: (s) => s.startsWith('xprv'),
-            f: (s) => new ParsedSecret(new HdMasterKey({ xpriv: s })),
-        },
-        {
-            test: (s) => s.startsWith('xpub'),
-            f: (s) => new ParsedSecret(new HdMasterKey({ xpub: s })),
-        },
-        {
-            test: (s) =>
-                cChainParams.current.PUBKEY_PREFIX.includes(s[0]) &&
-                s.length === 34,
-            f: (s) => new ParsedSecret(new LegacyMasterKey({ address: s })),
-        },
-        {
-            test: (s) => verifyWIF(s),
-            f: (s) => parseSecret(parseWIF(s)),
-        },
-        {
-            test: (s) => s.includes(' '),
-            f: async (s) => {
-                const { ok, msg, phrase } = await cleanAndVerifySeedPhrase(
-                    s,
-                    advancedMode.value
-                );
-                if (!ok) throw new Error(msg);
-                const seed = await mnemonicToSeed(phrase, password);
-                const pivxShield = await PIVXShield.create({
-                    seed,
-                    // hardcoded value considering the last checkpoint, this is good both for mainnet and testnet
-                    // TODO: take the wallet creation height in input from users
-                    blockHeight: 4200000,
-                    coinType: cChainParams.current.BIP44_TYPE,
-                    // TODO: Change account index once account system is made
-                    accountIndex: 0,
-                    loadSaplingData: false,
-                });
-                return new ParsedSecret(
-                    new HdMasterKey({
-                        seed,
-                    }),
-                    pivxShield
-                );
-            },
-        },
-        {
-            test: (s) => {
-                try {
-                    const obj = JSON.parse(s);
-                    return !!obj.mk;
-                } catch (_) {
-                    return false;
-                }
-            },
-            f: async (s) => {
-                const obj = JSON.parse(s);
-                const mk = (await parseSecret(obj.mk)).masterKey;
-                let shield;
-                try {
-                    if (obj.shield)
-                        shield = await PIVXShield.create({
-                            extendedSpendingKey: obj.shield,
-                            blockHeight: 4200000,
-                            coinType: cChainParams.current.BIP44_TYPE,
-                            accountIndex: 0,
-                            loadSaplingData: false,
-                        });
-                } catch (_) {}
-                return new ParsedSecret(mk, shield);
-            },
-        },
-    ];
-
-    for (const rule of rules) {
-        let test;
-        try {
-            test = rule.test(secret, password);
-        } catch (e) {
-            test = false;
-        }
-        if (test) {
-            try {
-                return await rule.f(secret, password);
-            } catch (e) {
-                createAlert('warning', e.message, 5000);
-                return;
-            }
-        }
-    }
-    createAlert('warning', ALERTS.FAILED_TO_IMPORT + '<br>', 6000);
-}
 
 /**
  * Import a wallet, this function MUST be called only at start or when switching network
@@ -220,7 +95,11 @@ async function importWallet({ type, secret, password = '' }) {
             12500
         );
     } else {
-        parsedSecret = await parseSecret(secret, password);
+        parsedSecret = await ParsedSecret.parse(
+            secret,
+            password,
+            advancedMode.value
+        );
     }
     if (parsedSecret) {
         await wallet.setMasterKey(parsedSecret.masterKey);
@@ -246,7 +125,7 @@ async function importWallet({ type, secret, password = '' }) {
  * @param {string} [currentPassword] - Current password with which the wallet is encrypted with, if any
  */
 async function encryptWallet(password, currentPassword = '') {
-    if (wallet.isEncrypted.value) {
+    if (wallet.isEncrypted) {
         if (!(await wallet.checkDecryptPassword(currentPassword))) {
             createAlert('warning', ALERTS.INCORRECT_PASSWORD, 6000);
             return false;
@@ -258,54 +137,36 @@ async function encryptWallet(password, currentPassword = '') {
     }
 }
 
-// TODO: This needs to be vueeifed a bit
 async function restoreWallet(strReason) {
-    if (wallet.isHardwareWallet.value) return true;
-    if (!wallet.isEncrypted.value) return true;
-    // Build up the UI elements based upon conditions for the unlock prompt
-    let strHTML = '';
+    if (!wallet.isEncrypted) return false;
+    if (wallet.isHardwareWallet) return true;
+    showRestoreWallet.value = true;
+    return await new Promise((res) => {
+        watch(
+            [showRestoreWallet, isViewOnly],
+            () => {
+                showRestoreWallet.value = false;
+                res(!isViewOnly.value);
+            },
+            { once: true }
+        );
+    });
+}
 
-    // If there's a reason given; display it as a sub-text
-    strHTML += `<p style="opacity: 0.75">${strReason}</p>`;
-
-    // Prompt the user
-    if (
-        await confirmPopup({
-            title: translation.walletUnlock,
-            html: `${strHTML}<input type="password" id="restoreWalletPassword" placeholder="${translation.walletPassword}" style="text-align: center;">`,
-        })
-    ) {
-        // Fetch the password from the prompt, and immediately destroy the prompt input
-        const domPassword = document.getElementById('restoreWalletPassword');
-        const strPassword = domPassword.value;
-        domPassword.value = '';
-        const database = await Database.getInstance();
-        const { encWif, encExtsk } = await database.getAccount();
-
-        // Attempt to unlock the wallet with the provided password
-        const key = await parseSecret(encWif, strPassword);
-        const extsk = await decrypt(encExtsk, strPassword);
-        if (key.masterKey) {
-            //  This SHOULD REALLY NOT HAPPEN
-            if (wallet.hasShield.value && !extsk) {
-                createAlert(
-                    'warning',
-                    'Could not decrypt sk even if password is correct, please contact a developer'
-                );
-            }
-            if (wallet.hasShield.value) {
-                await wallet.setExtsk(extsk);
-            }
-            await wallet.setMasterKey(key.masterKey);
-            createAlert('success', ALERTS.WALLET_UNLOCKED, 1500);
-            return true;
-        } else {
-            // Password is invalid
-            return false;
+async function importWif(wif, extsk) {
+    const secret = await ParsedSecret.parse(wif);
+    if (secret.masterKey) {
+        await wallet.setMasterKey(secret.masterKey);
+        if (wallet.hasShield && !extsk) {
+            createAlert(
+                'warning',
+                'Could not decrypt sk even if password is correct, please contact a developer'
+            );
         }
-    } else {
-        // User rejected the unlock
-        return false;
+        if (wallet.hasShield) {
+            await wallet.setExtsk(extsk);
+        }
+        createAlert('success', ALERTS.WALLET_UNLOCKED, 1500);
     }
 }
 
@@ -313,7 +174,7 @@ async function restoreWallet(strReason) {
  * Lock the wallet by deleting masterkey private data, after user confirmation
  */
 async function displayLockWalletModal() {
-    const isEncrypted = wallet.isEncrypted.value;
+    const isEncrypted = wallet.isEncrypted;
     const title = isEncrypted
         ? translation.popupWalletLock
         : translation.popupWalletWipe;
@@ -345,12 +206,12 @@ function lockWallet() {
  */
 async function send(address, amount, useShieldInputs) {
     // Ensure a wallet is unlocked
-    if (wallet.isViewOnly.value && !wallet.isHardwareWallet.value) {
+    if (wallet.isViewOnly && !wallet.isHardwareWallet) {
         if (
             !(await restoreWallet(
                 tr(ALERTS.WALLET_UNLOCK_IMPORT, [
                     {
-                        unlock: wallet.isEncrypted.value
+                        unlock: wallet.isEncrypted
                             ? 'unlock '
                             : 'import/create',
                     },
@@ -361,12 +222,12 @@ async function send(address, amount, useShieldInputs) {
     }
 
     // Ensure wallet is synced
-    if (!wallet.isSynced.value) {
+    if (!wallet.isSynced) {
         return createAlert('warning', `${ALERTS.WALLET_NOT_SYNCED}`, 3000);
     }
 
     // Make sure we are not already creating a (shield) tx
-    if (wallet.isCreatingTx.value) {
+    if (wallet.isCreatingTx) {
         return createAlert(
             'warning',
             'Already creating a transaction! please wait for it to finish'
@@ -389,7 +250,7 @@ async function send(address, amount, useShieldInputs) {
     if (cContact) address = cContact.pubkey;
 
     // Make sure wallet has shield enabled
-    if (!wallet.hasShield.value) {
+    if (!wallet.hasShield) {
         if (useShieldInputs || isShieldAddress(address)) {
             return createAlert('warning', ALERTS.MISSING_SHIELD);
         }
@@ -452,8 +313,8 @@ async function send(address, amount, useShieldInputs) {
     const nValue = Math.round(amount * COIN);
     if (!validateAmount(nValue)) return;
     const availableBalance = useShieldInputs
-        ? wallet.shieldBalance.value
-        : wallet.balance.value;
+        ? wallet.shieldBalance
+        : wallet.balance;
     if (nValue > availableBalance) {
         createAlert(
             'warning',
@@ -477,7 +338,7 @@ async function send(address, amount, useShieldInputs) {
         createAlert('warning', e);
     } finally {
         if (autoLockWallet.value) {
-            if (wallet.isEncrypted.value) {
+            if (wallet.isEncrypted) {
                 lockWallet();
             } else {
                 await displayLockWalletModal();
@@ -490,9 +351,7 @@ async function send(address, amount, useShieldInputs) {
  * @param {boolean} useShieldInputs - whether max balance is from shield or transparent pivs
  */
 function getMaxBalance(useShieldInputs) {
-    const coinSatoshi = useShieldInputs
-        ? wallet.shieldBalance.value
-        : wallet.balance.value;
+    const coinSatoshi = useShieldInputs ? wallet.shieldBalance : wallet.balance;
     transferAmount.value = (coinSatoshi / COIN).toString();
 }
 
@@ -502,7 +361,7 @@ getEventEmitter().on('toggle-network', async () => {
     await wallet.setMasterKey(null);
     activity.value?.reset();
 
-    if (wallet.isEncrypted.value) {
+    if (wallet.isEncrypted) {
         await importWallet({ type: 'hd', secret: account.publicKey });
     }
     updateLogOutButton();
@@ -513,7 +372,7 @@ getEventEmitter().on('toggle-network', async () => {
 onMounted(async () => {
     await start();
 
-    if (wallet.isEncrypted.value) {
+    if (wallet.isEncrypted) {
         const database = await Database.getInstance();
         const { publicKey } = await database.getAccount();
         await importWallet({ type: 'hd', secret: publicKey });
@@ -538,7 +397,8 @@ const {
     immatureBalance,
     currency,
     price,
-} = wallet;
+    isViewOnly,
+} = storeToRefs(wallet);
 
 getEventEmitter().on('sync-status', (status) => {
     if (status === 'stop') activity?.value?.update();
@@ -608,7 +468,7 @@ defineExpose({
     <div id="keypair" class="tabcontent">
         <div class="row m-0">
             <Login
-                v-show="!wallet.isImported.value"
+                v-show="!wallet.isImported"
                 :advancedMode="advancedMode"
                 @import-wallet="importWallet"
             />
@@ -619,9 +479,7 @@ defineExpose({
             <div
                 class="col-12 p-0"
                 v-if="
-                    wallet.isViewOnly.value &&
-                    wallet.isEncrypted.value &&
-                    wallet.isImported.value
+                    wallet.isViewOnly && wallet.isEncrypted && wallet.isImported
                 "
             >
                 <center>
@@ -658,9 +516,7 @@ defineExpose({
             <div
                 class="col-12"
                 v-if="
-                    !wallet.isViewOnly.value &&
-                    !needsToEncrypt &&
-                    wallet.isImported.value
+                    !wallet.isViewOnly && !needsToEncrypt && wallet.isImported
                 "
             >
                 <center>
@@ -1012,18 +868,18 @@ defineExpose({
             <ExportPrivKey
                 :show="showExportModal"
                 :privateKey="keyToBackup"
-                :isJSON="wallet.hasShield.value && !wallet.isEncrypted.value"
+                :isJSON="wallet.hasShield && !wallet.isEncrypted"
                 @close="showExportModal = false"
             />
             <!-- WALLET FEATURES -->
-            <div v-if="wallet.isImported.value">
+            <div v-if="wallet.isImported">
                 <GenKeyWarning
                     @onEncrypt="encryptWallet"
                     @close="showEncryptModal = false"
                     @open="showEncryptModal = true"
                     :showModal="showEncryptModal"
                     :showBox="needsToEncrypt"
-                    :isEncrypt="wallet.isEncrypted.value"
+                    :isEncrypt="wallet.isEncrypted"
                 />
                 <div class="row p-0">
                     <!-- Balance in PIVX & USD-->
@@ -1033,12 +889,12 @@ defineExpose({
                         :pendingShieldBalance="pendingShieldBalance"
                         :immatureBalance="immatureBalance"
                         :jdenticonValue="jdenticonValue"
-                        :isHdWallet="wallet.isHD.value"
-                        :isHardwareWallet="wallet.isHardwareWallet.value"
+                        :isHdWallet="wallet.isHD"
+                        :isHardwareWallet="wallet.isHardwareWallet"
                         :currency="currency"
                         :price="price"
                         :displayDecimals="displayDecimals"
-                        :shieldEnabled="wallet.hasShield.value"
+                        :shieldEnabled="wallet.hasShield"
                         @reload="refreshChainData()"
                         @send="showTransferMenu = true"
                         @exportPrivKeyOpen="showExportModal = true"
@@ -1057,7 +913,7 @@ defineExpose({
             :show="showTransferMenu"
             :price="price"
             :currency="currency"
-            :shieldEnabled="wallet.hasShield.value"
+            :shieldEnabled="wallet.hasShield"
             v-model:amount="transferAmount"
             :desc="transferDescription"
             v-model:address="transferAddress"
@@ -1067,4 +923,10 @@ defineExpose({
             @max-balance="getMaxBalance"
         />
     </div>
+    <RestoreWallet
+        :show="showRestoreWallet"
+        :reason="restoreWalletReason"
+        @close="showRestoreWallet = false"
+        @import="importWif"
+    />
 </template>

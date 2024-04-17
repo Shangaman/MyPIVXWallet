@@ -163,6 +163,7 @@ export class ExplorerNetwork extends Network {
             const { backend } = await (
                 await retryWrapper(fetchBlockbook, `/api/v2/api`)
             ).json();
+
             return backend.blocks;
         } catch (e) {
             this.error();
