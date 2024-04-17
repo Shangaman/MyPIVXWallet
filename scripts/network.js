@@ -127,10 +127,11 @@ export class ExplorerNetwork extends Network {
 
     /**
      * Fetch a block from the explorer given the height
-     * @param {Number} blockHeight
+     * @param {number} blockHeight
+     * @param {boolean} skipCoinstake - if true coinstake tx will be skipped
      * @returns {Promise<Object>} the block fetched from explorer
      */
-    async getBlock(blockHeight) {
+    async getBlock(blockHeight, skipCoinstake = false) {
         try {
             const block = await this.safeFetchFromExplorer(
                 `/api/v2/block/${blockHeight}`
@@ -142,7 +143,9 @@ export class ExplorerNetwork extends Network {
             // In the Blockbook API /block doesn't have any chain specific information
             // Like hex, shield info or what not.
             // We could change /getshieldblocks to /getshieldtxs?
-            for (const tx of block.txs) {
+            // In addition, always skip the coinbase transaction and in case the coinstake one
+            // TODO: once v6.0 and shield stake is activated we might need to change this optimization
+            for (const tx of block.txs.slice(skipCoinstake ? 2 : 1)) {
                 const r = await fetch(
                     `${this.strUrl}/api/v2/tx-specific/${tx.txid}`
                 );

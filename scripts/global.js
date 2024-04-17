@@ -37,7 +37,7 @@ export function isLoaded() {
 }
 
 // Block count
-let blockCount = 0;
+export let blockCount = 0;
 
 export let doms = {};
 
@@ -244,6 +244,8 @@ export async function start() {
     await settingsStart();
 
     subscribeToNetworkEvents();
+    // Make sure we know the correct number of blocks
+    await refreshChainData();
 
     // If allowed by settings: submit a simple 'hit' (app load) to Labs Analytics
     getNetwork().submitAnalytics('hit');
@@ -287,7 +289,6 @@ function subscribeToNetworkEvents() {
 
     getEventEmitter().on('new-block', (block) => {
         console.log(`New block detected! ${block}`);
-        blockCount = block;
 
         // If it's open: update the Governance Dashboard
         if (doms.domGovTab.classList.contains('active')) {
@@ -1671,11 +1672,14 @@ export async function refreshChainData() {
         return console.warn(
             'Offline mode active: For your security, the wallet will avoid ALL internet requests.'
         );
-    if (!wallet.isLoaded()) return;
 
     // Fetch block count
-    const blockCount = await cNet.getBlockCount();
-    getEventEmitter().emit('new-block', blockCount);
+    const newBlockCount = await cNet.getBlockCount();
+    if (newBlockCount !== blockCount) {
+        blockCount = newBlockCount;
+        if (!wallet.isLoaded()) return;
+        getEventEmitter().emit('new-block', blockCount);
+    }
 }
 
 // A safety mechanism enabled if the user attempts to leave without encrypting/saving their keys

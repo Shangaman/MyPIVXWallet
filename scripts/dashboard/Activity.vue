@@ -8,6 +8,7 @@ import { Database } from '../database.js';
 import { HistoricalTx, HistoricalTxType } from '../historical_tx.js';
 import { getNameOrAddress } from '../contacts-book.js';
 import { getEventEmitter } from '../event_bus';
+import { blockCount } from '../global.js';
 
 const props = defineProps({
     title: String,
@@ -108,8 +109,6 @@ watch(translation, async () => await update());
  */
 async function parseTXs(arrTXs) {
     const newTxs = [];
-    const cNet = getNetwork();
-    const blockCount = await cNet.getBlockCount();
 
     // Prepare time formatting
     const dateOptions = {
