@@ -1,7 +1,7 @@
 import { validateMnemonic } from 'bip39';
 import { decrypt } from './aes-gcm.js';
 import { parseWIF } from './encoding.js';
-import { beforeUnloadListener, stakingDashboard } from './global.js';
+import { beforeUnloadListener, blockCount } from './global.js';
 import { getNetwork } from './network.js';
 import { MAX_ACCOUNT_GAP, SHIELD_BATCH_SYNC_SIZE } from './chain_params.js';
 import { HistoricalTx, HistoricalTxType } from './historical_tx.js';
@@ -700,7 +700,7 @@ export class Wallet {
             // Let's set the last processed block 5 blocks behind the actual chain tip
             // This is just to be sure since blockbook (as we know)
             // usually does not return txs of the actual last block.
-            this.#lastProcessedBlock = (await getNetwork().getBlockCount()) - 5;
+            this.#lastProcessedBlock = blockCount - 5;
             await this.#transparentSync();
             if (this.hasShield()) {
                 await this.#syncShield();
@@ -710,7 +710,6 @@ export class Wallet {
             this.#syncing = false;
         }
         // Update both activities post sync
-        stakingDashboard.update(0);
         getEventEmitter().emit('new-tx');
     }
 
@@ -781,6 +780,11 @@ export class Wallet {
 
         // At this point it should be safe to assume that shield is ready to use
         await this.saveShieldOnDisk();
+        const networkSaplingRoot = (
+            await getNetwork().getBlock(this.#shield.getLastSyncedBlock())
+        ).finalsaplingroot;
+        if (networkSaplingRoot)
+            await this.#checkShieldSaplingRoot(networkSaplingRoot);
         this.#isSynced = true;
     }
 
@@ -811,9 +815,8 @@ export class Wallet {
     subscribeToNetworkEvents() {
         getEventEmitter().on('new-block', async (block) => {
             if (this.#isSynced) {
-                stakingDashboard.update(0);
-                getEventEmitter().emit('new-tx');
                 await this.getLatestBlocks(block);
+                getEventEmitter().emit('new-tx');
             }
         });
     }
@@ -828,6 +831,7 @@ export class Wallet {
         this.#isFetchingLatestBlocks = true;
 
         const cNet = getNetwork();
+        let block;
         // Don't ask for the exact last block that arrived,
         // since it takes around 1 minute for blockbook to make it API available
         for (
@@ -862,8 +866,29 @@ export class Wallet {
             }
         }
         this.#isFetchingLatestBlocks = false;
+        if (block?.finalSaplingRoot)
+            if (!(await this.#checkShieldSaplingRoot(block.finalsaplingroot)))
+                return;
         await this.saveShieldOnDisk();
     }
+
+    async #checkShieldSaplingRoot(networkSaplingRoot) {
+        const saplingRoot = bytesToHex(
+            hexToBytes(await this.#shield.getSaplingRoot()).reverse()
+        );
+        // If explorer sapling root is different from ours, there must be a sync error
+        if (saplingRoot !== networkSaplingRoot) {
+            createAlert('warning', translation.badSaplingRoot, 5000);
+            this.#mempool = new Mempool();
+            // TODO: take the wallet creation height in input from users
+            this.#shield.reloadFromCheckpoint(4200000);
+            await this.#transparentSync();
+            await this.#syncShield();
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Save shield data on database
      */
@@ -1024,7 +1049,6 @@ export class Wallet {
      * @param {import('./transaction.js').Transaction} transaction
      */
     async #signShield(transaction) {
-        const blockHeight = await getNetwork().getBlockCount();
         if (!transaction.hasSaplingVersion) {
             throw new Error(
                 '`signShield` was called with a tx that cannot have shield data'
@@ -1054,7 +1078,7 @@ export class Wallet {
                     this.getAddressesFromScript(transaction.vout[0].script)
                         .addresses[0],
                 amount: value,
-                blockHeight: blockHeight + 1,
+                blockHeight: blockCount + 1,
                 useShieldInputs: transaction.vin.length === 0,
                 utxos: this.#getUTXOsForShield(),
                 transparentChangeAddress: this.getNewAddress(1)[0],
