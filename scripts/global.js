@@ -10,17 +10,10 @@ import {
     debug,
     cMarket,
     strCurrency,
-    nDisplayDecimals,
     fAdvancedMode,
 } from './settings.js';
 import { createAndSendTransaction } from './legacy.js';
-import {
-    createAlert,
-    confirmPopup,
-    sanitizeHTML,
-    beautifyNumber,
-    isColdAddress,
-} from './misc.js';
+import { createAlert, confirmPopup, sanitizeHTML } from './misc.js';
 import { cChainParams, COIN } from './chain_params.js';
 import { sleep } from './utils.js';
 import { registerWorker } from './native.js';
@@ -31,8 +24,9 @@ import { Database } from './database.js';
 import { checkForUpgrades } from './changelog.js';
 import { FlipDown } from './flipdown.js';
 import { createApp } from 'vue';
-import Activity from './dashboard/Activity.vue';
 import Dashboard from './dashboard/Dashboard.vue';
+import Stake from './stake/Stake.vue';
+import { createPinia } from 'pinia';
 
 /** A flag showing if base MPW is fully loaded or not */
 export let fIsLoaded = false;
@@ -47,52 +41,16 @@ let blockCount = 0;
 
 export let doms = {};
 
-export const dashboard = createApp(Dashboard).mount('#DashboardTab');
+const pinia = createPinia();
 
-// For now we'll import the component as a vue app by itself. Later, when the
-// stake tab is rewritten in vue, we can simply add <Activity /> to the stake tab component template.
-export const stakingDashboard = createApp(Activity, {
-    title: 'Reward History',
-    rewards: true,
-}).mount('#stakeActivity');
+export const dashboard = createApp(Dashboard).use(pinia).mount('#DashboardTab');
+createApp(Stake).use(pinia).mount('#StakingTab');
 
 export async function start() {
     doms = {
         domNavbarToggler: document.getElementById('navbarToggler'),
         domDashboard: document.getElementById('dashboard'),
-        domGuiStakingValue: document.getElementById('guiStakingValue'),
-        domGuiStakingValueCurrency: document.getElementById(
-            'guiStakingValueCurrency'
-        ),
-        domBalanceReloadStaking: document.getElementById(
-            'balanceReloadStaking'
-        ),
-        domGuiBalanceStaking: document.getElementById('guiBalanceStaking'),
-        domGuiBalanceStakingTicker: document.getElementById(
-            'guiBalanceStakingTicker'
-        ),
-        domStakeAmount: document.getElementById('delegateAmount'),
-        domStakeOwnerAddressContainer: document.getElementById(
-            'ownerAddressContainer'
-        ),
-        domStakeOwnerAddress: document.getElementById('delegateOwnerAddress'),
-        domUnstakeAmount: document.getElementById('undelegateAmount'),
         domStakeTab: document.getElementById('stakeTab'),
-        domStakeAmountCoinsTicker: document.getElementById(
-            'stakeAmountCoinsTicker'
-        ),
-        domStakeAmountValueCurrency: document.getElementById(
-            'stakeAmountValueCurrency'
-        ),
-        domStakeAmountValue: document.getElementById('stakeAmountValue'),
-        domUnstakeAmountCoinsTicker: document.getElementById(
-            'unstakeAmountCoinsTicker'
-        ),
-        domUnstakeAmountValueCurrency: document.getElementById(
-            'unstakeAmountValueCurrency'
-        ),
-
-        domUnstakeAmountValue: document.getElementById('unstakeAmountValue'),
         domModalQR: document.getElementById('ModalQR'),
         domModalQrLabel: document.getElementById('ModalQRLabel'),
         domModalQrReceiveTypeBtn: document.getElementById(
@@ -161,18 +119,7 @@ export async function start() {
         ),
         domEncryptPasswordFirst: document.getElementById('newPassword'),
         domEncryptPasswordSecond: document.getElementById('newPasswordRetype'),
-        domAvailToDelegate: document.getElementById('availToDelegate'),
-        domAvailToUndelegate: document.getElementById('availToUndelegate'),
         domAnalyticsDescriptor: document.getElementById('analyticsDescriptor'),
-        domMnemonicModalContent: document.getElementById(
-            'ModalMnemonicContent'
-        ),
-        domMnemonicModalButton: document.getElementById(
-            'modalMnemonicConfirmButton'
-        ),
-        domMnemonicModalPassphrase: document.getElementById(
-            'ModalMnemonicPassphrase'
-        ),
         domRedeemTitle: document.getElementById('redeemCodeModalTitle'),
         domRedeemCodeUse: document.getElementById('redeemCodeUse'),
         domRedeemCodeCreate: document.getElementById('redeemCodeCreate'),
@@ -292,38 +239,6 @@ export async function start() {
     sliderElement.addEventListener('input', handleDecimalSlider);
     sliderElement.addEventListener('mouseover', handleDecimalSlider);
 
-    /** Staking (Stake) */
-    doms.domStakeAmount.oninput = () => {
-        updateAmountInputPair(
-            doms.domStakeAmount,
-            doms.domStakeAmountValue,
-            true
-        );
-    };
-    doms.domStakeAmountValue.oninput = () => {
-        updateAmountInputPair(
-            doms.domStakeAmount,
-            doms.domStakeAmountValue,
-            false
-        );
-    };
-
-    /** Staking (Unstake) */
-    doms.domUnstakeAmount.oninput = () => {
-        updateAmountInputPair(
-            doms.domUnstakeAmount,
-            doms.domUnstakeAmountValue,
-            true
-        );
-    };
-    doms.domUnstakeAmountValue.oninput = () => {
-        updateAmountInputPair(
-            doms.domUnstakeAmount,
-            doms.domUnstakeAmountValue,
-            false
-        );
-    };
-
     // Register native app service
     registerWorker();
     await settingsStart();
@@ -372,8 +287,6 @@ function subscribeToNetworkEvents() {
 
     getEventEmitter().on('new-block', (block) => {
         console.log(`New block detected! ${block}`);
-        // Fetch latest Activity
-        stakingDashboard.update();
         blockCount = block;
 
         // If it's open: update the Governance Dashboard
@@ -435,30 +348,7 @@ export function openTab(evt, tabName) {
         updateGovernanceTab();
     } else if (tabName === 'Masternode') {
         updateMasternodeTab();
-    } else if (
-        tabName === 'StakingTab' &&
-        stakingDashboard.getTxCount() === 0
-    ) {
-        // Refresh the TX list
-        stakingDashboard.update();
     }
-}
-
-/**
- * Updates the GUI ticker among all elements; useful for Network Switching
- */
-export function updateTicker() {
-    // Update the Stake Dashboard currency
-    doms.domGuiStakingValueCurrency.innerText = strCurrency.toUpperCase();
-
-    // Update the Stake/Unstake menu ticker and currency
-    // Stake
-    doms.domStakeAmountValueCurrency.innerText = strCurrency.toUpperCase();
-    doms.domStakeAmountCoinsTicker.innerText = cChainParams.current.TICKER;
-
-    // Unstake
-    doms.domUnstakeAmountValueCurrency.innerText = strCurrency.toUpperCase();
-    doms.domUnstakeAmountCoinsTicker.innerText = cChainParams.current.TICKER;
 }
 
 /**
@@ -490,84 +380,6 @@ export function optimiseCurrencyLocale(nAmount) {
 
     // Return display-optimised Value and Locale pair.
     return { nValue, cLocale };
-}
-
-/**
- * Update a 'price value' DOM display for the given balance type
- * @param {HTMLElement} domValue
- * @param {boolean} fCold
- */
-export async function updatePriceDisplay(domValue, fCold = false) {
-    // Update currency values
-    const nPrice = await cMarket.getPrice(strCurrency);
-
-    if (nPrice) {
-        // Calculate the value
-        const nCurrencyValue =
-            ((fCold ? getStakingBalance() : getBalance()) / COIN) * nPrice;
-
-        const { nValue, cLocale } = optimiseCurrencyLocale(nCurrencyValue);
-
-        // Update the DOM
-        domValue.innerText = nValue.toLocaleString('en-gb', cLocale);
-    }
-}
-
-export function getBalance(updateGUI = false) {
-    const nBalance = wallet.balance;
-    const nCoins = nBalance / COIN;
-
-    // Update the GUI too, if chosen
-    if (updateGUI) {
-        // Set the balance, and adjust font-size for large balance strings
-        const strBal = nCoins.toFixed(nDisplayDecimals);
-        doms.domAvailToDelegate.innerHTML =
-            beautifyNumber(strBal) + ' ' + cChainParams.current.TICKER;
-
-        // Update tickers
-        updateTicker();
-    }
-
-    return nBalance;
-}
-
-export function getStakingBalance(updateGUI = false) {
-    const nBalance = wallet.coldBalance;
-    const nCoins = nBalance / COIN;
-
-    if (updateGUI) {
-        // Set the balance, and adjust font-size for large balance strings
-        const strBal = nCoins.toFixed(nDisplayDecimals);
-        const nLen = strBal.length;
-        doms.domGuiBalanceStaking.innerHTML = beautifyNumber(
-            strBal,
-            nLen >= 10 ? '17px' : '25px'
-        );
-        doms.domAvailToUndelegate.innerHTML =
-            beautifyNumber(strBal) + ' ' + cChainParams.current.TICKER;
-
-        // Update tickers
-        updateTicker();
-
-        // Update price displays
-        updatePriceDisplay(doms.domGuiStakingValue, true);
-    }
-
-    return nBalance;
-}
-
-getEventEmitter().on('balance-update', () => getStakingBalance(true));
-
-/**
- * Fill a 'Coin Amount' with all of a balance type, and update the 'Coin Value'
- * @param {HTMLInputElement} domCoin - The 'Coin Amount' input element
- * @param {HTMLInputElement} domValue - Th 'Coin Value' input element
- * @param {boolean} fCold - Use the Cold Staking balance, or Available balance
- */
-export function selectMaxBalance(domCoin, domValue, fCold = false) {
-    domCoin.value = (fCold ? getStakingBalance() : getBalance()) / COIN;
-    // Update the Send menu's value (assumption: if it's not a Cold balance, it's probably for Sending!)
-    updateAmountInputPair(domCoin, domValue, true);
 }
 
 /**
@@ -612,47 +424,6 @@ export async function playMusic() {
         audio.pause();
         for (const domImg of document.getElementsByTagName('img'))
             domImg.classList.remove('discoFilter');
-    }
-}
-
-export function toggleBottomMenu(dom, ani) {
-    let element = document.getElementById(dom);
-    if (element.classList.contains(ani)) {
-        element.classList.remove(ani);
-        doms.domBlackBack.classList.remove('d-none');
-        setTimeout(() => {
-            doms.domBlackBack.classList.remove('blackBackHide');
-        }, 10);
-    } else {
-        element.classList.add(ani);
-        doms.domBlackBack.classList.add('blackBackHide');
-        setTimeout(() => {
-            doms.domBlackBack.classList.add('d-none');
-        }, 150);
-    }
-}
-
-/**
- * Updates an Amount Input UI pair ('Coin' and 'Value' input boxes) in relation to the input box used
- * @param {HTMLInputElement} domCoin - The DOM input for the Coin amount
- * @param {HTMLInputElement} domValue - The DOM input for the Value amount
- * @param {boolean} fCoinEdited - `true` if Coin, `false` if Value
- */
-export async function updateAmountInputPair(domCoin, domValue, fCoinEdited) {
-    // Fetch the price in the user's preferred currency
-    const nPrice = await cMarket.getPrice(strCurrency);
-
-    // If there is no price loaded, then we just won't do anything
-    if (!nPrice) return;
-
-    if (fCoinEdited) {
-        // If the 'Coin' input is edited, then update the 'Value' input with it's converted currency
-        const nValue = Number(domCoin.value) * nPrice;
-        domValue.value = nValue <= 0 ? '' : nValue;
-    } else {
-        // If the 'Value' input is edited, then update the 'Coin' input with the reversed conversion rate
-        const nValue = Number(domValue.value) / nPrice;
-        domCoin.value = nValue <= 0 ? '' : nValue;
     }
 }
 
@@ -821,7 +592,7 @@ export async function importMasternode() {
     if (!wallet.isHD()) {
         // Find the first UTXO matching the expected collateral size
         const cCollaUTXO = wallet.getMasternodeUTXOs()[0];
-        const balance = getBalance(false);
+        const balance = wallet.balance;
         // If there's no valid UTXO, exit with a contextual message
         if (!cCollaUTXO) {
             if (balance < cChainParams.current.collateralInSats) {
@@ -957,59 +728,6 @@ export function isMasternodeUTXO(cUTXO, cMasternode) {
     if (cMasternode?.collateralTxId) {
         const { collateralTxId, outidx } = cMasternode;
         return collateralTxId === cUTXO.id && cUTXO.vout === outidx;
-    } else {
-        return false;
-    }
-}
-
-/**
- * Creates a GUI popup for the user to check or customise their Cold Address
- */
-export async function guiSetColdStakingAddress() {
-    // Use the Account's cold address, otherwise use the network's default Cold Staking address
-    const strColdAddress = await wallet.getColdStakingAddress();
-
-    // Display the popup and await a response
-    if (
-        await confirmPopup({
-            title: translation.popupSetColdAddr,
-            html: `
-            <p>
-                <span style="opacity: 0.65; margin: 10px; margin-buttom: 0px;">
-                    ${translation.popupColdStakeNote}
-                </span>
-            </p>
-            <input type="text" id="newColdAddress" placeholder="${
-                translation.popupExample
-            } ${strColdAddress.substring(
-                0,
-                6
-            )}..." value="${strColdAddress}" style="text-align: center;">`,
-        })
-    ) {
-        // Check the Cold Address input
-        const strNewColdAddress = document
-            .getElementById('newColdAddress')
-            .value.trim();
-        const fValidCold = isColdAddress(strNewColdAddress);
-        if (
-            !strNewColdAddress ||
-            (strNewColdAddress !== strColdAddress && fValidCold)
-        ) {
-            // If the input is empty: we'll default back to this network's Cold Staking address (effectively a 'reset')
-            const cDB = await Database.getInstance();
-            const cAccount = await cDB.getAccount();
-
-            // Save to DB (allowDeletion enabled to allow for resetting the Cold Address)
-            cAccount.coldAddress = strNewColdAddress;
-            await cDB.updateAccount(cAccount, true);
-
-            createAlert('info', ALERTS.STAKE_ADDR_SET, 5000);
-            return true;
-        } else if (!fValidCold) {
-            createAlert('warning', ALERTS.STAKE_ADDR_BAD, 2500);
-            return false;
-        }
     } else {
         return false;
     }
@@ -1680,7 +1398,7 @@ export async function updateMasternodeTab() {
         // Find the first UTXO matching the expected collateral size
         const cCollaUTXO = wallet.getMasternodeUTXOs()[0];
 
-        const balance = getBalance(false);
+        const balance = wallet.balance;
         if (cMasternode) {
             await refreshMasternodeData(cMasternode);
             doms.domMnDashboard.style.display = '';
@@ -1855,7 +1573,7 @@ export async function createProposal() {
         return;
     }
     // Must have enough funds
-    if (getBalance() * COIN < cChainParams.current.proposalFee) {
+    if (wallet.balance * COIN < cChainParams.current.proposalFee) {
         return createAlert('warning', ALERTS.PROPOSAL_NOT_ENOUGH_FUNDS, 4500);
     }
 

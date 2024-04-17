@@ -4,6 +4,7 @@ import { ref } from 'vue';
 import { strCurrency } from '../settings.js';
 import { cMarket } from '../settings.js';
 import { ledgerSignTransaction } from '../ledger.js';
+import { defineStore } from 'pinia';
 import { lockableFunction } from '../lock.js';
 
 /**
@@ -11,7 +12,7 @@ import { lockableFunction } from '../lock.js';
  * It makes sure that everything is up to date and provides
  * a reactive interface to it
  */
-export function useWallet() {
+export const useWallet = defineStore('wallet', () => {
     // Eventually we want to create a new wallet
     // For now we'll just import the existing one
     // const wallet = new Wallet();
@@ -57,6 +58,7 @@ export function useWallet() {
     };
     const balance = ref(0);
     const shieldBalance = ref(0);
+    const coldBalance = ref(0);
     const pendingShieldBalance = ref(0);
     const immatureBalance = ref(0);
     const currency = ref('USD');
@@ -85,6 +87,17 @@ export function useWallet() {
             } else {
                 wallet.discardTransaction(tx);
             }
+            return res;
+        }
+    );
+
+    getEventEmitter().on('toggle-network', async () => {
+        isEncrypted.value = await hasEncryptedWallet();
+    });
+    getEventEmitter().on(
+        'shield-transaction-creation-update',
+        async (_, finished) => {
+            isCreatingTx.value = !finished;
         }
     );
 
@@ -94,6 +107,7 @@ export function useWallet() {
         currency.value = strCurrency.toUpperCase();
         shieldBalance.value = await wallet.getShieldBalance();
         pendingShieldBalance.value = await wallet.getPendingShieldBalance();
+        coldBalance.value = wallet.coldBalance;
         price.value = await cMarket.getPrice(strCurrency);
     });
 
@@ -125,5 +139,6 @@ export function useWallet() {
         sync,
         createAndSendTransaction,
         loadFromDisk,
+        coldBalance,
     };
-}
+});
