@@ -127,8 +127,8 @@ export class ExplorerNetwork extends Network {
 
     /**
      * Fetch a block from the explorer given the height
-     * @param {Number}
-     * @param {skipCoinstake} - if true coinstake tx will be skipped
+     * @param {number} blockHeight
+     * @param {boolean} skipCoinstake - if true coinstake tx will be skipped
      * @returns {Promise<Object>} the block fetched from explorer
      */
     async getBlock(blockHeight, skipCoinstake = false) {
