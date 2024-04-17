@@ -94,12 +94,6 @@ export const useWallet = defineStore('wallet', () => {
     getEventEmitter().on('toggle-network', async () => {
         isEncrypted.value = await hasEncryptedWallet();
     });
-    getEventEmitter().on(
-        'shield-transaction-creation-update',
-        async (_, finished) => {
-            isCreatingTx.value = !finished;
-        }
-    );
 
     getEventEmitter().on('balance-update', async () => {
         balance.value = wallet.balance;

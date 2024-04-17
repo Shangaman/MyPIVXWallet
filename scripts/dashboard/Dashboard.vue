@@ -8,7 +8,6 @@ import ExportPrivKey from './ExportPrivKey.vue';
 import RestoreWallet from './RestoreWallet.vue';
 import {
     createAlert,
-    isBase64,
     isExchangeAddress,
     isShieldAddress,
     isValidPIVXAddress,
