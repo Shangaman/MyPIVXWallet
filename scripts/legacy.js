@@ -12,7 +12,6 @@ import {
 } from './misc.js';
 import { Database } from './database.js';
 import { getNetwork } from './network.js';
-import { ledgerSignTransaction } from './ledger.js';
 
 /**
  * @deprecated use the new wallet method instead
