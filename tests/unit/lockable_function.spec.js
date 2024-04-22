@@ -16,17 +16,17 @@ describe('Lockable function tests', () => {
     });
     it('Lockable function gives the correct value for the lock', async () => {
         // At the beginning there is no lock
-        expect(test_function.isLocked()).toBeFalsy;
+        expect(test_function.isLocked()).toBeFalsy();
         test_function('test_locks');
         await sleep(sleep_time / 2);
         // When the function is running the lock is acquired
-        expect(test_function.isLocked()).toBeTruthy;
+        expect(test_function.isLocked()).toBeTruthy();
         await sleep(sleep_time / 2);
         // When the function stop running the lock is dropped
-        expect(test_function.isLocked()).toBeFalsy;
+        expect(test_function.isLocked()).toBeFalsy();
     });
     it("Calling when locked doesn't make the function run twice", async () => {
         test_function('test_locks');
-        expect(await test_function('test_locks')).toBeUndefined;
+        expect(await test_function('test_locks')).toBeUndefined();
     });
 });
