@@ -32,7 +32,7 @@ export class Oracle {
      * A lock-like flag which waits until at least once successful "full fetch" of currencies has occurred.
      * This flag massively lowers bandwidth by only fetching the bulk once, falling to per-currency APIs afterwards.
      */
-    fLoadedCurrencies = false;
+    #fLoadedCurrencies = false;
 
     /**
      * Get the cached price in a specific display currency
@@ -89,7 +89,7 @@ export class Oracle {
      *
      * This should only be used sparingly due to higher bandwidth, prefer {@link getPrice} if you need fresh data for a single, or select few currencies.
      *
-     * See {@link fLoadedCurrencies} for more info on Oracle bandwidth saving.
+     * See {@link #fLoadedCurrencies} for more info on Oracle bandwidth saving.
      * @returns {Promise<Array<Currency>>} - A list of Oracle-supported display currencies
      */
     async getCurrencies() {
@@ -108,7 +108,7 @@ export class Oracle {
             }
 
             // Now we've loaded all currencies: we'll flag it and use the lower bandwidth price fetches in the future
-            this.fLoadedCurrencies = true;
+            this.#fLoadedCurrencies = true;
             return arrCurrencies;
         } catch (e) {
             console.warn('Oracle: Failed to fetch currencies!');
@@ -118,9 +118,9 @@ export class Oracle {
     }
 
     async load() {
-        while (!this.fLoadedCurrencies) {
+        while (!this.#fLoadedCurrencies) {
             await this.getCurrencies();
-            if (!this.fLoadedCurrencies) await sleep(5000);
+            if (!this.#fLoadedCurrencies) await sleep(5000);
         }
         getEventEmitter().emit('currency-loaded', this.mapCurrencies);
     }
