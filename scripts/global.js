@@ -17,7 +17,6 @@ import { createAlert, confirmPopup, sanitizeHTML } from './misc.js';
 import { cChainParams, COIN } from './chain_params.js';
 import { sleep } from './utils.js';
 import { registerWorker } from './native.js';
-import { refreshPriceDisplay } from './prices.js';
 import { Address6 } from 'ip-address';
 import { getEventEmitter } from './event_bus.js';
 import { Database } from './database.js';
@@ -254,7 +253,7 @@ export async function start() {
         refreshChainData();
 
         // Fetch the PIVX prices
-        refreshPriceDisplay();
+        cOracle.refreshPriceDisplay();
     }, 15000);
 
     // Check for recent upgrades, display the changelog

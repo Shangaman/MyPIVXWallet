@@ -1,5 +1,5 @@
 import { getEventEmitter } from './event_bus.js';
-import { cOracle, fillCurrencySelect, strCurrency } from './settings.js';
+import { strCurrency } from './settings.js';
 
 /**
  * @typedef {Object} Currency
@@ -113,25 +113,23 @@ export class Oracle {
             return this.getCachedCurrencies();
         }
     }
-}
 
-/**
- * Refreshes market data from the user's Oracle, then re-renders currency options and price displays
- */
-export async function refreshPriceDisplay() {
-    // If we have an empty cache, we'll do a heavy full-fetch to populate the cache
-    if (!cOracle.fLoadedCurrencies) {
-        await cOracle.getCurrencies();
-    } else {
-        // And if we have cache: we do a low-bandwidth, single-currency refresh
-        await cOracle.getPrice(strCurrency);
-    }
+    /**
+     * Refreshes market data from the user's Oracle, then re-renders currency options and price displays
+     */
+    async refreshPriceDisplay() {
+        // If we have an empty cache, we'll do a heavy full-fetch to populate the cache
+        if (!this.fLoadedCurrencies) {
+            await this.getCurrencies();
+        } else {
+            // And if we have cache: we do a low-bandwidth, single-currency refresh
+            await this.getPrice(strCurrency);
+        }
 
-    if (cOracle.fLoadedCurrencies) {
-        // Update the currency customisation menu from the selected Oracle
-        await fillCurrencySelect();
-
-        // Update price values
-        getEventEmitter().emit('balance-update');
+        if (this.fLoadedCurrencies) {
+            // Update price values
+            getEventEmitter().emit('currency-update', this.mapCurrencies);
+            getEventEmitter().emit('balance-update');
+        }
     }
 }

@@ -15,7 +15,7 @@ import {
     arrActiveLangs,
     tr,
 } from './i18n.js';
-import { Oracle, refreshPriceDisplay } from './prices.js';
+import { Oracle } from './prices.js';
 import { Database } from './database.js';
 import { getEventEmitter } from './event_bus.js';
 import { getCurrencyByAlpha2 } from 'country-locale-map';
@@ -196,11 +196,6 @@ export async function start() {
         fillTranslationSelect(),
     ]);
 
-    // Fetch price data
-    if (getNetwork().enabled) {
-        refreshPriceDisplay();
-    }
-
     const database = await Database.getInstance();
 
     // Fetch settings from Database
@@ -296,7 +291,17 @@ export async function start() {
 
     // Add each analytics level into the UI selector
     fillAnalyticSelect();
+
+    // Subscribe to events
+    subscribeToNetworkEvents();
 }
+
+function subscribeToNetworkEvents() {
+    getEventEmitter().on('currency-update', async (mapCurrencies) => {
+        await fillCurrencySelect(mapCurrencies);
+    });
+}
+
 // --- Settings Functions
 export async function setExplorer(explorer, fSilent = false) {
     const database = await Database.getInstance();
@@ -398,29 +403,21 @@ async function fillTranslationSelect() {
 /**
  * Fills the display currency dropbox on the settings page
  */
-export async function fillCurrencySelect() {
-    // If we already have a currency cache; use it, or just pull fresh
-    const arrCurrencies = cOracle.fLoadedCurrencies
-        ? cOracle.getCachedCurrencies()
-        : await cOracle.getCurrencies();
-
-    // Only update if we have a currency list
-    if (cOracle.fLoadedCurrencies) {
-        while (doms.domCurrencySelect.options.length > 0) {
-            doms.domCurrencySelect.remove(0);
-        }
-        // Add each data source currency into the UI selector
-        for (const cCurrency of arrCurrencies) {
-            const opt = document.createElement('option');
-            opt.innerHTML = cCurrency.currency.toUpperCase();
-            opt.value = cCurrency.currency;
-            doms.domCurrencySelect.appendChild(opt);
-        }
+async function fillCurrencySelect(mapCurrencies) {
+    while (doms.domCurrencySelect.options.length > 0) {
+        doms.domCurrencySelect.remove(0);
+    }
+    // Add each data source currency into the UI selector
+    for (const cCurrency of mapCurrencies.values()) {
+        const opt = document.createElement('option');
+        opt.innerHTML = cCurrency.currency.toUpperCase();
+        opt.value = cCurrency.currency;
+        doms.domCurrencySelect.appendChild(opt);
     }
 
     const database = await Database.getInstance();
     let { displayCurrency } = await database.getSettings();
-    if (!arrCurrencies.find((v) => v.currency === displayCurrency)) {
+    if (!mapCurrencies.has(displayCurrency)) {
         // Currency not supported; fallback to USD
         displayCurrency = 'usd';
         database.setSettings({ displayCurrency });
