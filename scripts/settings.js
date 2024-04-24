@@ -292,7 +292,7 @@ export async function start() {
 }
 
 function subscribeToNetworkEvents() {
-    getEventEmitter().on('currency-update', async (mapCurrencies) => {
+    getEventEmitter().on('currency-loaded', async (mapCurrencies) => {
         await fillCurrencySelect(mapCurrencies);
     });
 }

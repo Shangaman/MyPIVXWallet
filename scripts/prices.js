@@ -1,5 +1,5 @@
 import { getEventEmitter } from './event_bus.js';
-import { strCurrency } from './settings.js';
+import { sleep } from './utils.js';
 
 /**
  * @typedef {Object} Currency
@@ -19,6 +19,9 @@ export const ORACLE_BASE = 'https://pivxla.bz/oracle/api/v1';
  * An Oracle instance
  */
 export class Oracle {
+    constructor() {
+        this.load();
+    }
     /**
      * The currencies cache map
      * @type {Map<string, Currency>} Map to store currency objects
@@ -114,23 +117,12 @@ export class Oracle {
         }
     }
 
-    /**
-     * Refreshes market data from the user's Oracle, then re-renders currency options and price displays
-     */
-    async refreshPriceDisplay() {
-        // If we have an empty cache, we'll do a heavy full-fetch to populate the cache
-        if (!this.fLoadedCurrencies) {
+    async load() {
+        while (!this.fLoadedCurrencies) {
             await this.getCurrencies();
-        } else {
-            // And if we have cache: we do a low-bandwidth, single-currency refresh
-            await this.getPrice(strCurrency);
+            if (!this.fLoadedCurrencies) await sleep(5000);
         }
-
-        if (this.fLoadedCurrencies) {
-            // Update price values
-            getEventEmitter().emit('currency-update', this.mapCurrencies);
-            getEventEmitter().emit('balance-update');
-        }
+        getEventEmitter().emit('currency-loaded', this.mapCurrencies);
     }
 }
 

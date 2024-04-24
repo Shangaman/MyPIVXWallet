@@ -253,7 +253,7 @@ export async function start() {
         refreshChainData();
 
         // Fetch the PIVX prices
-        cOracle.refreshPriceDisplay();
+        refreshPriceDisplay();
     }, 15000);
 
     // Check for recent upgrades, display the changelog
@@ -267,6 +267,11 @@ export async function start() {
 
     // If we haven't already (due to having no wallet, etc), display the Dashboard
     doms.domDashboard.click();
+}
+
+async function refreshPriceDisplay() {
+    await cOracle.getPrice(strCurrency);
+    getEventEmitter().emit('balance-update');
 }
 
 function subscribeToNetworkEvents() {
