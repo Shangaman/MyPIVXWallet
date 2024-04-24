@@ -8,7 +8,6 @@ import {
     start as settingsStart,
     cExplorer,
     debug,
-    cOracle,
     strCurrency,
     fAdvancedMode,
 } from './settings.js';
@@ -26,6 +25,7 @@ import { createApp } from 'vue';
 import Dashboard from './dashboard/Dashboard.vue';
 import Stake from './stake/Stake.vue';
 import { createPinia } from 'pinia';
+import { cOracle } from './prices.js';
 
 /** A flag showing if base MPW is fully loaded or not */
 export let fIsLoaded = false;

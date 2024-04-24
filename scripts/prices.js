@@ -133,3 +133,9 @@ export class Oracle {
         }
     }
 }
+
+/**
+ * The user-selected Price Oracle, used for all price data
+ * @type {Oracle}
+ */
+export let cOracle = new Oracle();

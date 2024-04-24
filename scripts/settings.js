@@ -15,7 +15,6 @@ import {
     arrActiveLangs,
     tr,
 } from './i18n.js';
-import { Oracle } from './prices.js';
 import { Database } from './database.js';
 import { getEventEmitter } from './event_bus.js';
 import { getCurrencyByAlpha2 } from 'country-locale-map';
@@ -36,11 +35,7 @@ function getDefaultCurrency() {
     const langCode = navigator.languages[0]?.split('-')?.at(-1) || 'US';
     return getCurrencyByAlpha2(langCode)?.toLowerCase() || 'usd';
 }
-/**
- * The user-selected Price Oracle, used for all price data
- * @type {Oracle}
- */
-export let cOracle = new Oracle();
+
 /** The user-selected explorer, used for most of MPW's data synchronisation */
 export let cExplorer = cChainParams.current.Explorers[0];
 /** The user-selected MPW node, used for alternative blockchain data */
