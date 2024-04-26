@@ -1,4 +1,3 @@
-import { cChainParams } from './chain_params.js';
 import { createAlert } from './misc.js';
 import { sleep } from './utils.js';
 import { getEventEmitter } from './event_bus.js';
@@ -102,20 +101,120 @@ export class Network {
     }
 }
 
-/**
- *
- */
 export class ExplorerNetwork extends Network {
     /**
      * @param {string} strUrl - Url pointing to the blockbook explorer
      */
-    constructor(strUrl, wallet) {
-        super(wallet);
+    constructor(strUrl) {
+        super();
+        // ensure backward compatibility
+        if (strUrl.startsWith('http')) {
+            strUrl = strUrl.replace('http', 'ws');
+        }
+        if (!strUrl.endsWith('/websocket')) {
+            strUrl += '/websocket';
+        }
         /**
          * @type{string}
          * @public
          */
         this.strUrl = strUrl;
+        this.cachedResults = [];
+        this.subscriptions = [];
+        this.ID = 0;
+        this.ws = new WebSocket(strUrl);
+        this.ws.onopen = function (e) {
+            console.log('socket connected', e);
+        };
+        this.ws.onclose = function (e) {
+            console.log('socket closed', e);
+        };
+        this.ws.onmessage = function (e) {
+            const resp = JSON.parse(e.data);
+            // Is this a subscription?
+            const f = _network.subscriptions[resp.id];
+            if (f !== undefined) {
+                f(resp.data);
+            }
+            // If it isn't cache the result
+            _network.cachedResults[resp.id] = resp.data;
+        };
+    }
+    close() {
+        this.ws.close();
+    }
+    async init() {
+        for (let i = 0; i < 100; i++) {
+            if (this.ws.readyState === WebSocket.OPEN) {
+                break;
+            }
+            await sleep(100);
+        }
+        if (this.ws.readyState !== WebSocket.OPEN) {
+            throw new Error('Cannot connect to websocket!');
+        }
+        this.subscribeNewBlock();
+    }
+
+    send(method, params) {
+        const id = this.ID.toString();
+        const req = {
+            id,
+            method,
+            params,
+        };
+        this.ID++;
+        this.ws.send(JSON.stringify(req));
+        return id;
+    }
+    async sendAndWaitForAnswer(method, params) {
+        let attempt = 0;
+        while (attempt <= 10) {
+            const id = this.send(method, params);
+            for (let i = 0; i < 100; i++) {
+                const res = this.cachedResults[id];
+                if (res !== undefined) {
+                    delete this.cachedResults[id];
+                    if (res.error) {
+                        console.log('Failed attempt: ', attempt);
+                        await sleep(1000);
+                        break;
+                    }
+                    return res;
+                }
+                await sleep(100);
+            }
+            attempt += 1;
+        }
+    }
+    subscribe(method, params, callback) {
+        const id = this.ID.toString();
+        this.subscriptions[id] = callback;
+        const req = {
+            id,
+            method,
+            params,
+        };
+        this.ws.send(JSON.stringify(req));
+        this.ID++;
+        return id;
+    }
+    subscribeNewBlock() {
+        this.subscribe('subscribeNewBlock', {}, function (result) {
+            if (result['height'] !== undefined) {
+                getEventEmitter().emit('new-block', result['height']);
+            }
+        });
+    }
+    async getAccountInfo(descriptor, page, pageSize, from, details = 'txs') {
+        const params = {
+            descriptor,
+            details,
+            page,
+            pageSize,
+            from,
+        };
+        return await this.sendAndWaitForAnswer('getAccountInfo', params);
     }
 
     error() {
@@ -131,75 +230,15 @@ export class ExplorerNetwork extends Network {
      * @param {boolean} skipCoinstake - if true coinstake tx will be skipped
      * @returns {Promise<Object>} the block fetched from explorer
      */
-    async getBlock(blockHeight, skipCoinstake = false) {
+    async getBlock(blockNumber) {
         try {
-            const block = await this.safeFetchFromExplorer(
-                `/api/v2/block/${blockHeight}`
-            );
-            const newTxs = [];
-            // This is bad. We're making so many requests
-            // This is a quick fix to try to be compliant with the blockbook
-            // API, and not the PIVX extension.
-            // In the Blockbook API /block doesn't have any chain specific information
-            // Like hex, shield info or what not.
-            // We could change /getshieldblocks to /getshieldtxs?
-            // In addition, always skip the coinbase transaction and in case the coinstake one
-            // TODO: once v6.0 and shield stake is activated we might need to change this optimization
-            for (const tx of block.txs.slice(skipCoinstake ? 2 : 1)) {
-                const r = await fetch(
-                    `${this.strUrl}/api/v2/tx-specific/${tx.txid}`
-                );
-                if (!r.ok) throw new Error('failed');
-                const newTx = await r.json();
-                newTxs.push(newTx);
-            }
-            block.txs = newTxs;
-            return block;
+            return await this.sendAndWaitForAnswer('getBlock', {
+                id: blockNumber.toString(),
+            });
         } catch (e) {
             this.error();
             throw e;
         }
-    }
-
-    async getBlockCount() {
-        try {
-            const { backend } = await (
-                await retryWrapper(fetchBlockbook, `/api/v2/api`)
-            ).json();
-
-            return backend.blocks;
-        } catch (e) {
-            this.error();
-            throw e;
-        }
-    }
-
-    /**
-     * Sometimes blockbook might return internal error, in this case this function will sleep for some times and retry
-     * @param {string} strCommand - The specific Blockbook api to call
-     * @param {number} sleepTime - How many milliseconds sleep between two calls. Default value is 20000ms
-     * @returns {Promise<Object>} Explorer result in json
-     */
-    async safeFetchFromExplorer(strCommand, sleepTime = 20000) {
-        let trials = 0;
-        const maxTrials = 6;
-        while (trials < maxTrials) {
-            trials += 1;
-            const res = await retryWrapper(fetchBlockbook, strCommand);
-            if (!res.ok) {
-                if (debug) {
-                    console.log(
-                        'Blockbook internal error! sleeping for ' +
-                            sleepTime +
-                            ' seconds'
-                    );
-                }
-                await sleep(sleepTime);
-                continue;
-            }
-            return await res.json();
-        }
-        throw new Error('Cannot safe fetch from explorer!');
     }
 
     /**
@@ -218,14 +257,11 @@ export class ExplorerNetwork extends Network {
         if (debug) {
             console.time('getLatestTxsTimer');
         }
-        // Form the API call using our wallet information
-        const strKey = wallet.getKeyToExport();
-        const strRoot = `/api/v2/${
-            wallet.isHD() ? 'xpub/' : 'address/'
-        }${strKey}`;
-        const strCoreParams = `?details=txs&from=${nStartHeight}`;
-        const probePage = await this.safeFetchFromExplorer(
-            `${strRoot + strCoreParams}&pageSize=1`
+        const probePage = await this.getAccountInfo(
+            wallet.getKeyToExport(),
+            1,
+            1,
+            nStartHeight
         );
         const txNumber = probePage.txs - wallet.getTransactions().length;
         // Compute the total pages and iterate through them until we've synced everything
@@ -241,8 +277,11 @@ export class ExplorerNetwork extends Network {
             );
 
             // Fetch this page of transactions
-            const iPage = await this.safeFetchFromExplorer(
-                `${strRoot + strCoreParams}&page=${i}`
+            const iPage = await this.getAccountInfo(
+                wallet.getKeyToExport(),
+                i,
+                10000,
+                nStartHeight
             );
 
             // Update the internal mempool if there's new transactions
@@ -281,17 +320,9 @@ export class ExplorerNetwork extends Network {
      * @returns {Promise<Array<BlockbookUTXO>>} Resolves when it has finished fetching UTXOs
      */
     async getUTXOs(strAddress) {
-        try {
-            let publicKey = strAddress;
-            // Fetch UTXOs for the key
-            const arrUTXOs = await (
-                await retryWrapper(fetchBlockbook, `/api/v2/utxo/${publicKey}`)
-            ).json();
-            return arrUTXOs;
-        } catch (e) {
-            console.error(e);
-            this.error();
-        }
+        return await this.sendAndWaitForAnswer('getAccountUtxo', {
+            descriptor: strAddress,
+        });
     }
 
     /**
@@ -300,19 +331,14 @@ export class ExplorerNetwork extends Network {
      * @returns {Promise<XPUBInfo>} - A JSON class of aggregated XPUB info
      */
     async getXPubInfo(strXPUB) {
-        return await (
-            await retryWrapper(fetchBlockbook, `/api/v2/xpub/${strXPUB}`)
-        ).json();
+        return await this.getAccountInfo(strXPUB, 1, 1, 0, 'tokens');
     }
 
     async sendTransaction(hex) {
         try {
-            const data = await (
-                await retryWrapper(fetchBlockbook, '/api/v2/sendtx/', {
-                    method: 'post',
-                    body: hex,
-                })
-            ).json();
+            const data = await this.sendAndWaitForAnswer('sendTransaction', {
+                hex,
+            });
 
             // Throw and catch if the data is not a TXID
             if (!data.result || data.result.length !== 64) throw data;
@@ -327,8 +353,17 @@ export class ExplorerNetwork extends Network {
     }
 
     async getTxInfo(txHash) {
-        const req = await retryWrapper(fetchBlockbook, `/api/v2/tx/${txHash}`);
-        return await req.json();
+        return await this.sendAndWaitForAnswer('getTransaction', {
+            txid: txHash,
+        });
+    }
+
+    /**
+     * Get the blockchain info.
+     * This is used to get the blockchain height at start or when switching chain.
+     */
+    async getChainInfo() {
+        return await this.sendAndWaitForAnswer('getInfo', {});
     }
 
     /**
@@ -377,8 +412,10 @@ let _network = null;
  * Sets the network in use by MPW.
  * @param {ExplorerNetwork} network - network to use
  */
-export function setNetwork(network) {
+export async function setNetwork(network) {
+    _network?.close();
     _network = network;
+    await _network.init();
 }
 
 /**
@@ -387,66 +424,4 @@ export function setNetwork(network) {
  */
 export function getNetwork() {
     return _network;
-}
-
-/**
- * A Fetch wrapper which uses the current Blockbook Network's base URL
- * @param {string} api - The specific Blockbook api to call
- * @param {RequestInit} options - The Fetch options
- * @returns {Promise<Response>} - The unresolved Fetch promise
- */
-export function fetchBlockbook(api, options) {
-    return fetch(_network.strUrl + api, options);
-}
-
-/**
- * A wrapper for Blockbook calls which can, in the event of an unresponsive explorer,
- * seamlessly attempt the same call on multiple other explorers until success.
- * @param {Function} func - The function to re-attempt with
- * @param  {...any} args - The arguments to pass to the function
- */
-async function retryWrapper(func, ...args) {
-    // Track internal errors from the wrapper
-    let err;
-
-    // If allowed by the user, Max Tries is ALL MPW-supported explorers, otherwise, restrict to only the current one.
-    let nMaxTries = cChainParams.current.Explorers.length;
-    let retries = 0;
-
-    // The explorer index we started at
-    let nIndex = cChainParams.current.Explorers.findIndex(
-        (a) => a.url === getNetwork().strUrl
-    );
-
-    // Run the call until successful, or all attempts exhausted
-    while (retries < nMaxTries) {
-        try {
-            // Call the passed function with the arguments
-            const res = await func(...args);
-
-            // If the endpoint is non-OK, assume it's an error
-            if (!res.ok) throw res;
-
-            // Return the result if successful
-            return res;
-        } catch (error) {
-            err = error;
-
-            // If allowed, switch explorers
-            if (!fAutoSwitch) throw err;
-            nIndex = (nIndex + 1) % cChainParams.current.Explorers.length;
-            const cNewExplorer = cChainParams.current.Explorers[nIndex];
-
-            // Set the explorer at Network-class level, then as a hacky workaround for the current callback; we
-            // ... adjust the internal URL to the new explorer.
-            getNetwork().strUrl = cNewExplorer.url;
-            setExplorer(cNewExplorer, true);
-
-            // Bump the attempts, and re-try next loop
-            retries++;
-        }
-    }
-
-    // Throw an error so the calling code knows the operation failed
-    throw err;
 }

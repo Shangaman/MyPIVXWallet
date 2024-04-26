@@ -245,14 +245,11 @@ export async function start() {
 
     subscribeToNetworkEvents();
     // Make sure we know the correct number of blocks
-    await refreshChainData();
+    blockCount = (await getNetwork().getChainInfo())['bestHeight'];
 
     // If allowed by settings: submit a simple 'hit' (app load) to Labs Analytics
     getNetwork().submitAnalytics('hit');
     setInterval(() => {
-        // Refresh blockchain data
-        refreshChainData();
-
         // Fetch the PIVX prices
         refreshPriceDisplay();
     }, 15000);
@@ -1644,23 +1641,6 @@ export async function createProposal() {
         await database.updateAccount(account);
         createAlert('success', translation.PROPOSAL_CREATED, 10000);
         updateGovernanceTab();
-    }
-}
-
-export async function refreshChainData() {
-    const cNet = getNetwork();
-    // If in offline mode: don't sync ANY data or connect to the internet
-    if (!cNet.enabled)
-        return console.warn(
-            'Offline mode active: For your security, the wallet will avoid ALL internet requests.'
-        );
-
-    // Fetch block count
-    const newBlockCount = await cNet.getBlockCount();
-    if (newBlockCount !== blockCount) {
-        blockCount = newBlockCount;
-        if (!wallet.isLoaded()) return;
-        getEventEmitter().emit('new-block', blockCount);
     }
 }
 

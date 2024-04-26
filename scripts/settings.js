@@ -304,12 +304,8 @@ export async function setExplorer(explorer, fSilent = false) {
     cExplorer = explorer;
 
     // Enable networking + notify if allowed
-    if (getNetwork()) {
-        getNetwork().strUrl = cExplorer.url;
-    } else {
-        const network = new ExplorerNetwork(cExplorer.url, wallet);
-        setNetwork(network);
-    }
+    const network = new ExplorerNetwork(cExplorer.url);
+    await setNetwork(network);
 
     // Update the selector UI
     doms.domExplorerSelect.value = cExplorer.url;
