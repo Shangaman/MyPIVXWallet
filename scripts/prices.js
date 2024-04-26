@@ -119,7 +119,10 @@ export class Oracle {
             await this.getCurrencies();
             if (!this.#fLoadedCurrencies) await sleep(5000);
         }
+        // Update any listeners for the full currency list (Settings, etc)
         getEventEmitter().emit('currency-loaded', this.mapCurrencies);
+        // Update the balance to render the price instantly
+        getEventEmitter().emit('balance-update');
     }
 }
 
