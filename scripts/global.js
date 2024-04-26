@@ -25,7 +25,7 @@ import { createApp } from 'vue';
 import Dashboard from './dashboard/Dashboard.vue';
 import Stake from './stake/Stake.vue';
 import { createPinia } from 'pinia';
-import { cOracle } from './prices.js';
+import { cOracle, Oracle } from './prices.js';
 
 /** A flag showing if base MPW is fully loaded or not */
 export let fIsLoaded = false;
@@ -245,6 +245,8 @@ export async function start() {
     subscribeToNetworkEvents();
     // Make sure we know the correct number of blocks
     await refreshChainData();
+    // Load the price manager
+    cOracle.load();
 
     // If allowed by settings: submit a simple 'hit' (app load) to Labs Analytics
     getNetwork().submitAnalytics('hit');

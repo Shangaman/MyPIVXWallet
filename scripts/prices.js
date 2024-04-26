@@ -19,9 +19,6 @@ export const ORACLE_BASE = 'https://pivxla.bz/oracle/api/v1';
  * An Oracle instance
  */
 export class Oracle {
-    constructor() {
-        this.load();
-    }
     /**
      * The currencies cache map
      * @type {Map<string, Currency>} Map to store currency objects
