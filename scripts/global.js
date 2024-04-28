@@ -281,14 +281,7 @@ function subscribeToNetworkEvents() {
     });
 
     getEventEmitter().on('new-block', (block) => {
-<<<<<<< HEAD
         debugLog(DebugTopics.GLOBAL, `New block detected! ${block}`);
-        // Fetch latest Activity
-        stakingDashboard.update();
-        blockCount = block;
-=======
-        console.log(`New block detected! ${block}`);
->>>>>>> upstream/master
 
         // If it's open: update the Governance Dashboard
         if (doms.domGovTab.classList.contains('active')) {
