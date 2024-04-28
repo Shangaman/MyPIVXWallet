@@ -22,7 +22,7 @@ import {
     isColdAddress,
 } from './misc.js';
 import { cChainParams, COIN } from './chain_params.js';
-import { debugLog, DebugTopics, sleep } from './utils.js';
+import { sleep } from './utils.js';
 import { registerWorker } from './native.js';
 import { refreshPriceDisplay } from './prices.js';
 import { Address6 } from 'ip-address';
@@ -33,6 +33,7 @@ import { FlipDown } from './flipdown.js';
 import { createApp } from 'vue';
 import Activity from './dashboard/Activity.vue';
 import Dashboard from './dashboard/Dashboard.vue';
+import { loadDebug, debugLog, DebugTopics } from './debug.js';
 
 /** A flag showing if base MPW is fully loaded or not */
 export let fIsLoaded = false;
@@ -323,6 +324,8 @@ export async function start() {
             false
         );
     };
+    // Start debug
+    await loadDebug();
 
     // Register native app service
     registerWorker();

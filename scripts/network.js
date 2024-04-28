@@ -5,8 +5,8 @@ import {
     debugTimerEnd,
     debugTimerStart,
     DebugTopics,
-    sleep,
-} from './utils.js';
+} from './debug.js';
+import { sleep } from './utils.js';
 import { getEventEmitter } from './event_bus.js';
 import {
     STATS,
@@ -219,7 +219,7 @@ export class ExplorerNetwork extends Network {
             nStartHeight > blockOffset
                 ? nStartHeight - blockOffset
                 : nStartHeight;
-        debugTimerStart('getLatestTxsTimer');
+        debugTimerStart(DebugTopics.NET, 'getLatestTxsTimer');
         // Form the API call using our wallet information
         const strKey = wallet.getKeyToExport();
         const strRoot = `/api/v2/${
@@ -275,7 +275,7 @@ export class ExplorerNetwork extends Network {
             ' fullSynced? ',
             !isFirstSync
         );
-        debugTimerEnd('getLatestTxsTimer');
+        debugTimerEnd(DebugTopics.NET, 'getLatestTxsTimer');
     }
 
     /**
