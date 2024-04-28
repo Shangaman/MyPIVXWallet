@@ -1,6 +1,5 @@
 import { Buffer } from 'buffer';
 import { sha256 } from '@noble/hashes/sha256';
-import { debug } from './settings.js';
 
 export const pubKeyHashNetworkLen = 21;
 export const pubChksum = 4;
