@@ -7,7 +7,6 @@ import { getNetwork } from './network.js';
 import {
     start as settingsStart,
     cExplorer,
-    debug,
     cOracle,
     strCurrency,
     fAdvancedMode,
