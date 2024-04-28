@@ -25,12 +25,9 @@ import { checkForUpgrades } from './changelog.js';
 import { FlipDown } from './flipdown.js';
 import { createApp } from 'vue';
 import Dashboard from './dashboard/Dashboard.vue';
-<<<<<<< HEAD
 import { loadDebug, debugLog, DebugTopics } from './debug.js';
-=======
 import Stake from './stake/Stake.vue';
 import { createPinia } from 'pinia';
->>>>>>> upstream/master
 
 /** A flag showing if base MPW is fully loaded or not */
 export let fIsLoaded = false;
