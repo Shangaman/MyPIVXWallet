@@ -13,6 +13,7 @@ import { hexToBytes } from '../../../scripts/utils';
 
 vi.mock('../../../scripts/mempool.js');
 vi.mock('../../../scripts/network.js');
+vi.mock('../../../scripts/global.js');
 
 describe('Wallet signature tests', () => {
     let PIVXShield;

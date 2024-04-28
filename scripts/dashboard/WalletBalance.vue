@@ -69,7 +69,6 @@ const isCreatingTx = ref(false);
 const txPercentageCreation = ref(0.0);
 const txCreationStr = 'Creating SHIELD transaction...';
 
-const updating = ref(false);
 const balanceStr = computed(() => {
     const nCoins = balance.value / COIN;
     const strBal = nCoins.toFixed(displayDecimals.value);
@@ -102,11 +101,7 @@ const balanceValue = computed(() => {
 
 const ticker = computed(() => cChainParams.current.TICKER);
 
-getEventEmitter().on('sync-status', (value) => {
-    updating.value = value === 'start';
-});
-
-const emit = defineEmits(['reload', 'send', 'exportPrivKeyOpen']);
+const emit = defineEmits(['send', 'exportPrivKeyOpen']);
 
 getEventEmitter().on('transparent-sync-status-update', (str, finished) => {
     syncTStr.value = str;
@@ -130,13 +125,6 @@ getEventEmitter().on(
         txPercentageCreation.value = percentage;
     }
 );
-
-function reload() {
-    if (!updating) {
-        updating.value = true;
-        emit('reload');
-    }
-}
 </script>
 
 <template>
@@ -147,14 +135,7 @@ function reload() {
                     class="col-6 d-flex dcWallet-topLeftMenu"
                     style="justify-content: flex-start"
                 >
-                    <h3 class="noselect balance-title">
-                        <span class="reload noselect" @click="reload()"
-                            ><i
-                                class="fa-solid fa-rotate-right"
-                                :class="{ playAnim: updating }"
-                            ></i
-                        ></span>
-                    </h3>
+                    <h3 class="noselect balance-title"></h3>
                 </div>
 
                 <div

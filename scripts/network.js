@@ -132,10 +132,11 @@ export class ExplorerNetwork extends Network {
 
     /**
      * Fetch a block from the explorer given the height
-     * @param {Number} blockHeight
+     * @param {number} blockHeight
+     * @param {boolean} skipCoinstake - if true coinstake tx will be skipped
      * @returns {Promise<Object>} the block fetched from explorer
      */
-    async getBlock(blockHeight) {
+    async getBlock(blockHeight, skipCoinstake = false) {
         try {
             const block = await this.safeFetchFromExplorer(
                 `/api/v2/block/${blockHeight}`
@@ -147,7 +148,9 @@ export class ExplorerNetwork extends Network {
             // In the Blockbook API /block doesn't have any chain specific information
             // Like hex, shield info or what not.
             // We could change /getshieldblocks to /getshieldtxs?
-            for (const tx of block.txs) {
+            // In addition, always skip the coinbase transaction and in case the coinstake one
+            // TODO: once v6.0 and shield stake is activated we might need to change this optimization
+            for (const tx of block.txs.slice(skipCoinstake ? 2 : 1)) {
                 const r = await fetch(
                     `${this.strUrl}/api/v2/tx-specific/${tx.txid}`
                 );
@@ -168,6 +171,7 @@ export class ExplorerNetwork extends Network {
             const { backend } = await (
                 await retryWrapper(fetchBlockbook, `/api/v2/api`)
             ).json();
+
             return backend.blocks;
         } catch (e) {
             this.error();
@@ -204,21 +208,17 @@ export class ExplorerNetwork extends Network {
 
     /**
      * //TODO: do not take the wallet as parameter but instead something weaker like a public key or address?
-     * @param {number} nStartHeight - Minimum block height to get
+     * Must be called only for initial wallet sync
      * @param {import('./wallet.js').Wallet} wallet - Wallet that we are getting the txs of
      * @returns {Promise<void>}
      */
     async getLatestTxs(wallet) {
-        const isFirstSync = !wallet.isSynced;
+        if (wallet.isSynced) {
+            throw new Error('getLatestTxs must only be for initial sync');
+        }
         let nStartHeight = Math.max(
             ...wallet.getTransactions().map((tx) => tx.blockHeight)
         );
-        // Ask some blocks in the past or blockbock might not return a transaction that has just been mined
-        const blockOffset = 10;
-        nStartHeight =
-            nStartHeight > blockOffset
-                ? nStartHeight - blockOffset
-                : nStartHeight;
         debugTimerStart(DebugTopics.NET, 'getLatestTxsTimer');
         // Form the API call using our wallet information
         const strKey = wallet.getKeyToExport();
@@ -226,30 +226,21 @@ export class ExplorerNetwork extends Network {
             wallet.isHD() ? 'xpub/' : 'address/'
         }${strKey}`;
         const strCoreParams = `?details=txs&from=${nStartHeight}`;
-        const probePage = isFirstSync
-            ? await this.safeFetchFromExplorer(
-                  `${strRoot + strCoreParams}&pageSize=1`
-              )
-            : null;
-        //.txs returns the total number of wallet's transaction regardless the startHeight and we use this for first sync
-        // after first sync (so at each new block) we can safely assume that user got less than 1000 new txs
-        //in this way we don't have to fetch the probePage after first sync
-        const txNumber = isFirstSync
-            ? probePage.txs - wallet.getTransactions().length
-            : 1;
+        const probePage = await this.safeFetchFromExplorer(
+            `${strRoot + strCoreParams}&pageSize=1`
+        );
+        const txNumber = probePage.txs - wallet.getTransactions().length;
         // Compute the total pages and iterate through them until we've synced everything
         const totalPages = Math.ceil(txNumber / 1000);
         for (let i = totalPages; i > 0; i--) {
-            if (isFirstSync) {
-                getEventEmitter().emit(
-                    'transparent-sync-status-update',
-                    tr(translation.syncStatusHistoryProgress, [
-                        { current: totalPages - i + 1 },
-                        { total: totalPages },
-                    ]),
-                    false
-                );
-            }
+            getEventEmitter().emit(
+                'transparent-sync-status-update',
+                tr(translation.syncStatusHistoryProgress, [
+                    { current: totalPages - i + 1 },
+                    { total: totalPages },
+                ]),
+                false
+            );
 
             // Fetch this page of transactions
             const iPage = await this.safeFetchFromExplorer(
@@ -271,9 +262,7 @@ export class ExplorerNetwork extends Network {
         debugLog(
             DebugTopics.NET,
             'Fetched latest txs: total number of pages was ',
-            totalPages,
-            ' fullSynced? ',
-            !isFirstSync
+            totalPages
         );
         debugTimerEnd(DebugTopics.NET, 'getLatestTxsTimer');
     }
@@ -347,19 +336,7 @@ export class ExplorerNetwork extends Network {
      * @return {Promise<Number[]>} The list of blocks which have at least one shield transaction
      */
     async getShieldBlockList() {
-        /**
-         * @type {Number[]}
-         */
-        const blockCount = await this.getBlockCount(false);
-        const blocks = await (
-            await fetch(`${cNode.url}/getshieldblocks`)
-        ).json();
-        const maxBlock = blocks[blocks.length - 1];
-        //I think
-        if (maxBlock < blockCount - 5) {
-            blocks.push(blockCount - 5);
-        }
-        return blocks;
+        return await (await fetch(`${cNode.url}/getshieldblocks`)).json();
     }
 
     // PIVX Labs Analytics: if you are a user, you can disable this FULLY via the Settings.

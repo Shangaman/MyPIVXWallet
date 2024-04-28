@@ -1,11 +1,11 @@
 import { validateMnemonic } from 'bip39';
 import { decrypt } from './aes-gcm.js';
 import { parseWIF } from './encoding.js';
-import { beforeUnloadListener, stakingDashboard } from './global.js';
+import { beforeUnloadListener, blockCount } from './global.js';
 import { getNetwork } from './network.js';
 import { MAX_ACCOUNT_GAP, SHIELD_BATCH_SYNC_SIZE } from './chain_params.js';
 import { HistoricalTx, HistoricalTxType } from './historical_tx.js';
-import { COutpoint } from './transaction.js';
+import { COutpoint, Transaction } from './transaction.js';
 import { confirmPopup, createAlert, isShieldAddress } from './misc.js';
 import { cChainParams } from './chain_params.js';
 import { COIN } from './chain_params.js';
@@ -19,6 +19,7 @@ import { bytesToHex, hexToBytes, sleep, startBatch } from './utils.js';
 import { strHardwareName } from './ledger.js';
 import { OutpointState, Mempool } from './mempool.js';
 import { getEventEmitter } from './event_bus.js';
+import { lockableFunction } from './lock.js';
 
 import {
     isP2CS,
@@ -90,8 +91,11 @@ export class Wallet {
     #mempool;
 
     #isSynced = false;
-    #isFetchingLatestBlocks = false;
-
+    /**
+     * The height of the last processed block in the wallet
+     * @type {number}
+     */
+    #lastProcessedBlock = 0;
     constructor({ nAccount, masterKey, shield, mempool = new Mempool() }) {
         this.#nAccount = nAccount;
         this.#mempool = mempool;
@@ -162,7 +166,7 @@ export class Wallet {
     }
 
     get isSyncing() {
-        return this.#syncing;
+        return this.sync.isLocked();
     }
 
     wipePrivateData() {
@@ -683,28 +687,24 @@ export class Wallet {
         }
         return histTXs;
     }
-    #syncing = false;
-
-    async sync() {
-        if (this.#isSynced || this.#syncing) {
+    sync = lockableFunction(async () => {
+        if (this.#isSynced) {
             throw new Error('Attempting to sync when already synced');
         }
-        try {
-            this.#syncing = true;
-            await this.loadFromDisk();
-            await this.loadShieldFromDisk();
-            await this.#transparentSync();
-            if (this.hasShield()) {
-                await this.#syncShield();
-            }
-            this.#isSynced = true;
-        } finally {
-            this.#syncing = false;
+        await this.loadFromDisk();
+        await this.loadShieldFromDisk();
+        // Let's set the last processed block 5 blocks behind the actual chain tip
+        // This is just to be sure since blockbook (as we know)
+        // usually does not return txs of the actual last block.
+        this.#lastProcessedBlock = blockCount - 5;
+        await this.#transparentSync();
+        if (this.hasShield()) {
+            await this.#syncShield();
         }
+        this.#isSynced = true;
         // Update both activities post sync
-        stakingDashboard.update(0);
         getEventEmitter().emit('new-tx');
-    }
+    });
 
     async #transparentSync() {
         if (!this.isLoaded() || this.#isSynced) return;
@@ -738,7 +738,7 @@ export class Wallet {
             await startBatch(
                 async (i) => {
                     let block;
-                    block = await cNet.getBlock(blockHeights[i]);
+                    block = await cNet.getBlock(blockHeights[i], true);
                     blocks[i] = block;
                     // We need to process blocks monotically
                     // When we get a block, start from the first unhandled
@@ -773,6 +773,11 @@ export class Wallet {
 
         // At this point it should be safe to assume that shield is ready to use
         await this.saveShieldOnDisk();
+        const networkSaplingRoot = (
+            await getNetwork().getBlock(this.#shield.getLastSyncedBlock())
+        ).finalsaplingroot;
+        if (networkSaplingRoot)
+            await this.#checkShieldSaplingRoot(networkSaplingRoot);
         this.#isSynced = true;
     }
 
@@ -802,51 +807,90 @@ export class Wallet {
 
     subscribeToNetworkEvents() {
         getEventEmitter().on('new-block', async (block) => {
-            //TODO: unify the transparent sync with the shield sync
-            // in particular in place of getLatestTxs read directly from the block as we do for shielding
             if (this.#isSynced) {
-                await getNetwork().getLatestTxs(this);
-                stakingDashboard.update(0);
-                getEventEmitter().emit('new-tx');
                 await this.getLatestBlocks(block);
+                getEventEmitter().emit('new-tx');
             }
         });
     }
-    /**
-     * Update the shield object with the latest blocks
-     * @param{number} blockCount - block count
-     */
-    async getLatestBlocks(blockCount) {
-        // Exit if this function is still processing
-        // (this might take some time if we had many consecutive blocks without shield txs)
-        if (this.#isFetchingLatestBlocks) return;
-        // Exit if there is no shield loaded
-        if (!this.hasShield()) return;
-        this.#isFetchingLatestBlocks = true;
-
-        const cNet = getNetwork();
-        // Don't ask for the exact last block that arrived,
-        // since it takes around 1 minute for blockbook to make it API available
-        for (
-            let blockHeight = this.#shield.getLastSyncedBlock() + 1;
-            blockHeight < blockCount;
-            blockHeight++
-        ) {
-            try {
-                const block = await cNet.getBlock(blockHeight);
-                if (block.txs) {
-                    await this.#shield.handleBlock(block);
-                } else {
+    getLatestBlocks = lockableFunction(
+        /**
+         * Update the shield object with the latest blocks
+         * @param{number} blockCount - block count
+         */
+        async (blockCount) => {
+            // Exit if there is no shield loaded
+            if (!this.hasShield()) return;
+            const cNet = getNetwork();
+            let block;
+            // Don't ask for the exact last block that arrived,
+            // since it takes around 1 minute for blockbook to make it API available
+            for (
+                let blockHeight = this.#lastProcessedBlock + 1;
+                blockHeight < blockCount;
+                blockHeight++
+            ) {
+                try {
+                    block = await cNet.getBlock(blockHeight);
+                    if (block.txs) {
+                        if (this.hasShield()) {
+                            if (
+                                blockHeight > this.#shield.getLastSyncedBlock()
+                            ) {
+                                await this.#shield.handleBlock(block);
+                            }
+                            for (const tx of block.txs) {
+                                const parsed = Transaction.fromHex(tx.hex);
+                                parsed.blockHeight = blockHeight;
+                                parsed.blockTime = tx.blocktime;
+                                // Avoid wasting memory on txs that do not regard our wallet
+                                if (this.#mempool.ownTransaction(parsed)) {
+                                    await wallet.addTransaction(parsed);
+                                }
+                            }
+                        }
+                    } else {
+                        break;
+                    }
+                    this.#lastProcessedBlock = blockHeight;
+                } catch (e) {
+                    console.error(e);
                     break;
                 }
-            } catch (e) {
-                console.error(e);
-                break;
+            }
+            await this.saveShieldOnDisk();
+
+            // SHIELD-only checks
+            if (this.hasShield()) {
+                if (block?.finalSaplingRoot)
+                    if (
+                        !(await this.#checkShieldSaplingRoot(
+                            block.finalsaplingroot
+                        ))
+                    )
+                        return;
+                await this.saveShieldOnDisk();
             }
         }
-        this.#isFetchingLatestBlocks = false;
-        await this.saveShieldOnDisk();
+    );
+
+    async #checkShieldSaplingRoot(networkSaplingRoot) {
+        const saplingRoot = bytesToHex(
+            hexToBytes(await this.#shield.getSaplingRoot()).reverse()
+        );
+        // If explorer sapling root is different from ours, there must be a sync error
+        if (saplingRoot !== networkSaplingRoot) {
+            createAlert('warning', translation.badSaplingRoot, 5000);
+            this.#mempool = new Mempool();
+            // TODO: take the wallet creation height in input from users
+            await this.#shield.reloadFromCheckpoint(4200000);
+            await this.#transparentSync();
+            await this.#syncShield();
+            return false;
+        }
+        return true;
     }
+
     /**
      * Save shield data on database
      */
@@ -1007,7 +1051,6 @@ export class Wallet {
      * @param {import('./transaction.js').Transaction} transaction
      */
     async #signShield(transaction) {
-        const blockHeight = await getNetwork().getBlockCount();
         if (!transaction.hasSaplingVersion) {
             throw new Error(
                 '`signShield` was called with a tx that cannot have shield data'
@@ -1037,7 +1080,7 @@ export class Wallet {
                     this.getAddressesFromScript(transaction.vout[0].script)
                         .addresses[0],
                 amount: value,
-                blockHeight: blockHeight + 1,
+                blockHeight: blockCount + 1,
                 useShieldInputs: transaction.vin.length === 0,
                 utxos: this.#getUTXOsForShield(),
                 transparentChangeAddress: this.getNewAddress(1)[0],
