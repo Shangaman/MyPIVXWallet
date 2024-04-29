@@ -8,7 +8,6 @@ export const OutpointState = {
     P2CS: 1 << 2, // This is a P2CS outpoint
 
     SPENT: 1 << 3, // This outpoint has been spent
-    IMMATURE: 1 << 4, // Coinbase/coinstake that it's not mature (hence not spendable) yet
     LOCKED: 1 << 5, // Coins in the LOCK set
 };
 
@@ -165,16 +164,14 @@ export class Mempool {
      * @param {object} o - options
      * @param {number} [o.filter] - A filter to apply to all UTXOs. For example
      * `OutpointState.P2CS` will NOT return P2CS transactions.
-     * By default it's `OutpointState.SPENT | OutpointState.IMMATURE | OutpointState.LOCKED`
+     * By default it's `OutpointState.SPENT | OutpointState.LOCKED`
      * @param {number} [o.requirement] - A requirement to apply to all UTXOs. For example
      * `OutpointState.P2CS` will only return P2CS transactions.
      * By default it's MAX_SAFE_INTEGER
      * @returns {UTXO[]} a list of unspent transaction outputs
      */
     getUTXOs({
-        filter = OutpointState.SPENT |
-            OutpointState.IMMATURE |
-            OutpointState.LOCKED,
+        filter = OutpointState.SPENT | OutpointState.LOCKED,
         requirement = 0,
         target = Number.POSITIVE_INFINITY,
     } = {}) {
