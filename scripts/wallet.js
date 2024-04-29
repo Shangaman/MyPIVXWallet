@@ -96,6 +96,15 @@ export class Wallet {
      * @type {number}
      */
     #lastProcessedBlock = 0;
+
+    /**
+     * Object containing balances of the wallet
+     */
+    #balances = {
+        balance: new CachableBalance(),
+        coldBalance: new CachableBalance(),
+        immatureBalance: new CachableBalance(),
+    };
     constructor({ nAccount, masterKey, shield, mempool = new Mempool() }) {
         this.#nAccount = nAccount;
         this.#mempool = mempool;
@@ -704,6 +713,7 @@ export class Wallet {
         this.#isSynced = true;
         // Update both activities post sync
         getEventEmitter().emit('new-tx');
+        this.#invalidateBalance();
     });
 
     async #transparentSync() {
@@ -809,6 +819,7 @@ export class Wallet {
         getEventEmitter().on('new-block', async (block) => {
             if (this.#isSynced) {
                 await this.getLatestBlocks(block);
+                this.#invalidateBalance();
                 getEventEmitter().emit('new-tx');
             }
         });
@@ -1155,6 +1166,9 @@ export class Wallet {
             const db = await Database.getInstance();
             await db.storeTx(transaction);
         }
+        if (this.isSynced) {
+            this.#invalidateBalance();
+        }
     }
 
     /**
@@ -1187,28 +1201,43 @@ export class Wallet {
 
     get balance() {
         const filter = OutpointState.OURS | OutpointState.P2PKH;
-        return this.#mempool.loopUnspentBalance(filter, (tx, vout) => {
-            return vout.value;
+        return this.#balances.balance.getOrUpdateInvalid(() => {
+            return this.#mempool.loopUnspentBalance(filter, (tx, vout) => {
+                return vout.value;
+            });
         });
     }
 
     get immatureBalance() {
         const filter = OutpointState.OURS;
-        return this.#mempool.loopUnspentBalance(filter, (tx, vout) => {
-            if (tx.isCoinStake() || tx.isCoinBase()) {
-                const isImmature =
-                    blockCount - tx.blockHeight <
-                    cChainParams.current.coinbaseMaturity;
-                return vout.value ? isImmature : 0;
-            }
+        return this.#balances.immatureBalance.getOrUpdateInvalid(() => {
+            return this.#mempool.loopUnspentBalance(filter, (tx, vout) => {
+                let retval = 0;
+                if (tx.isCoinStake() || tx.isCoinBase()) {
+                    const isImmature =
+                        blockCount - tx.blockHeight <
+                        cChainParams.current.coinbaseMaturity;
+                    retval = vout.value ? isImmature : 0;
+                }
+                return retval;
+            });
         });
     }
 
     get coldBalance() {
         const filter = OutpointState.OURS | OutpointState.P2CS;
-        return this.#mempool.loopUnspentBalance(filter, (tx, vout) => {
-            return vout.value;
+        return this.#balances.coldBalance.getOrUpdateInvalid(() => {
+            return this.#mempool.loopUnspentBalance(filter, (tx, vout) => {
+                return vout.value;
+            });
         });
+    }
+
+    #invalidateBalance() {
+        this.#balances.immatureBalance.invalidate();
+        this.#balances.balance.invalidate();
+        this.#balances.coldBalance.invalidate();
+        getEventEmitter().emit('balance-update');
     }
 
     /**
@@ -1230,6 +1259,33 @@ export class Wallet {
         for (const tx of txs) {
             this.addTransaction(tx, true);
         }
+    }
+}
+
+class CachableBalance {
+    /**
+     * @type {number}
+     * represents a cachable balance
+     */
+    value = -1;
+
+    isValid() {
+        return this.value != -1;
+    }
+    invalidate() {
+        this.value = -1;
+    }
+
+    /**
+     * Return the cached balance if it's valid, or re-compute and return.
+     * @param {Function} fn - function with which calculate the balance
+     * @returns {number} cached balance
+     */
+    getOrUpdateInvalid(fn) {
+        if (!this.isValid()) {
+            this.value = fn();
+        }
+        return this.value;
     }
 }
 
