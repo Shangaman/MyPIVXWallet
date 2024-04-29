@@ -23,12 +23,6 @@ export class Mempool {
     #txmap = new Map();
 
     /**
-     * balance cache, mapping filter -> balance
-     * @type{Map<number, number>}
-     */
-    #balances = new Map();
-
-    /**
      * Add a transaction to the mempool
      * And mark the input as spent.
      * @param {import('./transaction.js').Transaction} tx
@@ -95,7 +89,6 @@ export class Mempool {
      */
     setOutpointStatus(outpoint, status) {
         this.#outpointStatus.set(outpoint.toUnique(), status);
-        this.#invalidateBalanceCache();
     }
 
     /**
@@ -106,7 +99,6 @@ export class Mempool {
     addOutpointStatus(outpoint, status) {
         const oldStatus = this.#outpointStatus.get(outpoint.toUnique());
         this.#outpointStatus.set(outpoint.toUnique(), oldStatus | status);
-        this.#invalidateBalanceCache();
     }
 
     /**
@@ -117,7 +109,6 @@ export class Mempool {
     removeOutpointStatus(outpoint, status) {
         const oldStatus = this.#outpointStatus.get(outpoint.toUnique());
         this.#outpointStatus.set(outpoint.toUnique(), oldStatus & ~status);
-        this.#invalidateBalanceCache();
     }
 
     /**
@@ -207,43 +198,24 @@ export class Mempool {
     }
 
     /**
-     * @param {number} filter
+     * Loop through the unspent balance of the wallet
+     * @param {number} filters - A filter to apply to all UTXOs
+     * @param {balanceIterator} fn
+     * @returns {number}
      */
-    getBalance(filter) {
-        if (this.#balances.has(filter)) {
-            return this.#balances.get(filter);
+    loopUnspentBalance(filters, fn) {
+        let balance = 0;
+        for (const tx of this.#txmap.values()) {
+            for (const [index, vout] of tx.vout.entries()) {
+                const status = this.getOutpointStatus(
+                    new COutpoint({ txid: tx.txid, n: index })
+                );
+                if (!(status & OutpointState.SPENT) && status & filters) {
+                    balance += fn(tx, vout);
+                }
+            }
         }
-        const bal = Array.from(this.#outpointStatus)
-            .filter(([_, status]) => !(status & OutpointState.SPENT))
-            .filter(([_, status]) => status & filter)
-            .reduce((acc, [o]) => {
-                const outpoint = COutpoint.fromUnique(o);
-                const tx = this.#txmap.get(outpoint.txid);
-                return acc + tx.vout[outpoint.n].value;
-            }, 0);
-        this.#balances.set(filter, bal);
-        return bal;
-    }
-
-    #invalidateBalanceCache() {
-        this.#balances = new Map();
-        this.#emitBalanceUpdate();
-    }
-
-    #emittingBalanceUpdate = false;
-
-    #emitBalanceUpdate() {
-        if (this.#emittingBalanceUpdate) return;
-        this.#emittingBalanceUpdate = true;
-        // TODO: This is not ideal, we are limiting the mempool to only emit 1 balance-update per frame,
-        // but we don't want the mempool to know about animation frames. This is needed during
-        // sync to avoid spamming balance-updates and slowing down the sync.
-        // The best course of action is to probably add a loading page/state and avoid
-        // listening to the balance-update event until the sync is done
-        requestAnimationFrame(() => {
-            getEventEmitter().emit('balance-update');
-            this.#emittingBalanceUpdate = false;
-        });
+        return balance;
     }
 
     /**
@@ -252,16 +224,11 @@ export class Mempool {
     getTransactions() {
         return Array.from(this.#txmap.values());
     }
-
-    get balance() {
-        return this.getBalance(OutpointState.P2PKH);
-    }
-
-    get coldBalance() {
-        return this.getBalance(OutpointState.P2CS);
-    }
-
-    get immatureBalance() {
-        return this.getBalance(OutpointState.IMMATURE);
-    }
 }
+
+/**
+ * @typedef {Function} balanceIterator
+ * @param {import('./transaction.js').Transaction} tx
+ * @param {CTxOut} vout
+ * @returns {number} amount
+ */

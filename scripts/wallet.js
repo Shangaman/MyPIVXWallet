@@ -1186,15 +1186,29 @@ export class Wallet {
     }
 
     get balance() {
-        return this.#mempool.balance;
+        const filter = OutpointState.OURS | OutpointState.P2PKH;
+        return this.#mempool.loopUnspentBalance(filter, (tx, vout) => {
+            return vout.value;
+        });
     }
 
     get immatureBalance() {
-        return this.#mempool.immatureBalance;
+        const filter = OutpointState.OURS;
+        return this.#mempool.loopUnspentBalance(filter, (tx, vout) => {
+            if (tx.isCoinStake() || tx.isCoinBase()) {
+                const isImmature =
+                    blockCount - tx.blockHeight <
+                    cChainParams.current.coinbaseMaturity;
+                return vout.value ? isImmature : 0;
+            }
+        });
     }
 
     get coldBalance() {
-        return this.#mempool.coldBalance;
+        const filter = OutpointState.OURS | OutpointState.P2CS;
+        return this.#mempool.loopUnspentBalance(filter, (tx, vout) => {
+            return vout.value;
+        });
     }
 
     /**
