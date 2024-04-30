@@ -15,7 +15,7 @@ import { hexToBytes } from '../../../scripts/utils';
 
 vi.mock('../../../scripts/network.js');
 vi.mock('../../../scripts/global.js');
-vi.mock('../../../scripts/shield.js');
+
 describe('Wallet signature tests', () => {
     let wallet;
     beforeEach(async () => {
