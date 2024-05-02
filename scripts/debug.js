@@ -85,8 +85,7 @@ let enabledDebug = 0;
 
 export async function loadDebug() {
     for (const topic in DebugTopics) {
-        const index_str =
-            'debug_' + DebugTopics[topic].name.toLowerCase().slice(1, -1);
+        const index_str = DebugTopics[topic].name.toLowerCase().slice(1, -1);
         if (debugParams[index_str]) {
             enabledDebug += DebugTopics[topic].value;
         }

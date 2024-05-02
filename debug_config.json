@@ -1,6 +1,6 @@
 {
-    "debug_net": true,
-    "debug_global": true,
-    "debug_wallet": true,
-    "debug_mempool": true
+    "net": true,
+    "global": true,
+    "wallet": true,
+    "mempool": true
 }
