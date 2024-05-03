@@ -5,7 +5,7 @@ import { beforeUnloadListener, blockCount } from './global.js';
 import { getNetwork } from './network.js';
 import { MAX_ACCOUNT_GAP, SHIELD_BATCH_SYNC_SIZE } from './chain_params.js';
 import { HistoricalTx, HistoricalTxType } from './historical_tx.js';
-import { COutpoint, Transaction } from './transaction.js';
+import { COutpoint, Transaction, UTXO } from './transaction.js';
 import { confirmPopup, createAlert, isShieldAddress } from './misc.js';
 import { cChainParams } from './chain_params.js';
 import { COIN } from './chain_params.js';
@@ -798,21 +798,19 @@ export class Wallet {
      * But for now we can just recalculate the UTXOs
      */
     #getUTXOsForShield() {
-        return this.#mempool
-            .getUTXOs({
-                requirement: OutpointState.P2PKH | OutpointState.OURS,
-            })
-            .map((u) => {
-                return {
-                    vout: u.outpoint.n,
-                    amount: u.value,
-                    private_key: parseWIF(
-                        this.#masterKey.getPrivateKey(this.getPath(u.script))
-                    ),
-                    script: hexToBytes(u.script),
-                    txid: u.outpoint.txid,
-                };
-            });
+        return this.getUTXOs({
+            requirement: OutpointState.P2PKH | OutpointState.OURS,
+        }).map((u) => {
+            return {
+                vout: u.outpoint.n,
+                amount: u.value,
+                private_key: parseWIF(
+                    this.#masterKey.getPrivateKey(this.getPath(u.script))
+                ),
+                script: hexToBytes(u.script),
+                txid: u.outpoint.txid,
+            };
+        });
     }
 
     subscribeToNetworkEvents() {
@@ -977,11 +975,11 @@ export class Wallet {
     ) {
         let balance;
         if (useDelegatedInputs) {
-            balance = this.#mempool.coldBalance;
+            balance = this.coldBalance;
         } else if (useShieldInputs) {
             balance = this.#shield.getBalance();
         } else {
-            balance = this.#mempool.balance;
+            balance = this.balance;
         }
         if (balance < value) {
             throw new Error('Not enough balance');
@@ -1017,7 +1015,7 @@ export class Wallet {
             const requirement = useDelegatedInputs
                 ? OutpointState.P2CS
                 : OutpointState.P2PKH;
-            const utxos = this.#mempool.getUTXOs({
+            const utxos = this.getUTXOs({
                 requirement: requirement | OutpointState.OURS,
                 target: value,
             });
@@ -1185,11 +1183,23 @@ export class Wallet {
      */
     getMasternodeUTXOs() {
         const collateralValue = cChainParams.current.collateralInSats;
-        return this.#mempool
-            .getUTXOs({
-                requirement: OutpointState.P2PKH | OutpointState.OURS,
-            })
-            .filter((u) => u.value === collateralValue);
+        return this.getUTXOs({
+            requirement: OutpointState.P2PKH | OutpointState.OURS,
+        }).filter((u) => u.value === collateralValue);
+    }
+
+    /**
+     * @param {import('./transaction.js').Transaction} tx - transaction we want to check
+     * @returns {boolean}
+     */
+    isTxImmature(tx) {
+        if (tx.isCoinStake() || tx.isCoinBase()) {
+            return (
+                blockCount - tx.blockHeight <
+                cChainParams.current.coinbaseMaturity
+            );
+        }
+        return false;
     }
 
     /**
@@ -1199,38 +1209,80 @@ export class Wallet {
         return this.#mempool.getTransactions();
     }
 
-    get balance() {
-        const filter = OutpointState.OURS | OutpointState.P2PKH;
-        return this.#balances.balance.getOrUpdateInvalid(() => {
-            return this.#mempool.loopUnspentBalance(filter, (tx, vout) => {
-                return vout.value;
-            });
-        });
+    #balanceInteral(requirement, includeImmature = false) {
+        return this.#mempool.loopSpendableBalance(
+            requirement,
+            0,
+            (tx, vout, currentValue) => {
+                if (!this.isTxImmature(tx)) {
+                    return currentValue + vout.value;
+                } else if (includeImmature) {
+                    return currentValue + vout.value;
+                }
+                return currentValue;
+            }
+        );
     }
 
-    get immatureBalance() {
-        const filter = OutpointState.OURS;
-        return this.#balances.immatureBalance.getOrUpdateInvalid(() => {
-            return this.#mempool.loopUnspentBalance(filter, (tx, vout) => {
-                let retval = 0;
-                if (tx.isCoinStake() || tx.isCoinBase()) {
-                    const isImmature =
-                        blockCount - tx.blockHeight <
-                        cChainParams.current.coinbaseMaturity;
-                    retval = vout.value ? isImmature : 0;
-                }
-                return retval;
-            });
+    get balance() {
+        return this.#balances.balance.getOrUpdateInvalid(() => {
+            return this.#balanceInteral(
+                OutpointState.OURS | OutpointState.P2PKH
+            );
         });
     }
 
     get coldBalance() {
-        const filter = OutpointState.OURS | OutpointState.P2CS;
         return this.#balances.coldBalance.getOrUpdateInvalid(() => {
-            return this.#mempool.loopUnspentBalance(filter, (tx, vout) => {
-                return vout.value;
-            });
+            return this.#balanceInteral(
+                OutpointState.OURS | OutpointState.P2CS
+            );
         });
+    }
+
+    get immatureBalance() {
+        return this.#balances.immatureBalance.getOrUpdateInvalid(() => {
+            return (
+                this.#balanceInteral(OutpointState.OURS, true) - this.balance
+            );
+        });
+    }
+
+    /**
+     * @param {object} o - options
+     * @param {number} [o.requirement] - A requirement to apply to all UTXOs. For example
+     * `OutpointState.P2CS` will only return P2CS transactions.
+     * By default it's MAX_SAFE_INTEGER
+     * @param {boolean} [o.includeImmature] - If set to true immature UTXOs will be included
+     * @returns {UTXO[]} a list of unspent transaction outputs
+     */
+    getUTXOs({
+        requirement = 0,
+        includeImmature = false,
+        target = Number.POSITIVE_INFINITY,
+    } = {}) {
+        return this.#mempool.loopSpendableBalance(
+            requirement,
+            { utxos: [], bal: 0 },
+            (tx, vout, currentValue) => {
+                if (
+                    (!includeImmature && this.isTxImmature(tx)) ||
+                    currentValue.bal >= (target * 11) / 10
+                ) {
+                    return currentValue;
+                }
+                const n = tx.vout.findIndex((element) => element === vout);
+                currentValue.utxos.push(
+                    new UTXO({
+                        outpoint: new COutpoint({ txid: tx.txid, n }),
+                        script: vout.script,
+                        value: vout.value,
+                    })
+                );
+                currentValue.bal += vout.value;
+                return currentValue;
+            }
+        ).utxos;
     }
 
     #invalidateBalance() {

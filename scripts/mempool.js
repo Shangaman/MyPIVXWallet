@@ -161,58 +161,28 @@ export class Mempool {
     }
 
     /**
-     * @param {object} o - options
-     * @param {number} [o.filter] - A filter to apply to all UTXOs. For example
-     * `OutpointState.P2CS` will NOT return P2CS transactions.
-     * By default it's `OutpointState.SPENT | OutpointState.LOCKED`
-     * @param {number} [o.requirement] - A requirement to apply to all UTXOs. For example
-     * `OutpointState.P2CS` will only return P2CS transactions.
-     * By default it's MAX_SAFE_INTEGER
-     * @returns {UTXO[]} a list of unspent transaction outputs
-     */
-    getUTXOs({
-        filter = OutpointState.SPENT | OutpointState.LOCKED,
-        requirement = 0,
-        target = Number.POSITIVE_INFINITY,
-    } = {}) {
-        const utxos = [];
-        let value = 0;
-        for (const [o, status] of this.#outpointStatus) {
-            const outpoint = COutpoint.fromUnique(o);
-            if (status & filter) {
-                continue;
-            }
-            if ((status & requirement) !== requirement) {
-                continue;
-            }
-            utxos.push(this.outpointToUTXO(outpoint));
-            value += utxos.at(-1).value;
-            if (value >= (target * 11) / 10) {
-                break;
-            }
-        }
-        return utxos;
-    }
-
-    /**
      * Loop through the unspent balance of the wallet
-     * @param {number} filters - A filter to apply to all UTXOs
+     * @template T
+     * @param {number} requirement - Requirement that outpoints must have
+     * @param {T} initialValue - initial value of the result
      * @param {balanceIterator} fn
-     * @returns {number}
+     * @returns {T}
      */
-    loopUnspentBalance(filters, fn) {
-        let balance = 0;
+    loopSpendableBalance(requirement, initialValue, fn) {
         for (const tx of this.#txmap.values()) {
             for (const [index, vout] of tx.vout.entries()) {
                 const status = this.getOutpointStatus(
                     new COutpoint({ txid: tx.txid, n: index })
                 );
-                if (!(status & OutpointState.SPENT) && status & filters) {
-                    balance += fn(tx, vout);
+                if (status & (OutpointState.SPENT | OutpointState.LOCKED)) {
+                    continue;
+                }
+                if ((status & requirement) === requirement) {
+                    initialValue = fn(tx, vout, initialValue);
                 }
             }
         }
-        return balance;
+        return initialValue;
     }
 
     /**
@@ -224,8 +194,10 @@ export class Mempool {
 }
 
 /**
+ * @template T
  * @typedef {Function} balanceIterator
  * @param {import('./transaction.js').Transaction} tx
  * @param {CTxOut} vout
+ * @param {T} currentValue - the current value iterated
  * @returns {number} amount
  */
