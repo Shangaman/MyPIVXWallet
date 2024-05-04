@@ -189,40 +189,27 @@ describe('mempool tests', () => {
             OutpointState.P2CS | OutpointState.OURS
         );
         // Set should override the status
-        mempool.setOutpointStatus(o, OutpointState.IMMATURE);
-        expect(mempool.getOutpointStatus(o)).toBe(OutpointState.IMMATURE);
+        mempool.setOutpointStatus(o, OutpointState.SPENT);
+        expect(mempool.getOutpointStatus(o)).toBe(OutpointState.SPENT);
         // Add should work with multiple flags
-        mempool.addOutpointStatus(
-            o,
-            OutpointState.P2CS | OutpointState.SPENT | OutpointState.OURS
-        );
+        mempool.addOutpointStatus(o, OutpointState.P2CS | OutpointState.OURS);
         expect(mempool.getOutpointStatus(o)).toBe(
-            OutpointState.P2CS |
-                OutpointState.SPENT |
-                OutpointState.OURS |
-                OutpointState.IMMATURE
+            OutpointState.P2CS | OutpointState.SPENT | OutpointState.OURS
         );
         // Adding an already set flag should do nothing
         mempool.addOutpointStatus(o, OutpointState.SPENT);
         expect(mempool.getOutpointStatus(o)).toBe(
-            OutpointState.P2CS |
-                OutpointState.SPENT |
-                OutpointState.OURS |
-                OutpointState.IMMATURE
+            OutpointState.P2CS | OutpointState.SPENT | OutpointState.OURS
         );
         // Remove should work with multiple flags
         mempool.removeOutpointStatus(
             o,
             OutpointState.LOCKED | OutpointState.P2CS | OutpointState.SPENT
         );
-        expect(mempool.getOutpointStatus(o)).toBe(
-            OutpointState.OURS | OutpointState.IMMATURE
-        );
+        expect(mempool.getOutpointStatus(o)).toBe(OutpointState.OURS);
         // Removing a non set flag should do nothing
         mempool.removeOutpointStatus(o, OutpointState.LOCKED);
-        expect(mempool.getOutpointStatus(o)).toBe(
-            OutpointState.OURS | OutpointState.IMMATURE
-        );
+        expect(mempool.getOutpointStatus(o)).toBe(OutpointState.OURS);
         // Removing MAX_SAFE_INTEGER should remove everything
         mempool.removeOutpointStatus(o, Number.MAX_SAFE_INTEGER);
         expect(mempool.getOutpointStatus(o)).toBe(0);
