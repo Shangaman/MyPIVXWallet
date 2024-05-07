@@ -853,7 +853,7 @@ export class Wallet {
                             parsed.blockTime = tx.blocktime;
                             // Avoid wasting memory on txs that do not regard our wallet
                             if (this.ownTransaction(parsed)) {
-                                await wallet.addTransaction(parsed);
+                                await this.addTransaction(parsed);
                             }
                         }
                     } else {
