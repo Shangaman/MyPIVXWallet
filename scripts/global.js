@@ -247,7 +247,7 @@ export async function start() {
 
     subscribeToNetworkEvents();
     // Make sure we know the correct number of blocks
-    blockCount = (await getNetwork().getChainInfo())['bestHeight'];
+    await updateBlockCount();
     // Load the price manager
     cOracle.load();
 
@@ -271,6 +271,14 @@ export async function start() {
     doms.domDashboard.click();
 }
 
+/**
+ * Updates the blockcount
+ * Must be called only on start and when toggling network
+ * @returns {Promise<void>}
+ */
+export async function updateBlockCount() {
+    blockCount = await getNetwork().getBlockCount();
+}
 async function refreshPriceDisplay() {
     await cOracle.getPrice(strCurrency);
     getEventEmitter().emit('balance-update');

@@ -1,9 +1,11 @@
 import { createAlert } from './misc.js';
 import {
+    debugError,
     debugLog,
     debugTimerEnd,
     debugTimerStart,
     DebugTopics,
+    debugWarn,
 } from './debug.js';
 import { sleep } from './utils.js';
 import { getEventEmitter } from './event_bus.js';
@@ -11,12 +13,12 @@ import {
     STATS,
     cStatKeys,
     cAnalyticsLevel,
-    setExplorer,
-    fAutoSwitch,
+    setNextExplorer,
 } from './settings.js';
 import { cNode } from './settings.js';
 import { ALERTS, tr, translation } from './i18n.js';
 import { Transaction } from './transaction.js';
+import * as net from 'net';
 
 /**
  * @typedef {Object} XPUBAddress
@@ -108,31 +110,39 @@ export class Network {
 
 export class ExplorerNetwork extends Network {
     /**
-     * @param {string} strUrl - Url pointing to the blockbook explorer
+     * @param {string} wsUrl - Url pointing to the blockbook explorer
      */
-    constructor(strUrl) {
+    constructor(wsUrl) {
         super();
         // ensure backward compatibility
-        if (strUrl.startsWith('http')) {
-            strUrl = strUrl.replace('http', 'ws');
+        if (wsUrl.startsWith('http')) {
+            wsUrl = wsUrl.replace('http', 'ws');
         }
-        if (!strUrl.endsWith('/websocket')) {
-            strUrl += '/websocket';
+        if (!wsUrl.endsWith('/websocket')) {
+            wsUrl += '/websocket';
         }
         /**
          * @type{string}
          * @public
          */
-        this.strUrl = strUrl;
+        this.wsUrl = wsUrl;
+        this.closed = false;
         this.cachedResults = [];
         this.subscriptions = [];
         this.ID = 0;
-        this.ws = new WebSocket(strUrl);
+        this.ws = new WebSocket(wsUrl);
         this.ws.onopen = function (e) {
-            console.log('socket connected', e);
+            debugLog(DebugTopics.NET, 'websocket connected', e);
         };
         this.ws.onclose = function (e) {
-            console.log('socket closed', e);
+            debugLog(DebugTopics.NET, 'websocket disconnected', e);
+            if (!e.wasClean) {
+                debugError(
+                    DebugTopics.NET,
+                    'websocket unexpected close, trying to reconnect'
+                );
+                setNextExplorer();
+            }
         };
         this.ws.onmessage = function (e) {
             const resp = JSON.parse(e.data);
@@ -145,8 +155,15 @@ export class ExplorerNetwork extends Network {
             _network.cachedResults[resp.id] = resp.data;
         };
     }
+    get strUrl() {
+        return this.wsUrl.replace('ws', 'http').replace('/websocket', '');
+    }
+
     close() {
         this.ws.close();
+        this.cachedResults = [];
+        this.subscriptions = [];
+        this.closed = true;
     }
     async init() {
         for (let i = 0; i < 100; i++) {
@@ -162,6 +179,9 @@ export class ExplorerNetwork extends Network {
     }
 
     send(method, params) {
+        if (this.closed) {
+            throw new Error('Trying to send with a closed explorer');
+        }
         const id = this.ID.toString();
         const req = {
             id,
@@ -173,15 +193,15 @@ export class ExplorerNetwork extends Network {
         return id;
     }
     async sendAndWaitForAnswer(method, params) {
-        let attempt = 0;
-        while (attempt <= 10) {
+        let attempt = 1;
+        const maxAttempts = 5;
+        while (attempt <= maxAttempts) {
             const id = this.send(method, params);
             for (let i = 0; i < 100; i++) {
                 const res = this.cachedResults[id];
                 if (res !== undefined) {
                     delete this.cachedResults[id];
                     if (res.error) {
-                        console.log('Failed attempt: ', attempt);
                         await sleep(1000);
                         break;
                     }
@@ -189,7 +209,15 @@ export class ExplorerNetwork extends Network {
                 }
                 await sleep(100);
             }
+            debugWarn(
+                DebugTopics.NET,
+                'Failed send attempt for ' + method,
+                'attempt ' + attempt + '/' + maxAttempts
+            );
             attempt += 1;
+        }
+        if (!this.closed) {
+            throw new Error('Failed to communicate with the explorer');
         }
     }
     subscribe(method, params, callback) {
@@ -362,10 +390,19 @@ export class ExplorerNetwork extends Network {
 
     /**
      * Get the blockchain info.
-     * This is used to get the blockchain height at start or when switching chain.
+     * Internal function used to get the blockchain info.
      */
-    async getChainInfo() {
+    async #getChainInfo() {
         return await this.sendAndWaitForAnswer('getInfo', {});
+    }
+
+    /**
+     * Returns the best known block height.
+     * Must be called only on start and when toggling mainnet/testnet
+     * @returns {Promise<Number>}
+     */
+    async getBlockCount() {
+        return (await this.#getChainInfo())['bestHeight'];
     }
 
     /**
@@ -415,6 +452,7 @@ let _network = null;
  * @param {ExplorerNetwork} network - network to use
  */
 export async function setNetwork(network) {
+    debugLog(DebugTopics.NET, 'Connecting to new explorer', network.wsUrl);
     _network?.close();
     _network = network;
     await _network.init();
