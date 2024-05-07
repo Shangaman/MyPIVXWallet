@@ -292,7 +292,7 @@ function subscribeToNetworkEvents() {
 
     getEventEmitter().on('new-block', (block) => {
         debugLog(DebugTopics.GLOBAL, `New block detected! ${block}`);
-
+        blockCount = block;
         // If it's open: update the Governance Dashboard
         if (doms.domGovTab.classList.contains('active')) {
             updateGovernanceTab();
