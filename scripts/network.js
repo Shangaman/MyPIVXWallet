@@ -1,4 +1,10 @@
 import { createAlert } from './misc.js';
+import {
+    debugLog,
+    debugTimerEnd,
+    debugTimerStart,
+    DebugTopics,
+} from './debug.js';
 import { sleep } from './utils.js';
 import { getEventEmitter } from './event_bus.js';
 import {
@@ -7,7 +13,6 @@ import {
     cAnalyticsLevel,
     setExplorer,
     fAutoSwitch,
-    debug,
 } from './settings.js';
 import { cNode } from './settings.js';
 import { ALERTS, tr, translation } from './i18n.js';
@@ -254,9 +259,7 @@ export class ExplorerNetwork extends Network {
         let nStartHeight = Math.max(
             ...wallet.getTransactions().map((tx) => tx.blockHeight)
         );
-        if (debug) {
-            console.time('getLatestTxsTimer');
-        }
+        debugTimerStart(DebugTopics.NET, 'getLatestTxsTimer');
         const probePage = await this.getAccountInfo(
             wallet.getKeyToExport(),
             1,
@@ -296,13 +299,12 @@ export class ExplorerNetwork extends Network {
             }
         }
 
-        if (debug) {
-            console.log(
-                'Fetched latest txs: total number of pages was ',
-                totalPages
-            );
-            console.timeEnd('getLatestTxsTimer');
-        }
+        debugLog(
+            DebugTopics.NET,
+            'Fetched latest txs: total number of pages was ',
+            totalPages
+        );
+        debugTimerEnd(DebugTopics.NET, 'getLatestTxsTimer');
     }
 
     /**
