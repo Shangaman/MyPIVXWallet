@@ -18,7 +18,6 @@ import {
 import { cNode } from './settings.js';
 import { ALERTS, tr, translation } from './i18n.js';
 import { Transaction } from './transaction.js';
-import * as net from 'net';
 
 /**
  * @typedef {Object} XPUBAddress
