@@ -320,7 +320,7 @@ export class ExplorerNetwork extends Network {
             const iPage = await this.getAccountInfo(
                 wallet.getKeyToExport(),
                 i,
-                10000,
+                1000,
                 nStartHeight
             );
 
