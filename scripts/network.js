@@ -194,24 +194,34 @@ export class ExplorerNetwork extends Network {
     async sendAndWaitForAnswer(method, params) {
         let attempt = 1;
         const maxAttempts = 10;
+        // milliseconds
+        const maxAwaitTime = 600 * 1000;
+        const frequency = 100;
         while (attempt <= maxAttempts) {
+            let receivedInvalidAnswer = false;
             const id = this.send(method, params);
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < Math.floor(maxAwaitTime / frequency); i++) {
                 const res = this.cachedResults[id];
                 if (res !== undefined) {
                     delete this.cachedResults[id];
                     if (res.error) {
                         await sleep(1000);
+                        receivedInvalidAnswer = true;
                         break;
                     }
                     return res;
                 }
-                await sleep(100);
+                await sleep(frequency);
             }
             debugWarn(
                 DebugTopics.NET,
                 'Failed send attempt for ' + method,
-                'attempt ' + attempt + '/' + maxAttempts
+                'attempt ' +
+                    attempt +
+                    '/' +
+                    maxAttempts +
+                    ' received an invalid answer: ' +
+                    receivedInvalidAnswer
             );
             attempt += 1;
         }
