@@ -201,6 +201,9 @@ export class ExplorerNetwork extends Network {
             let receivedInvalidAnswer = false;
             const id = this.send(method, params);
             for (let i = 0; i < Math.floor(maxAwaitTime / frequency); i++) {
+                if (this.closed) {
+                    break;
+                }
                 const res = this.cachedResults[id];
                 if (res !== undefined) {
                     delete this.cachedResults[id];
