@@ -193,7 +193,7 @@ export class ExplorerNetwork extends Network {
     }
     async sendAndWaitForAnswer(method, params) {
         let attempt = 1;
-        const maxAttempts = 5;
+        const maxAttempts = 10;
         while (attempt <= maxAttempts) {
             const id = this.send(method, params);
             for (let i = 0; i < 100; i++) {
