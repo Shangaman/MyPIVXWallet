@@ -1260,7 +1260,9 @@ export class Wallet {
     get immatureBalance() {
         return this.#balances.immatureBalance.getOrUpdateInvalid(() => {
             return (
-                this.#balanceInteral(OutpointState.OURS, true) - this.balance
+                this.#balanceInteral(OutpointState.OURS, true) -
+                this.balance -
+                this.coldBalance
             );
         });
     }
@@ -1284,7 +1286,8 @@ export class Wallet {
             (tx, vout, currentValue) => {
                 if (
                     (!includeImmature && this.isTxImmature(tx)) ||
-                    currentValue.bal >= (target * 11) / 10
+                    (currentValue.bal >= (target * 11) / 10 &&
+                        currentValue.bal > 0)
                 ) {
                     return currentValue;
                 }
