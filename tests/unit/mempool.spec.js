@@ -8,6 +8,7 @@ import {
     CTxIn,
 } from '../../scripts/transaction.js';
 import { Mempool, OutpointState } from '../../scripts/mempool.js';
+import { Wallet } from '../../scripts/wallet.js';
 
 describe('mempool tests', () => {
     /** @type{Mempool} */
@@ -41,6 +42,8 @@ describe('mempool tests', () => {
     });
 
     it('gets UTXOs correctly', () => {
+        //TODO: move this test to wallet file
+        const wallet = new Wallet({ mempool });
         let expectedUTXOs = [
             new UTXO({
                 outpoint: new COutpoint({ txid: tx.txid, n: 0 }),
@@ -55,20 +58,20 @@ describe('mempool tests', () => {
         ];
 
         // By default, it should return all UTXOs
-        expect(mempool.getUTXOs()).toStrictEqual(expectedUTXOs);
+        expect(wallet.getUTXOs()).toStrictEqual(expectedUTXOs);
 
         // With target, should only return the first one
         expect(
-            mempool.getUTXOs({
+            wallet.getUTXOs({
                 target: 4000000,
             })
         ).toStrictEqual([expectedUTXOs[0]]);
 
         mempool.setSpent(new COutpoint({ txid: tx.txid, n: 0 }));
         // After spending one UTXO, it should not return it again
-        expect(mempool.getUTXOs()).toStrictEqual([expectedUTXOs[1]]);
+        expect(wallet.getUTXOs()).toStrictEqual([expectedUTXOs[1]]);
         mempool.setSpent(new COutpoint({ txid: tx.txid, n: 1 }));
-        expect(mempool.getUTXOs()).toHaveLength(0);
+        expect(wallet.getUTXOs()).toHaveLength(0);
 
         [0, 1].forEach((n) =>
             mempool.removeOutpointStatus(
@@ -80,30 +83,8 @@ describe('mempool tests', () => {
             new COutpoint({ txid: tx.txid, n: 1 }),
             OutpointState.LOCKED
         );
-        // Filter should remove any LOCKED UTXOs
-        expect(
-            mempool.getUTXOs({ filter: OutpointState.LOCKED })
-        ).toStrictEqual([expectedUTXOs[0]]);
-        // Requirement should only return LOCKED UTXOs
-        expect(
-            mempool.getUTXOs({
-                requirement: OutpointState.LOCKED | OutpointState.OURS,
-                filter: 0,
-            })
-        ).toStrictEqual([expectedUTXOs[1]]);
-    });
-    it('gets correct balance', () => {
-        expect(mempool.getBalance(OutpointState.P2PKH)).toBe(4992400 + 5000000);
-        // Subsequent calls should be cached
-        expect(mempool.balance).toBe(4992400 + 5000000);
-        expect(mempool.getBalance(OutpointState.P2CS)).toBe(0);
-        expect(
-            mempool.getBalance(OutpointState.P2CS | OutpointState.P2PKH)
-        ).toBe(4992400 + 5000000);
-        mempool.setSpent(new COutpoint({ txid: tx.txid, n: 0 }));
-        expect(mempool.getBalance(OutpointState.P2PKH)).toBe(5000000);
-        mempool.setSpent(new COutpoint({ txid: tx.txid, n: 1 }));
-        expect(mempool.getBalance(OutpointState.P2PKH)).toBe(0);
+        // any LOCKED UTXOs is removed
+        expect(wallet.getUTXOs()).toStrictEqual([expectedUTXOs[0]]);
     });
 
     it('gives correct debit', () => {
