@@ -111,8 +111,17 @@ export class ExplorerNetwork extends Network {
     /**
      * @param {string} wsUrl - Url pointing to the blockbook explorer
      */
-    constructor(wsUrl) {
+    constructor() {
         super();
+        this.cachedResults = [];
+        this.subscriptions = [];
+        this.ID = 0;
+    }
+    async createWebSocketConnection(wsUrl) {
+        // Make sure the old connection is closed before opening a new one
+        if (this.ws) {
+            await this.reset();
+        }
         // ensure backward compatibility
         if (wsUrl.startsWith('http')) {
             wsUrl = wsUrl.replace('http', 'ws');
@@ -120,15 +129,11 @@ export class ExplorerNetwork extends Network {
         if (!wsUrl.endsWith('/websocket')) {
             wsUrl += '/websocket';
         }
-        /**
-         * @type{string}
-         * @public
-         */
         this.wsUrl = wsUrl;
-        this.closed = false;
-        this.cachedResults = [];
-        this.subscriptions = [];
-        this.ID = 0;
+        this.openWebSocketConnection(wsUrl);
+        await this.initWebSocketConnection();
+    }
+    openWebSocketConnection(wsUrl) {
         this.ws = new WebSocket(wsUrl);
         this.ws.onopen = function (e) {
             debugLog(DebugTopics.NET, 'websocket connected', e);
@@ -140,10 +145,16 @@ export class ExplorerNetwork extends Network {
                     DebugTopics.NET,
                     'websocket unexpected close, trying to reconnect'
                 );
+                // Connection closed somehow, try to reconnect
                 setNextExplorer();
             }
         };
         this.ws.onmessage = function (e) {
+            // Return early if the websocket is not open
+            // In this way we avoid the case in which a closing websocket connection put values in the cache
+            if (this.readyState !== WebSocket.OPEN) {
+                return;
+            }
             const resp = JSON.parse(e.data);
             // Is this a subscription?
             const f = _network.subscriptions[resp.id];
@@ -154,33 +165,75 @@ export class ExplorerNetwork extends Network {
             _network.cachedResults[resp.id] = resp.data;
         };
     }
+    async initWebSocketConnection() {
+        await this.awaitWebSocketStatus(
+            WebSocket.OPEN,
+            'Cannot connect to websocket!'
+        );
+        await this.subscribeNewBlock();
+    }
     get strUrl() {
         return this.wsUrl.replace('ws', 'http').replace('/websocket', '');
     }
 
-    close() {
-        this.ws.close();
+    async reset() {
+        if (this.ws.readyState == WebSocket.OPEN) {
+            this.ws.close();
+        }
+        // Make sure websocket got closed before emptying arrays
+        await this.awaitWebSocketStatus(
+            WebSocket.CLOSED,
+            'Websocket is not getting closed'
+        );
+        // At this point messages of old websocket will not be received anymore
+        // and, it is safe to reset cachedResults and subscriptions
         this.cachedResults = [];
         this.subscriptions = [];
-        this.closed = true;
     }
-    async init() {
+
+    async awaitWebSocketStatus(status, errMessage) {
         for (let i = 0; i < 100; i++) {
-            if (this.ws.readyState === WebSocket.OPEN) {
+            if (this.ws.readyState === status) {
                 break;
             }
             await sleep(100);
         }
-        if (this.ws.readyState !== WebSocket.OPEN) {
-            throw new Error('Cannot connect to websocket!');
+        if (this.ws.readyState !== status) {
+            throw new Error(errMessage);
         }
-        this.subscribeNewBlock();
     }
 
-    send(method, params) {
-        if (this.closed) {
-            throw new Error('Trying to send with a closed explorer');
-        }
+    async subscribe(method, params, callback) {
+        await this.awaitWebSocketStatus(
+            WebSocket.OPEN,
+            'Cannot connect to websocket!'
+        );
+        const id = this.ID.toString();
+        this.subscriptions[id] = callback;
+        const req = {
+            id,
+            method,
+            params,
+        };
+        this.ws.send(JSON.stringify(req));
+        this.ID++;
+        return id;
+    }
+    async subscribeNewBlock() {
+        await this.subscribe('subscribeNewBlock', {}, function (result) {
+            if (result['height'] !== undefined) {
+                getEventEmitter().emit('new-block', result['height']);
+            }
+        });
+    }
+
+    async send(method, params) {
+        // It might happen that connection just got closed, and we are still connecting to the new one.
+        // So make sure that before sending anything we have an open connection
+        await this.awaitWebSocketStatus(
+            WebSocket.OPEN,
+            'Cannot connect to websocket!'
+        );
         const id = this.ID.toString();
         const req = {
             id,
@@ -189,7 +242,7 @@ export class ExplorerNetwork extends Network {
         };
         this.ID++;
         this.ws.send(JSON.stringify(req));
-        return id;
+        return [id, this.ws];
     }
     async sendAndWaitForAnswer(method, params) {
         let attempt = 1;
@@ -199,11 +252,8 @@ export class ExplorerNetwork extends Network {
         const frequency = 100;
         while (attempt <= maxAttempts) {
             let receivedInvalidAnswer = false;
-            const id = this.send(method, params);
+            const [id, ws_that_sent] = await this.send(method, params);
             for (let i = 0; i < Math.floor(maxAwaitTime / frequency); i++) {
-                if (this.closed) {
-                    break;
-                }
                 const res = this.cachedResults[id];
                 if (res !== undefined) {
                     delete this.cachedResults[id];
@@ -215,6 +265,10 @@ export class ExplorerNetwork extends Network {
                     return res;
                 }
                 await sleep(frequency);
+                // If connection got closed while sending do not wait until timeout
+                if (ws_that_sent !== this.ws) {
+                    break;
+                }
             }
             debugWarn(
                 DebugTopics.NET,
@@ -228,28 +282,7 @@ export class ExplorerNetwork extends Network {
             );
             attempt += 1;
         }
-        if (!this.closed) {
-            throw new Error('Failed to communicate with the explorer');
-        }
-    }
-    subscribe(method, params, callback) {
-        const id = this.ID.toString();
-        this.subscriptions[id] = callback;
-        const req = {
-            id,
-            method,
-            params,
-        };
-        this.ws.send(JSON.stringify(req));
-        this.ID++;
-        return id;
-    }
-    subscribeNewBlock() {
-        this.subscribe('subscribeNewBlock', {}, function (result) {
-            if (result['height'] !== undefined) {
-                getEventEmitter().emit('new-block', result['height']);
-            }
-        });
+        throw new Error('Failed to communicate with the explorer');
     }
     async getAccountInfo(descriptor, page, pageSize, from, details = 'txs') {
         const params = {
@@ -457,17 +490,15 @@ export class ExplorerNetwork extends Network {
     }
 }
 
-let _network = null;
+let _network = new ExplorerNetwork();
 
 /**
  * Sets the network in use by MPW.
- * @param {ExplorerNetwork} network - network to use
+ * @param {String} wsUrl - websocket url
  */
-export async function setNetwork(network) {
-    debugLog(DebugTopics.NET, 'Connecting to new explorer', network.wsUrl);
-    _network?.close();
-    _network = network;
-    await _network.init();
+export async function setNetwork(wsUrl) {
+    debugLog(DebugTopics.NET, 'Connecting to new explorer', wsUrl);
+    await _network.createWebSocketConnection(wsUrl);
 }
 
 /**
@@ -475,5 +506,6 @@ export async function setNetwork(network) {
  * @returns {ExplorerNetwork?} Returns the network in use, may be null if MPW hasn't properly loaded yet.
  */
 export function getNetwork() {
-    return _network;
+    // Return null if websocket hasn't been loaded yet
+    return _network.ws ? _network : null;
 }

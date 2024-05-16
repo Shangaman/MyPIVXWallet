@@ -308,8 +308,7 @@ async function setExplorer(explorer, fSilent = false) {
     cExplorer = explorer;
 
     // Enable networking + notify if allowed
-    const network = new ExplorerNetwork(cExplorer.url);
-    await setNetwork(network);
+    await setNetwork(cExplorer.url);
 
     // Update the selector UI
     doms.domExplorerSelect.value = cExplorer.url;
