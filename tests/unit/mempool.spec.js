@@ -8,12 +8,12 @@ import {
     CTxIn,
 } from '../../scripts/transaction.js';
 import { Mempool, OutpointState } from '../../scripts/mempool.js';
-import { Wallet } from '../../scripts/wallet.js';
 
 describe('mempool tests', () => {
     /** @type{Mempool} */
     let mempool;
     let tx;
+    let txBlockHeight = 1000;
     beforeEach(() => {
         mempool = new Mempool();
         tx = new Transaction({
@@ -29,6 +29,7 @@ describe('mempool tests', () => {
                     value: 5000000,
                 }),
             ],
+            blockHeight: txBlockHeight,
         });
         mempool.addTransaction(tx);
         mempool.setOutpointStatus(
@@ -40,10 +41,7 @@ describe('mempool tests', () => {
             OutpointState.OURS | OutpointState.P2PKH
         );
     });
-
     it('gets UTXOs correctly', () => {
-        //TODO: move this test to wallet file
-        const wallet = new Wallet({ mempool });
         let expectedUTXOs = [
             new UTXO({
                 outpoint: new COutpoint({ txid: tx.txid, n: 0 }),
@@ -58,20 +56,20 @@ describe('mempool tests', () => {
         ];
 
         // By default, it should return all UTXOs
-        expect(wallet.getUTXOs()).toStrictEqual(expectedUTXOs);
+        expect(mempool.getUTXOs()).toStrictEqual(expectedUTXOs);
 
         // With target, should only return the first one
         expect(
-            wallet.getUTXOs({
+            mempool.getUTXOs({
                 target: 4000000,
             })
         ).toStrictEqual([expectedUTXOs[0]]);
 
         mempool.setSpent(new COutpoint({ txid: tx.txid, n: 0 }));
         // After spending one UTXO, it should not return it again
-        expect(wallet.getUTXOs()).toStrictEqual([expectedUTXOs[1]]);
+        expect(mempool.getUTXOs()).toStrictEqual([expectedUTXOs[1]]);
         mempool.setSpent(new COutpoint({ txid: tx.txid, n: 1 }));
-        expect(wallet.getUTXOs()).toHaveLength(0);
+        expect(mempool.getUTXOs()).toHaveLength(0);
 
         [0, 1].forEach((n) =>
             mempool.removeOutpointStatus(
@@ -84,7 +82,21 @@ describe('mempool tests', () => {
             OutpointState.LOCKED
         );
         // any LOCKED UTXOs is removed
-        expect(wallet.getUTXOs()).toStrictEqual([expectedUTXOs[0]]);
+        expect(mempool.getUTXOs()).toStrictEqual([expectedUTXOs[0]]);
+    });
+
+    it('gets correct balance', () => {
+        const confirmedHeight = txBlockHeight + 100;
+        expect(mempool.getBalance(confirmedHeight)).toBe(4992400 + 5000000);
+        // Subsequent calls should be cached
+        expect(mempool.getBalance(confirmedHeight)).toBe(4992400 + 5000000);
+        expect(mempool.getColdBalance(confirmedHeight)).toBe(0);
+        expect(mempool.getImmatureBalance(confirmedHeight)).toBe(0);
+
+        mempool.setSpent(new COutpoint({ txid: tx.txid, n: 0 }));
+        expect(mempool.getBalance(confirmedHeight)).toBe(5000000);
+        mempool.setSpent(new COutpoint({ txid: tx.txid, n: 1 }));
+        expect(mempool.getBalance(confirmedHeight)).toBe(0);
     });
 
     it('gives correct debit', () => {

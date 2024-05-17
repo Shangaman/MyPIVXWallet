@@ -5,7 +5,7 @@ import { beforeUnloadListener, blockCount } from './global.js';
 import { getNetwork } from './network.js';
 import { MAX_ACCOUNT_GAP, SHIELD_BATCH_SYNC_SIZE } from './chain_params.js';
 import { HistoricalTx, HistoricalTxType } from './historical_tx.js';
-import { COutpoint, Transaction, UTXO } from './transaction.js';
+import { COutpoint, Transaction } from './transaction.js';
 import { confirmPopup, createAlert, isShieldAddress } from './misc.js';
 import { cChainParams } from './chain_params.js';
 import { COIN } from './chain_params.js';
@@ -96,15 +96,6 @@ export class Wallet {
      * @type {number}
      */
     #lastProcessedBlock = 0;
-
-    /**
-     * Object containing balances of the wallet
-     */
-    #balances = {
-        balance: new CachableBalance(),
-        coldBalance: new CachableBalance(),
-        immatureBalance: new CachableBalance(),
-    };
     constructor({ nAccount, masterKey, shield, mempool = new Mempool() }) {
         this.#nAccount = nAccount;
         this.#mempool = mempool;
@@ -718,7 +709,6 @@ export class Wallet {
         this.#isSynced = true;
         // Update both activities post sync
         getEventEmitter().emit('new-tx');
-        this.#invalidateBalance();
     });
 
     async #transparentSync() {
@@ -798,27 +788,31 @@ export class Wallet {
      * @param {number} target - Number of satoshis needed. See Mempool.getUTXOs
      */
     #getUTXOsForShield(target = Number.POSITIVE_INFINITY) {
-        return this.getUTXOs({
-            requirement: OutpointState.P2PKH | OutpointState.OURS,
-            target,
-        }).map((u) => {
-            return {
-                vout: u.outpoint.n,
-                amount: u.value,
-                private_key: parseWIF(
-                    this.#masterKey.getPrivateKey(this.getPath(u.script))
-                ),
-                script: hexToBytes(u.script),
-                txid: u.outpoint.txid,
-            };
-        });
+        return this.#mempool
+            .getUTXOs({
+                requirement: OutpointState.P2PKH | OutpointState.OURS,
+                target,
+                blockCount,
+            })
+            .map((u) => {
+                return {
+                    vout: u.outpoint.n,
+                    amount: u.value,
+                    private_key: parseWIF(
+                        this.#masterKey.getPrivateKey(this.getPath(u.script))
+                    ),
+                    script: hexToBytes(u.script),
+                    txid: u.outpoint.txid,
+                };
+            });
     }
 
     subscribeToNetworkEvents() {
         getEventEmitter().on('new-block', async (block) => {
             if (this.#isSynced) {
+                // Invalidate the balance cache to keep immature balance updated
+                this.#mempool.invalidateBalanceCache();
                 await this.getLatestBlocks(block);
-                this.#invalidateBalance();
                 getEventEmitter().emit('new-tx');
             }
         });
@@ -1013,9 +1007,10 @@ export class Wallet {
             const requirement = useDelegatedInputs
                 ? OutpointState.P2CS
                 : OutpointState.P2PKH;
-            const utxos = this.getUTXOs({
+            const utxos = this.#mempool.getUTXOs({
                 requirement: requirement | OutpointState.OURS,
                 target: value,
+                blockCount,
             });
             transactionBuilder.addUTXOs(utxos);
 
@@ -1162,9 +1157,6 @@ export class Wallet {
             const db = await Database.getInstance();
             await db.storeTx(transaction);
         }
-        if (this.isSynced) {
-            this.#invalidateBalance();
-        }
     }
 
     /**
@@ -1200,23 +1192,12 @@ export class Wallet {
      */
     getMasternodeUTXOs() {
         const collateralValue = cChainParams.current.collateralInSats;
-        return this.getUTXOs({
-            requirement: OutpointState.P2PKH | OutpointState.OURS,
-        }).filter((u) => u.value === collateralValue);
-    }
-
-    /**
-     * @param {import('./transaction.js').Transaction} tx - transaction we want to check
-     * @returns {boolean}
-     */
-    isTxImmature(tx) {
-        if (tx.isCoinStake() || tx.isCoinBase()) {
-            return (
-                blockCount - tx.blockHeight <
-                cChainParams.current.coinbaseMaturity
-            );
-        }
-        return false;
+        return this.#mempool
+            .getUTXOs({
+                requirement: OutpointState.P2PKH | OutpointState.OURS,
+                blockCount,
+            })
+            .filter((u) => u.value === collateralValue);
     }
 
     /**
@@ -1226,90 +1207,16 @@ export class Wallet {
         return this.#mempool.getTransactions();
     }
 
-    #balanceInteral(requirement, includeImmature = false) {
-        return this.#mempool.loopSpendableBalance(
-            requirement,
-            0,
-            (tx, vout, currentValue) => {
-                if (!this.isTxImmature(tx)) {
-                    return currentValue + vout.value;
-                } else if (includeImmature) {
-                    return currentValue + vout.value;
-                }
-                return currentValue;
-            }
-        );
-    }
-
     get balance() {
-        return this.#balances.balance.getOrUpdateInvalid(() => {
-            return this.#balanceInteral(
-                OutpointState.OURS | OutpointState.P2PKH
-            );
-        });
-    }
-
-    get coldBalance() {
-        return this.#balances.coldBalance.getOrUpdateInvalid(() => {
-            return this.#balanceInteral(
-                OutpointState.OURS | OutpointState.P2CS
-            );
-        });
+        return this.#mempool.getBalance(blockCount);
     }
 
     get immatureBalance() {
-        return this.#balances.immatureBalance.getOrUpdateInvalid(() => {
-            return (
-                this.#balanceInteral(OutpointState.OURS, true) -
-                this.balance -
-                this.coldBalance
-            );
-        });
+        return this.#mempool.getImmatureBalance(blockCount);
     }
 
-    /**
-     * @param {object} o - options
-     * @param {number} [o.requirement] - A requirement to apply to all UTXOs. For example
-     * `OutpointState.P2CS` will only return P2CS transactions.
-     * By default it's MAX_SAFE_INTEGER
-     * @param {boolean} [o.includeImmature] - If set to true immature UTXOs will be included
-     * @returns {UTXO[]} a list of unspent transaction outputs
-     */
-    getUTXOs({
-        requirement = 0,
-        includeImmature = false,
-        target = Number.POSITIVE_INFINITY,
-    } = {}) {
-        return this.#mempool.loopSpendableBalance(
-            requirement,
-            { utxos: [], bal: 0 },
-            (tx, vout, currentValue) => {
-                if (
-                    (!includeImmature && this.isTxImmature(tx)) ||
-                    (currentValue.bal >= (target * 11) / 10 &&
-                        currentValue.bal > 0)
-                ) {
-                    return currentValue;
-                }
-                const n = tx.vout.findIndex((element) => element === vout);
-                currentValue.utxos.push(
-                    new UTXO({
-                        outpoint: new COutpoint({ txid: tx.txid, n }),
-                        script: vout.script,
-                        value: vout.value,
-                    })
-                );
-                currentValue.bal += vout.value;
-                return currentValue;
-            }
-        ).utxos;
-    }
-
-    #invalidateBalance() {
-        this.#balances.immatureBalance.invalidate();
-        this.#balances.balance.invalidate();
-        this.#balances.coldBalance.invalidate();
-        getEventEmitter().emit('balance-update');
+    get coldBalance() {
+        return this.#mempool.getColdBalance(blockCount);
     }
 
     /**
@@ -1334,37 +1241,10 @@ export class Wallet {
     }
 }
 
-class CachableBalance {
-    /**
-     * @type {number}
-     * represents a cachable balance
-     */
-    value = -1;
-
-    isValid() {
-        return this.value != -1;
-    }
-    invalidate() {
-        this.value = -1;
-    }
-
-    /**
-     * Return the cached balance if it's valid, or re-compute and return.
-     * @param {Function} fn - function with which calculate the balance
-     * @returns {number} cached balance
-     */
-    getOrUpdateInvalid(fn) {
-        if (!this.isValid()) {
-            this.value = fn();
-        }
-        return this.value;
-    }
-}
-
 /**
  * @type{Wallet}
  */
-export const wallet = new Wallet({ nAccountL: 0 }); // For now we are using only the 0-th account, (TODO: update once account system is done)
+export const wallet = new Wallet({ nAccount: 0 }); // For now we are using only the 0-th account, (TODO: update once account system is done)
 
 /**
  * Clean a Seed Phrase string and verify it's integrity

@@ -22,6 +22,15 @@ export class Mempool {
     #txmap = new Map();
 
     /**
+     * Object containing balances of the wallet
+     */
+    #balances = {
+        balance: new CachableBalance(),
+        coldBalance: new CachableBalance(),
+        immatureBalance: new CachableBalance(),
+    };
+
+    /**
      * Add a transaction to the mempool
      * And mark the input as spent.
      * @param {import('./transaction.js').Transaction} tx
@@ -47,6 +56,7 @@ export class Mempool {
      */
     setOutpointStatus(outpoint, status) {
         this.#outpointStatus.set(outpoint.toUnique(), status);
+        this.invalidateBalanceCache();
     }
 
     /**
@@ -57,6 +67,7 @@ export class Mempool {
     addOutpointStatus(outpoint, status) {
         const oldStatus = this.#outpointStatus.get(outpoint.toUnique());
         this.#outpointStatus.set(outpoint.toUnique(), oldStatus | status);
+        this.invalidateBalanceCache();
     }
 
     /**
@@ -67,6 +78,7 @@ export class Mempool {
     removeOutpointStatus(outpoint, status) {
         const oldStatus = this.#outpointStatus.get(outpoint.toUnique());
         this.#outpointStatus.set(outpoint.toUnique(), oldStatus & ~status);
+        this.invalidateBalanceCache();
     }
 
     /**
@@ -160,10 +172,152 @@ export class Mempool {
     }
 
     /**
+     * @param {object} o - options
+     * @param {number} [o.requirement] - A requirement to apply to all UTXOs. For example
+     * `OutpointState.P2CS` will only return P2CS transactions.
+     * By default it's MAX_SAFE_INTEGER
+     * @param {boolean} [o.includeImmature] - If set to true immature UTXOs will be included
+     * @param {number} [o.blockCount] - Current number of blocks
+     * @returns {UTXO[]} a list of unspent transaction outputs
+     */
+    getUTXOs({
+        requirement = 0,
+        includeImmature = false,
+        target = Number.POSITIVE_INFINITY,
+        blockCount,
+    } = {}) {
+        return this.loopSpendableBalance(
+            requirement,
+            { utxos: [], bal: 0 },
+            (tx, vout, currentValue) => {
+                if (
+                    (!includeImmature && tx.isImmature(blockCount)) ||
+                    (currentValue.bal >= (target * 11) / 10 &&
+                        currentValue.bal > 0)
+                ) {
+                    return currentValue;
+                }
+                const n = tx.vout.findIndex((element) => element === vout);
+                currentValue.utxos.push(
+                    new UTXO({
+                        outpoint: new COutpoint({ txid: tx.txid, n }),
+                        script: vout.script,
+                        value: vout.value,
+                    })
+                );
+                currentValue.bal += vout.value;
+                return currentValue;
+            }
+        ).utxos;
+    }
+
+    #balanceInternal(requirement, blockCount, includeImmature = false) {
+        return this.loopSpendableBalance(
+            requirement,
+            0,
+            (tx, vout, currentValue) => {
+                if (!tx.isImmature(blockCount)) {
+                    return currentValue + vout.value;
+                } else if (includeImmature) {
+                    return currentValue + vout.value;
+                }
+                return currentValue;
+            }
+        );
+    }
+
+    invalidateBalanceCache() {
+        this.#balances.immatureBalance.invalidate();
+        this.#balances.balance.invalidate();
+        this.#balances.coldBalance.invalidate();
+        this.#emitBalanceUpdate();
+    }
+
+    #emittingBalanceUpdate = false;
+
+    #emitBalanceUpdate() {
+        if (this.#emittingBalanceUpdate) return;
+        this.#emittingBalanceUpdate = true;
+        // TODO: This is not ideal, we are limiting the mempool to only emit 1 balance-update per frame,
+        // but we don't want the mempool to know about animation frames. This is needed during
+        // sync to avoid spamming balance-updates and slowing down the sync.
+        // The best course of action is to probably add a loading page/state and avoid
+        // listening to the balance-update event until the sync is done
+        requestAnimationFrame(() => {
+            getEventEmitter().emit('balance-update');
+            this.#emittingBalanceUpdate = false;
+        });
+    }
+
+    /**
      * @returns {import('./transaction.js').Transaction[]} a list of all transactions
      */
     getTransactions() {
         return Array.from(this.#txmap.values());
+    }
+
+    /**
+     * @param blockCount - chain height
+     */
+    getBalance(blockCount) {
+        return this.#balances.balance.getOrUpdateInvalid(() => {
+            return this.#balanceInternal(
+                OutpointState.OURS | OutpointState.P2PKH,
+                blockCount
+            );
+        });
+    }
+
+    /**
+     * @param blockCount - chain height
+     */
+    getColdBalance(blockCount) {
+        return this.#balances.coldBalance.getOrUpdateInvalid(() => {
+            return this.#balanceInternal(
+                OutpointState.OURS | OutpointState.P2CS,
+                blockCount
+            );
+        });
+    }
+
+    /**
+     * @param blockCount - chain height
+     */
+    getImmatureBalance(blockCount) {
+        return this.#balances.immatureBalance.getOrUpdateInvalid(() => {
+            return (
+                this.#balanceInternal(OutpointState.OURS, blockCount, true) -
+                this.getBalance(blockCount) -
+                this.getColdBalance(blockCount)
+            );
+        });
+    }
+}
+
+class CachableBalance {
+    /**
+     * @type {number}
+     * represents a cachable balance
+     */
+    value = -1;
+
+    isValid() {
+        return this.value != -1;
+    }
+    invalidate() {
+        this.value = -1;
+    }
+
+    /**
+     * Return the cached balance if it's valid, or re-compute and return.
+     * @param {Function} fn - function with which calculate the balance
+     * @returns {number} cached balance
+     */
+    getOrUpdateInvalid(fn) {
+        if (!this.isValid()) {
+            this.value = fn();
+        }
+        return this.value;
     }
 }
 
