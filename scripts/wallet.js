@@ -1230,7 +1230,7 @@ export class Wallet {
         }
         const txs = await db.getTxs();
         for (const tx of txs) {
-            this.addTransaction(tx, true);
+            await this.addTransaction(tx, true);
         }
     }
 }
