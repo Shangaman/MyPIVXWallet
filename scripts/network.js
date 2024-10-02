@@ -113,16 +113,6 @@ export class ExplorerNetwork extends Network {
             block.txs = newTxs;
             return block;
         } catch (e) {
-            // Don't display block not found errors to user
-            // This is a bug with blockbook, where it sends a bad
-            // request error or newly minted blocks
-            if (
-                e.message.match(/block not found/i) ||
-                e.message.match(/safe fetch/) ||
-                e.message.match(/bad request/i)
-            ) {
-                return;
-            }
             throw e;
         }
     }
