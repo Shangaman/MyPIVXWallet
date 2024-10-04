@@ -734,14 +734,20 @@ export class Wallet {
                     let block;
                     block = await cNet.getBlock(blockHeights[i], true);
                     blocks[i] = block;
-                    // We need to process blocks monotically
+                    // We need to process blocks monotonically
                     // When we get a block, start from the first unhandled
                     // One and handle as many as possible
                     for (let j = handled; blocks[j]; j = handled) {
                         if (syncing) break;
                         syncing = true;
                         handled++;
-                        await this.#shield.handleBlock(blocks[j]);
+                        // Transactions belonging to the transparent wallet has already been added
+                        // in the initial transparent sync. Therefore, set allowOwn = false.
+                        await this.#handleBlock(
+                            blocks[j],
+                            blockHeights[j],
+                            false
+                        );
                         // Delete so we don't have to hold all blocks in memory
                         // until we finish syncing
                         delete blocks[j];
@@ -827,25 +833,7 @@ export class Wallet {
             ) {
                 try {
                     block = await cNet.getBlock(blockHeight);
-                    if (block.txs) {
-                        if (
-                            this.hasShield() &&
-                            blockHeight > this.#shield.getLastSyncedBlock()
-                        ) {
-                            await this.#shield.handleBlock(block);
-                        }
-                        for (const tx of block.txs) {
-                            const parsed = Transaction.fromHex(tx.hex);
-                            parsed.blockHeight = blockHeight;
-                            parsed.blockTime = tx.blocktime;
-                            // Avoid wasting memory on txs that do not regard our wallet
-                            if (this.ownTransaction(parsed)) {
-                                await this.addTransaction(parsed);
-                            }
-                        }
-                    } else {
-                        break;
-                    }
+                    await this.#handleBlock(block, blockHeight);
                     this.#lastProcessedBlock = blockHeight;
                 } catch (e) {
                     console.error(e);
@@ -1149,6 +1137,32 @@ export class Wallet {
         if (!skipDatabase) {
             const db = await Database.getInstance();
             await db.storeTx(transaction);
+        }
+    }
+
+    /**
+     * Handle the various transactions of a block
+     * @param block - block outputted from any PIVX node
+     * @param {number} blockHeight - the height of the block in the chain
+     * @param {boolean} allowOwn - whether to add transaction that satisfy ownTransaction()
+     */
+    async #handleBlock(block, blockHeight, allowOwn = true) {
+        let shieldTxs = [];
+        if (
+            this.hasShield() &&
+            blockHeight > this.#shield.getLastSyncedBlock()
+        ) {
+            shieldTxs = await this.#shield.handleBlock(block);
+        }
+        for (const tx of block.txs) {
+            const parsed = Transaction.fromHex(tx.hex);
+            parsed.blockHeight = blockHeight;
+            parsed.blockTime = tx.blocktime;
+            // Avoid wasting memory on txs that do not regard our wallet
+            const isOwned = allowOwn ? this.ownTransaction(parsed) : false;
+            if (isOwned || shieldTxs.includes(tx.hex)) {
+                await this.addTransaction(parsed);
+            }
         }
     }
 
