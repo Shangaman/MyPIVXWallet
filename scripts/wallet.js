@@ -620,20 +620,24 @@ export class Wallet {
     /**
      * Convert a list of Blockbook transactions to HistoricalTxs
      * @param {import('./transaction.js').Transaction[]} arrTXs - An array of the Blockbook TXs
-     * @returns {Array<HistoricalTx>} - A new array of `HistoricalTx`-formatted transactions
+     * @returns {Promise<Array<HistoricalTx>>} - A new array of `HistoricalTx`-formatted transactions
      */
-    // TODO: add shield data to txs
-    toHistoricalTXs(arrTXs) {
+    async toHistoricalTXs(arrTXs) {
         let histTXs = [];
         for (const tx of arrTXs) {
+            const { credit, ownAllVout } = this.#mempool.getCredit(tx);
+            const { debit, ownAllVin } = this.#mempool.getDebit(tx);
             // The total 'delta' or change in balance, from the Tx's sums
-            let nAmount =
-                (this.#mempool.getCredit(tx) - this.#mempool.getDebit(tx)) /
-                COIN;
+            let nAmount = (credit - debit) / COIN;
 
+            // Shielded data
+            const { shieldCredit, shieldDebit, arrShieldReceivers } =
+                await this.extractSaplingAmounts(tx);
+            const nShieldAmount = (shieldCredit - shieldDebit) / COIN;
+            const ownAllShield = shieldDebit - shieldCredit === tx.valueBalance;
             // The receiver addresses, if any
-            let arrReceivers = this.getOutAddress(tx);
-
+            let arrReceivers =
+                this.getOutAddress(tx).concat(arrShieldReceivers);
             const getFilteredCredit = (filter) => {
                 return tx.vout
                     .filter((_, i) => {
@@ -661,9 +665,9 @@ export class Wallet {
                     return addr[0] === cChainParams.current.STAKING_PREFIX;
                 });
                 nAmount = getFilteredCredit(OutpointState.P2CS) / COIN;
-            } else if (nAmount > 0) {
+            } else if (nAmount + nShieldAmount > 0) {
                 type = HistoricalTxType.RECEIVED;
-            } else if (nAmount < 0) {
+            } else if (nAmount + nShieldAmount < 0) {
                 type = HistoricalTxType.SENT;
             }
 
@@ -672,14 +676,53 @@ export class Wallet {
                     type,
                     tx.txid,
                     arrReceivers,
-                    false,
+                    tx.hasShieldData,
                     tx.blockTime,
                     tx.blockHeight,
-                    Math.abs(nAmount)
+                    nAmount,
+                    nShieldAmount,
+                    ownAllVin && ownAllVout && ownAllShield
                 )
             );
         }
         return histTXs;
+    }
+
+    /**
+     * Extract the sapling spent, received and shield addressed, regarding the wallet, from a tx
+     * @param {import('./transaction.js').Transaction} tx - a Transaction object
+     */
+    async extractSaplingAmounts(tx) {
+        let shieldCredit = 0;
+        let shieldDebit = 0;
+        let arrShieldReceivers = [];
+        if (!tx.hasShieldData || !wallet.hasShield()) {
+            return { shieldCredit, shieldDebit, arrShieldReceivers };
+        }
+
+        for (const shieldSpend of tx.shieldSpend) {
+            //TODO: find a better way to reverse and swap endianess
+            const stringArr = shieldSpend.nullifier.split('').reverse();
+            for (let i = 0; i < stringArr.length - 1; i += 2) {
+                const temp = stringArr[i + 1];
+                stringArr[i + 1] = stringArr[i];
+                stringArr[i] = temp;
+            }
+            const spentNote = this.#shield.getNoteFromNullifier(
+                stringArr.join('')
+            );
+            if (spentNote) {
+                shieldDebit += spentNote.value;
+            }
+        }
+        const myOutputNotes = await this.#shield.decryptTransactionOutputs(
+            tx.serialize()
+        );
+        for (const note of myOutputNotes) {
+            shieldCredit += note.value;
+            arrShieldReceivers.push(note.recipient);
+        }
+        return { shieldCredit, shieldDebit, arrShieldReceivers };
     }
     sync = lockableFunction(async () => {
         if (this.#isSynced) {
