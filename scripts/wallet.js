@@ -15,7 +15,13 @@ import { Database } from './database.js';
 import { RECEIVE_TYPES } from './contacts-book.js';
 import { Account } from './accounts.js';
 import { fAdvancedMode } from './settings.js';
-import { bytesToHex, hexToBytes, sleep, startBatch } from './utils.js';
+import {
+    bytesToHex,
+    hexToBytes,
+    reverseAndSwapEndianess,
+    sleep,
+    startBatch,
+} from './utils.js';
 import { strHardwareName } from './ledger.js';
 import { OutpointState, Mempool } from './mempool.js';
 import { getEventEmitter } from './event_bus.js';
@@ -701,16 +707,8 @@ export class Wallet {
         }
 
         for (const shieldSpend of tx.shieldSpend) {
-            //TODO: find a better way to reverse and swap endianess
-            const stringArr = shieldSpend.nullifier.split('').reverse();
-            for (let i = 0; i < stringArr.length - 1; i += 2) {
-                const temp = stringArr[i + 1];
-                stringArr[i + 1] = stringArr[i];
-                stringArr[i] = temp;
-            }
-            const spentNote = this.#shield.getNoteFromNullifier(
-                stringArr.join('')
-            );
+            const nullifier = reverseAndSwapEndianess(shieldSpend.nullifier);
+            const spentNote = this.#shield.getNoteFromNullifier(nullifier);
             if (spentNote) {
                 shieldDebit += spentNote.value;
             }
@@ -904,8 +902,8 @@ export class Wallet {
     );
 
     async #checkShieldSaplingRoot(networkSaplingRoot) {
-        const saplingRoot = bytesToHex(
-            hexToBytes(await this.#shield.getSaplingRoot()).reverse()
+        const saplingRoot = reverseAndSwapEndianess(
+            await this.#shield.getSaplingRoot()
         );
         // If explorer sapling root is different from ours, there must be a sync error
         if (saplingRoot !== networkSaplingRoot) {
