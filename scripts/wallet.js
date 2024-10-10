@@ -911,8 +911,7 @@ export class Wallet {
         if (saplingRoot !== networkSaplingRoot) {
             createAlert('warning', translation.badSaplingRoot, 5000);
             this.#mempool = new Mempool();
-            // TODO: take the wallet creation height in input from users
-            await this.#shield.reloadFromCheckpoint(4200000);
+            await this.#resetShield();
             await this.#transparentSync();
             await this.#syncShield();
             return false;
@@ -946,9 +945,23 @@ export class Wallet {
         if (!cAccount || cAccount.shieldData == '') {
             return;
         }
-        this.#shield = await PIVXShield.load(cAccount.shieldData);
+        const loadRes = await PIVXShield.load(cAccount.shieldData);
+        this.#shield = loadRes.pivxShield;
+        // Load operation was not successful!
+        // Provided data are not compatible with the latest PIVX shield version.
+        // Resetting the shield object is required
+        if (!loadRes.success) {
+            await this.#resetShield();
+        }
+
         getEventEmitter().emit('shield-loaded-from-disk');
         return;
+    }
+
+    async #resetShield() {
+        // TODO: take the wallet creation height in input from users
+        await this.#shield.reloadFromCheckpoint(4200000);
+        await this.saveShieldOnDisk();
     }
 
     /**
