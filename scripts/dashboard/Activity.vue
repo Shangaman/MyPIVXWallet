@@ -129,7 +129,9 @@ async function update(txToAdd = 0) {
             // Only compute rewards
             if (!tx.isCoinStake()) continue;
             // Aggregate the total rewards
-            rewardAmount.value += wallet.toHistoricalTXs([tx])[0].amount;
+            rewardAmount.value += (
+                await wallet.toHistoricalTXs([tx])
+            )[0].amount;
         }
         // Keep track of the scan block height
         if (orderedTxs.length) {
