@@ -642,8 +642,7 @@ export class Wallet {
             const nShieldAmount = (shieldCredit - shieldDebit) / COIN;
             const ownAllShield = shieldDebit - shieldCredit === tx.valueBalance;
             // The receiver addresses, if any
-            let arrReceivers =
-                this.getOutAddress(tx).concat(arrShieldReceivers);
+            let arrReceivers = this.getOutAddress(tx);
             const getFilteredCredit = (filter) => {
                 return tx.vout
                     .filter((_, i) => {
@@ -682,7 +681,7 @@ export class Wallet {
                     type,
                     tx.txid,
                     arrReceivers,
-                    tx.hasShieldData,
+                    arrShieldReceivers,
                     tx.blockTime,
                     tx.blockHeight,
                     nAmount,

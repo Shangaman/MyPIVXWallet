@@ -229,18 +229,8 @@ async function parseTXs(arrTXs) {
                 colour = descriptor.colour;
                 content = descriptor.content;
                 amountToShow = descriptor.amount;
-            } else if (
-                cTx.shieldedOutputs &&
-                cTx.type === HistoricalTxType.SENT
-            ) {
-                // We sent a shield note to someone, but we cannot decrypt the recipient
-                // So show a generic "Sent to shield address"
-                who = translation.activityShieldedAddress;
             } else {
-                const shieldAddresses = cTx.receivers.filter((addr) => {
-                    return isShieldAddress(addr);
-                });
-                const arrAddresses = cTx.receivers
+                let arrAddresses = cTx.receivers
                     .map((addr) => [wallet.isOwnAddress(addr), addr])
                     .filter(([isOwnAddress, _]) => {
                         return cTx.type === HistoricalTxType.RECEIVED
@@ -248,18 +238,27 @@ async function parseTXs(arrTXs) {
                             : !isOwnAddress;
                     })
                     .map(([_, addr]) => getNameOrAddress(cAccount, addr));
+                if (cTx.type == HistoricalTxType.RECEIVED) {
+                    arrAddresses = arrAddresses.concat(cTx.shieldReceivers);
+                }
                 who =
                     [
                         ...new Set(
-                            arrAddresses
-                                .concat(shieldAddresses)
-                                .map((addr) =>
-                                    addr?.length >= 32
-                                        ? addr?.substring(0, 6)
-                                        : addr
-                                )
+                            arrAddresses.map((addr) =>
+                                addr?.length >= 32
+                                    ? addr?.substring(0, 6)
+                                    : addr
+                            )
                         ),
                     ].join(', ') + '...';
+                if (
+                    cTx.type == HistoricalTxType.SENT &&
+                    arrAddresses.length == 0
+                ) {
+                    // We sent a shield note to someone, but we cannot decrypt the recipient
+                    // So show a generic "Sent to shield address"
+                    who = translation.activityShieldedAddress;
+                }
             }
             content = content.replace(/{.}/, who);
         }
