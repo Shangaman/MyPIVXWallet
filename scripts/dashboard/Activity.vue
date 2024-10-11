@@ -2,17 +2,16 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { getNetwork } from '../network.js';
 import { wallet } from '../wallet.js';
-import { COIN, cChainParams } from '../chain_params.js';
+import { cChainParams } from '../chain_params.js';
 import { translation } from '../i18n.js';
 import { Database } from '../database.js';
 import { HistoricalTx, HistoricalTxType } from '../historical_tx.js';
 import { getNameOrAddress } from '../contacts-book.js';
 import { getEventEmitter } from '../event_bus';
-import { beautifyNumber, isShieldAddress } from '../misc';
 
 import iCheck from '../../assets/icons/icon-check.svg';
 import iHourglass from '../../assets/icons/icon-hourglass.svg';
-import { blockCount, optimiseCurrencyLocale } from '../global.js';
+import { blockCount } from '../global.js';
 
 const props = defineProps({
     title: String,
