@@ -40,7 +40,7 @@ import { guiToggleReceiveType } from './contacts-book.js';
 import { TransactionBuilder } from './transaction_builder.js';
 import { createAlert } from './alerts/alert.js';
 import { AsyncInterval } from './async_interval.js';
-import { debugError, DebugTopics } from './debug.js';
+import { debugError, debugLog, DebugTopics } from './debug.js';
 
 /**
  * Class Wallet, at the moment it is just a "realization" of Masterkey with a given nAccount
@@ -977,6 +977,10 @@ export class Wallet {
         // Provided data are not compatible with the latest PIVX shield version.
         // Resetting the shield object is required
         if (!loadRes.success) {
+            debugLog(
+                DebugTopics.WALLET,
+                'Shield backup is not compatible with latest library version'
+            );
             await this.#resetShield();
         }
 
