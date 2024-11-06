@@ -178,8 +178,8 @@ class NetworkManager {
         }
     }
 
-    async getTxInfo(_txHash) {
-        return await this.#retryWrapper('getTxInfo', false, _txHash);
+    async getTxInfo(txHash) {
+        return await this.#retryWrapper('getTxInfo', false, txHash);
     }
 
     /**

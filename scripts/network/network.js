@@ -41,23 +41,23 @@ export class Network {
         }
     }
 
-    async getBlock(blockHeight) {
+    async getBlock(_blockHeight) {
         throw new Error('getBlockCount must be implemented');
     }
 
-    async getTxPage(nStartHeight, addr, n) {
+    async getTxPage(_nStartHeight, _addr, _n) {
         throw new Error('getTxPage must be implemented');
     }
 
-    async getNumPages(nStartHeight, addr) {
+    async getNumPages(_nStartHeight, _addr) {
         throw new Error('getNumPages must be implemented');
     }
 
-    async getUTXOs(strAddress) {
+    async getUTXOs(_strAddress) {
         throw new Error('getUTXOs must be implemented');
     }
 
-    async getXPubInfo(strXPUB) {
+    async getXPubInfo(_strXPUB) {
         throw new Error('getXPubInfo must be implemented');
     }
 
@@ -73,7 +73,7 @@ export class Network {
         throw new Error('getBestBlockHash must be implemented');
     }
 
-    async sendTransaction(hex) {
+    async sendTransaction(_hex) {
         throw new Error('sendTransaction must be implemented');
     }
 
@@ -93,7 +93,7 @@ export class Network {
         throw new Error('getNextSuperblock must be implemented');
     }
 
-    async startMasternode(broadcastMsg) {
+    async startMasternode(_broadcastMsg) {
         throw new Error('startMasternode must be implemented');
     }
 
