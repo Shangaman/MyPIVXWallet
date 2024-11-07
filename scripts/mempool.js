@@ -124,7 +124,7 @@ export class Mempool {
         const debit = filteredVin
             .map((i) => this.outpointToUTXO(i.outpoint))
             .reduce((acc, u) => acc + (u?.value || 0), 0);
-        const ownAllVin = tx.vin.length == filteredVin.length;
+        const ownAllVin = tx.vin.length === filteredVin.length;
         return { debit, ownAllVin };
     }
 
@@ -145,7 +145,7 @@ export class Mempool {
                 ) & OutpointState.OURS
         );
         const credit = filteredVout.reduce((acc, u) => acc + u?.value ?? 0, 0);
-        const ownAllVout = tx.vout.length == filteredVout.length;
+        const ownAllVout = tx.vout.length === filteredVout.length;
         return {
             credit,
             ownAllVout,
