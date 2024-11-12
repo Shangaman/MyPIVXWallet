@@ -758,8 +758,8 @@ export class Wallet {
         // This is done to avoid a huge spam of event.
         getEventEmitter().disableEvent('balance-update');
 
-        await this.loadFromDisk();
         await this.loadShieldFromDisk();
+        await this.loadFromDisk();
         // Let's set the last processed block 5 blocks behind the actual chain tip
         // This is just to be sure since blockbook (as we know)
         // usually does not return txs of the actual last block.
