@@ -101,6 +101,10 @@ export class Network {
         throw new Error('getProposals must be implemented');
     }
 
+    async getShieldData(_initialBlock = 0) {
+        throw new Error('getShieldData must be implemented');
+    }
+
     async getProposalVote(_proposalName, _collateralTxId, _outidx) {
         throw new Error('getProposalVote must be implemented');
     }
@@ -200,7 +204,7 @@ export class RPCNodeNetwork extends Network {
         // Use Nodes as a fallback
         let strTXID = await this.#callRPC(
             '/sendrawtransaction?params=' + hex,
-            true
+            'text'
         );
         strTXID = strTXID.replace(/"/g, '');
         return { result: strTXID };
@@ -315,6 +319,14 @@ export class RPCNodeNetwork extends Network {
             )},${monthlyPayment},${txid}`,
             true
         );
+    }
+
+    async getShieldData(startBlock) {
+        const res = await this.#fetchNode(
+            `/getshielddata?startBlock=${startBlock}`
+        );
+        if (!res.ok) throw new Error('Invalid response');
+        return res;
     }
 }
 
