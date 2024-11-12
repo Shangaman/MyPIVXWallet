@@ -12,6 +12,7 @@ import { getEventEmitter } from '../event_bus';
 import iCheck from '../../assets/icons/icon-check.svg';
 import iHourglass from '../../assets/icons/icon-hourglass.svg';
 import { blockCount } from '../global.js';
+import { beautifyNumber } from '../misc.js';
 
 const props = defineProps({
     title: String,
@@ -265,11 +266,14 @@ async function parseTXs(arrTXs) {
         // Format the amount to reduce text size
         let formattedAmt = '';
         if (amountToShow < 0.01) {
-            formattedAmt = '<0.01';
+            formattedAmt = beautifyNumber('0.01', '13px');
         } else if (amountToShow >= 100) {
-            formattedAmt = Math.round(amountToShow).toString();
+            formattedAmt = beautifyNumber(
+                Math.round(amountToShow).toString(),
+                '13px'
+            );
         } else {
-            formattedAmt = amountToShow.toFixed(2);
+            formattedAmt = beautifyNumber(`${amountToShow.toFixed(2)}`, '13px');
         }
 
         newTxs.push({
