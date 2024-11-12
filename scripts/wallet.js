@@ -41,6 +41,7 @@ import { TransactionBuilder } from './transaction_builder.js';
 import { createAlert } from './alerts/alert.js';
 import { AsyncInterval } from './async_interval.js';
 import { debugError, debugLog, DebugTopics } from './debug.js';
+import { OrderedArray } from './ordered_array.js';
 
 /**
  * Class Wallet, at the moment it is just a "realization" of Masterkey with a given nAccount
@@ -107,9 +108,11 @@ export class Wallet {
     #lastProcessedBlock = 0;
     /**
      * Array of historical txs, ordered by block height
-     * @type HistoricalTx[]
+     * @type OrderedArray<HistoricalTx>
      */
-    #historicalTxs;
+    #historicalTxs = new OrderedArray(
+        (hTx1, hTx2) => hTx1.blockHeight >= hTx2.blockHeight
+    );
 
     constructor({ nAccount, masterKey, shield, mempool = new Mempool() }) {
         this.#nAccount = nAccount;
@@ -259,7 +262,7 @@ export class Wallet {
         }
         this.#mempool = new Mempool();
         this.#lastProcessedBlock = 0;
-        this.#historicalTxs = [];
+        this.#historicalTxs.clear();
     }
 
     /**
@@ -737,26 +740,15 @@ export class Wallet {
      * @param {Transaction} tx
      */
     async #pushToHistoricalTx(tx) {
-        const historicalTx = (await this.toHistoricalTXs([tx]))[0];
-        let prevHeight = Number.POSITIVE_INFINITY;
-        for (const [i, hTx] of this.#historicalTxs.entries()) {
-            if (
-                historicalTx.blockHeight <= prevHeight &&
-                historicalTx.blockHeight >= hTx.blockHeight
-            ) {
-                this.#historicalTxs.splice(i, 0, historicalTx);
-                return;
-            }
-            prevHeight = hTx.blockHeight;
-        }
-        this.#historicalTxs.push(historicalTx);
+        const hTx = (await this.toHistoricalTXs([tx]))[0];
+        this.#historicalTxs.insert(hTx);
     }
 
     /**
      * @returns {HistoricalTx[]}
      */
     getHistoricalTxs() {
-        return this.#historicalTxs;
+        return this.#historicalTxs.get();
     }
     sync = lockableFunction(async () => {
         if (this.#isSynced) {
@@ -1255,10 +1247,11 @@ export class Wallet {
             const db = await Database.getInstance();
             await db.storeTx(transaction);
         }
-        if (!tx || tx.blockHeight === -1) {
-            // Do not add unconfirmed txs to history
-            if (transaction.blockHeight !== -1)
-                await this.#pushToHistoricalTx(transaction);
+        if (tx && tx.blockHeight !== -1) {
+            this.#historicalTxs.remove((hTx) => hTx.id === tx.txid);
+            await this.#pushToHistoricalTx(transaction);
+        } else if (transaction.blockHeight !== -1) {
+            await this.#pushToHistoricalTx(transaction);
         }
     }
 

@@ -342,7 +342,7 @@ defineExpose({ update, reset, getTxCount });
                 ></span>
             </span>
 
-            <div class="scrollTable">
+            <div class="scrollTable" data-testid="activity">
                 <div>
                     <table
                         class="table table-responsive table-sm stakingTx table-mobile-scroll"
@@ -442,6 +442,7 @@ defineExpose({ update, reset, getTxCount });
                     <button
                         v-if="!isHistorySynced"
                         class="pivx-button-medium"
+                        data-testid="activityLoadMore"
                         @click="update(10)"
                     >
                         <span class="buttoni-icon"
