@@ -221,7 +221,7 @@ async function parseTXs(arrTXs) {
         const match = content.match(/{(.)}/);
         if (match) {
             let who = '';
-            if (cTx.isToSelf) {
+            if (cTx.isToSelf && cTx.type !== HistoricalTxType.DELEGATION) {
                 who = translation.activitySelf;
                 const descriptor = txSelfMap(cTx.amount, cTx.shieldAmount);
                 icon = descriptor.icon;
