@@ -268,6 +268,7 @@ function reset() {
     txs.value = [];
     txCount = 0;
     nRewardUpdateHeight = 0;
+    rewardAmount.value = 0;
     update(0);
 }
 
