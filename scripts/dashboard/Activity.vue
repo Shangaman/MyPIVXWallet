@@ -143,9 +143,6 @@ async function parseTXs(arrTXs) {
         minute: '2-digit',
         hour12: true,
     };
-    // And also keep track of our last Tx's timestamp, to re-use a cache, which is much faster than the slow `.toLocaleDateString`
-    let prevDateString = '';
-    let prevTimestamp = 0;
     const cDB = await Database.getInstance();
     const cAccount = await cDB.getAccount();
 
@@ -154,29 +151,11 @@ async function parseTXs(arrTXs) {
         // If this Tx is older than 24h, then hit the `Date` cache logic, otherwise, use a `Time` and skip it
         let strDate =
             Date.now() / 1000 - cTx.time > 86400
-                ? ''
+                ? dateTime.toLocaleDateString(undefined, dateOptions)
                 : dateTime.toLocaleTimeString(undefined, timeOptions);
-        if (!strDate) {
-            if (
-                prevDateString &&
-                prevTimestamp - cTx.time * 1000 < 12 * 60 * 60 * 1000
-            ) {
-                // Use our date cache
-                strDate = prevDateString;
-            } else {
-                // Create a new date, this Tx is too old to use the cache
-                prevDateString = dateTime.toLocaleDateString(
-                    undefined,
-                    dateOptions
-                );
-                strDate = prevDateString;
-            }
-        }
         if (cTx.blockHeight === -1) {
             strDate = 'Pending';
         }
-        // Update the time cache
-        prevTimestamp = cTx.time * 1000;
 
         // Coinbase Transactions (rewards) require coinbaseMaturity confs
         let fConfirmed =
