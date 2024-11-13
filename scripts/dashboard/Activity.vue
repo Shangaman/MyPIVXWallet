@@ -250,14 +250,6 @@ function getTxCount() {
     return txCount;
 }
 
-getEventEmitter().on(
-    'transparent-sync-status-update',
-    (i, totalPages, done) => done && update()
-);
-getEventEmitter().on(
-    'shield-sync-status-update',
-    (blocks, totalBlocks, done) => done && update()
-);
 onMounted(() => update());
 
 defineExpose({ update, reset, getTxCount, updateReward });

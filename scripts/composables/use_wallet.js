@@ -115,7 +115,6 @@ export const useWallet = defineStore('wallet', () => {
             if (res) {
                 // Don't add unconfirmed txs to the database
                 await wallet.addTransaction(tx, true);
-                getEventEmitter().emit('new-tx');
             } else {
                 wallet.discardTransaction(tx);
             }
