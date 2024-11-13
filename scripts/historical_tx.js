@@ -9,14 +9,10 @@ export class HistoricalTx {
      * @param {Array<string>} shieldReceivers - The list of decrypted 'shield output addresses'.
      * @param {number} time - The block time of the transaction.
      * @param {number} blockHeight - The block height of the transaction.
-<<<<<<< HEAD
      * @param {number} amount - The transparent amount transacted, in coins.
      * @param {number} shieldAmount - The shielded amount transacted, in coins.
      * @param {boolean} isToSelf - If the transaction is to self.
      * @param {boolean} isConfirmed - Whether the transaction has been confirmed.
-=======
-     * @param {number} amount - The amount transacted, in coins.
->>>>>>> upstream/master
      */
     constructor(
         type,
