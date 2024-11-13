@@ -24,7 +24,6 @@ let txCount = 0;
 const updating = ref(false);
 const isHistorySynced = ref(false);
 const rewardAmount = ref(0);
-let nRewardUpdateHeight = 0;
 const ticker = computed(() => cChainParams.current.TICKER);
 const network = useNetwork();
 function getActivityUrl(tx) {
@@ -70,6 +69,15 @@ const txMap = computed(() => {
     };
 });
 
+function updateReward() {
+    if (!props.rewards) return;
+    let res = 0;
+    for (const tx of wallet.getHistoricalTxs()) {
+        if (tx.type !== HistoricalTxType.STAKE) continue;
+        res += tx.amount;
+    }
+    rewardAmount.value = res;
+}
 async function update(txToAdd = 0) {
     // Return if wallet is not synced yet
     if (!wallet.isSynced) {
@@ -87,22 +95,6 @@ async function update(txToAdd = 0) {
     if (txCount < 10 && txToAdd == 0) txToAdd = 10;
 
     const historicalTxs = wallet.getHistoricalTxs();
-
-    // For Rewards: aggregate the total amount
-    if (props.rewards) {
-        for (const tx of historicalTxs) {
-            // If this Tx Height is under our last scanned height, we stop
-            if (tx.blockHeight <= nRewardUpdateHeight) break;
-            // Only compute rewards
-            if (tx.type != HistoricalTxType.STAKE) continue;
-            // Aggregate the total rewards
-            rewardAmount.value += tx.amount;
-        }
-        // Keep track of the scan block height
-        if (historicalTxs.length) {
-            nRewardUpdateHeight = historicalTxs[0].blockHeight;
-        }
-    }
 
     let i = 0;
     let found = 0;
@@ -250,7 +242,6 @@ const rewardsText = computed(() => {
 function reset() {
     txs.value = [];
     txCount = 0;
-    nRewardUpdateHeight = 0;
     rewardAmount.value = 0;
     update(0);
 }
@@ -269,7 +260,7 @@ getEventEmitter().on(
 );
 onMounted(() => update());
 
-defineExpose({ update, reset, getTxCount });
+defineExpose({ update, reset, getTxCount, updateReward });
 </script>
 
 <template>
