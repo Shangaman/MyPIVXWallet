@@ -104,9 +104,15 @@ export class Wallet {
      * Array of historical txs, ordered by block height
      * @type OrderedArray<HistoricalTx>
      */
-    #historicalTxs = new OrderedArray(
-        (hTx1, hTx2) => hTx1.blockHeight >= hTx2.blockHeight
-    );
+    #historicalTxs = new OrderedArray((hTx1, hTx2) => {
+        if (hTx1.blockHeight === -1) {
+            return hTx1;
+        }
+        if (hTx2.blockHeight === -1) {
+            return hTx2;
+        }
+        return hTx1.blockHeight >= hTx2.blockHeight;
+    });
 
     constructor({ nAccount, masterKey, shield, mempool = new Mempool() }) {
         this.#nAccount = nAccount;
@@ -1265,12 +1271,10 @@ export class Wallet {
             await db.storeTx(transaction);
         }
 
-        if (tx && tx.blockHeight !== -1) {
+        if (tx) {
             this.#historicalTxs.remove((hTx) => hTx.id === tx.txid);
-            this.#pushToHistoricalTx(transaction);
-        } else if (transaction.blockHeight !== -1) {
-            this.#pushToHistoricalTx(transaction);
         }
+        this.#pushToHistoricalTx(transaction);
     }
 
     /**

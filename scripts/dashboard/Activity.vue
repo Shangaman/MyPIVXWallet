@@ -172,15 +172,19 @@ async function parseTXs(arrTXs) {
                 strDate = prevDateString;
             }
         }
+        if (cTx.blockHeight === -1) {
+            strDate = 'Pending';
+        }
         // Update the time cache
         prevTimestamp = cTx.time * 1000;
 
         // Coinbase Transactions (rewards) require coinbaseMaturity confs
-        const fConfirmed =
+        let fConfirmed =
+            cTx.blockHeight > 0 &&
             blockCount - cTx.blockHeight >=
-            (cTx.type === HistoricalTxType.STAKE
-                ? cChainParams.current.coinbaseMaturity
-                : 6);
+                (cTx.type === HistoricalTxType.STAKE
+                    ? cChainParams.current.coinbaseMaturity
+                    : 6);
 
         // Choose the content type, for the Dashboard; use a generative description, otherwise, a TX-ID
         // let txContent = props.rewards ? cTx.id : 'Block Reward';
