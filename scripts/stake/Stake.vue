@@ -37,6 +37,8 @@ getEventEmitter().on('toggle-network', updateColdStakingAddress);
 getEventEmitter().on('new-tx', () => {
     activity?.value?.update();
 });
+getEventEmitter().on('reset-activity', () => activity?.value?.reset());
+
 onMounted(updateColdStakingAddress);
 
 watch(coldStakingAddress, async (coldStakingAddress) => {
