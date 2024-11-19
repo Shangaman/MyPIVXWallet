@@ -895,7 +895,7 @@ export class Wallet {
                     // This is neither a block or a tx.
                     throw new Error('Failed to parse shield binary');
                 }
-                if (blocksArray.length > 1000) {
+                if (blocksArray.length > 50) {
                     await handleAllBlocks();
                 }
             }
