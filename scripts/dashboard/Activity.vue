@@ -24,7 +24,6 @@ let txCount = 0;
 const updating = ref(false);
 const isHistorySynced = ref(false);
 const rewardAmount = ref(0);
-let nRewardUpdateHeight = 0;
 const ticker = computed(() => cChainParams.current.TICKER);
 const network = useNetwork();
 function getActivityUrl(tx) {
@@ -103,6 +102,16 @@ function txSelfMap(amount, shieldAmount) {
     }
 }
 
+function updateReward() {
+    if (!props.rewards) return;
+    let res = 0;
+    for (const tx of wallet.getHistoricalTxs()) {
+        if (tx.type !== HistoricalTxType.STAKE) continue;
+        res += tx.amount;
+    }
+    rewardAmount.value = res;
+}
+
 async function update(txToAdd = 0) {
     // Return if wallet is not synced yet
     if (!wallet.isSynced) {
@@ -120,22 +129,6 @@ async function update(txToAdd = 0) {
     if (txCount < 10 && txToAdd == 0) txToAdd = 10;
 
     const historicalTxs = wallet.getHistoricalTxs();
-
-    // For Rewards: aggregate the total amount
-    if (props.rewards) {
-        for (const tx of historicalTxs) {
-            // If this Tx Height is under our last scanned height, we stop
-            if (tx.blockHeight <= nRewardUpdateHeight) break;
-            // Only compute rewards
-            if (tx.type != HistoricalTxType.STAKE) continue;
-            // Aggregate the total rewards
-            rewardAmount.value += tx.amount;
-        }
-        // Keep track of the scan block height
-        if (historicalTxs.length) {
-            nRewardUpdateHeight = historicalTxs[0].blockHeight;
-        }
-    }
 
     let i = 0;
     let found = 0;
@@ -166,56 +159,58 @@ async function parseTXs(arrTXs) {
     const newTxs = [];
 
     // Prepare time formatting
-    const dateOptions = {
-        year: '2-digit',
-        month: '2-digit',
-        day: '2-digit',
-    };
     const timeOptions = {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true,
     };
-    // And also keep track of our last Tx's timestamp, to re-use a cache, which is much faster than the slow `.toLocaleDateString`
-    let prevDateString = '';
-    let prevTimestamp = 0;
+    const dateOptions = {
+        month: 'short',
+        day: 'numeric',
+    };
+    const yearOptions = {
+        month: 'short',
+        day: 'numeric',
+        year: '2-digit',
+    };
     const cDB = await Database.getInstance();
     const cAccount = await cDB.getAccount();
 
+    const cDate = new Date();
     for (const cTx of arrTXs) {
-        const dateTime = new Date(cTx.time * 1000);
-        // If this Tx is older than 24h, then hit the `Date` cache logic, otherwise, use a `Time` and skip it
-        let strDate =
-            Date.now() / 1000 - cTx.time > 86400
-                ? ''
-                : dateTime.toLocaleTimeString(undefined, timeOptions);
-        if (!strDate) {
-            if (
-                prevDateString &&
-                prevTimestamp - cTx.time * 1000 < 12 * 60 * 60 * 1000
-            ) {
-                // Use our date cache
-                strDate = prevDateString;
+        const cTxDate = new Date(cTx.time * 1000);
+
+        // Unconfirmed Txs are simply 'Pending'
+        let strDate = 'Pending';
+        if (cTx.blockHeight !== -1) {
+            // Check if it was today (same day, month and year)
+            const fToday =
+                cTxDate.getDate() === cDate.getDate() &&
+                cTxDate.getMonth() === cDate.getMonth() &&
+                cTxDate.getFullYear() === cDate.getFullYear();
+
+            // Figure out the most convenient time display for this Tx
+            if (fToday) {
+                // TXs made today are displayed by time (02:13 pm)
+                strDate = cTxDate.toLocaleTimeString(undefined, timeOptions);
+            } else if (cTxDate.getFullYear() === cDate.getFullYear()) {
+                // TXs older than today are displayed by short date (18 Nov)
+                strDate = cTxDate.toLocaleDateString(undefined, dateOptions);
             } else {
-                // Create a new date, this Tx is too old to use the cache
-                prevDateString = dateTime.toLocaleDateString(
-                    undefined,
-                    dateOptions
-                );
-                strDate = prevDateString;
+                // TXs in previous years are displayed by their short date and year (18 Nov 2023)
+                strDate = cTxDate.toLocaleDateString(undefined, yearOptions);
             }
         }
-        // Update the time cache
-        prevTimestamp = cTx.time * 1000;
 
         let amountToShow = Math.abs(cTx.amount + cTx.shieldAmount);
 
         // Coinbase Transactions (rewards) require coinbaseMaturity confs
-        const fConfirmed =
+        let fConfirmed =
+            cTx.blockHeight > 0 &&
             blockCount - cTx.blockHeight >=
-            (cTx.type === HistoricalTxType.STAKE
-                ? cChainParams.current.coinbaseMaturity
-                : 6);
+                (cTx.type === HistoricalTxType.STAKE
+                    ? cChainParams.current.coinbaseMaturity
+                    : 6);
 
         // Take the icon, colour and content based on the type of the transaction
         let { icon, colour, content } = txMap.value[cTx.type];
@@ -299,7 +294,7 @@ const rewardsText = computed(() => {
 function reset() {
     txs.value = [];
     txCount = 0;
-    nRewardUpdateHeight = 0;
+    rewardAmount.value = 0;
     update(0);
 }
 
@@ -307,17 +302,9 @@ function getTxCount() {
     return txCount;
 }
 
-getEventEmitter().on(
-    'transparent-sync-status-update',
-    (i, totalPages, done) => done && update()
-);
-getEventEmitter().on(
-    'shield-sync-status-update',
-    (blocks, totalBlocks, done) => done && update()
-);
 onMounted(() => update());
 
-defineExpose({ update, reset, getTxCount });
+defineExpose({ update, reset, getTxCount, updateReward });
 </script>
 
 <template>
