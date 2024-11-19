@@ -1311,7 +1311,7 @@ export class Wallet {
         for (const tx of block.txs) {
             const parsed = Transaction.fromHex(tx.hex);
             parsed.blockHeight = blockHeight;
-            parsed.blockTime = block.mediantime;
+            parsed.blockTime = block.time;
             // Avoid wasting memory on txs that do not regard our wallet
             const isOwned = allowOwn ? this.ownTransaction(parsed) : false;
             if (isOwned || shieldTxs.includes(tx.hex)) {
