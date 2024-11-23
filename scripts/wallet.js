@@ -983,6 +983,9 @@ export class Wallet {
                 await this.#getLatestBlocks(block);
                 // Invalidate the balance cache to keep immature balance updated
                 this.#mempool.invalidateBalanceCache();
+                // Emit a new-tx signal to update the Activity.
+                // Otherwise, unconfirmed txs would not get updated
+                getEventEmitter().emit('new-tx');
             }
         });
     }
