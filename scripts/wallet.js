@@ -60,7 +60,20 @@ export class Wallet {
      * See https://github.com/bitcoin/bips/blob/master/bip-0048.mediawiki for more info
      * (Change paragraph)
      */
-    static chains = 2;
+    static Chains = {
+        EXTERNAL: 0,
+        INTERNAL: 1,
+    };
+
+    /**
+     * @param {(x: number) => void} fn
+     */
+    #iterChains(fn) {
+        for (let i in Wallet.Chains) {
+            let chain = Wallet.Chains[i];
+            fn(chain);
+        }
+    }
     /**
      * @type {import('./masterkey.js').MasterKey?}
      */
@@ -131,10 +144,11 @@ export class Wallet {
         this.#mempool = mempool;
         this.#masterKey = masterKey;
         this.#shield = shield;
-        for (let i = 0; i < Wallet.chains; i++) {
-            this.#highestUsedIndices.set(i, 0);
-            this.#loadedIndexes.set(i, 0);
-        }
+        this.#iterChains((chain) => {
+            this.#highestUsedIndices.set(chain, 0);
+            this.#loadedIndexes.set(chain, 0);
+            this.#addressIndices.set(chain, 0);
+        });
         this.#subscribeToNetworkEvents();
     }
 
@@ -232,7 +246,9 @@ export class Wallet {
         if (extsk) await this.setExtsk(extsk);
         if (isNewAcc) {
             this.reset();
-            for (let i = 0; i < Wallet.chains; i++) this.#loadAddresses(i);
+            this.#iterChains((chain) => {
+                this.#loadAddresses(chain);
+            });
         }
     }
 
@@ -267,23 +283,24 @@ export class Wallet {
         this.#isSynced = false;
         this.#shield = null;
         this.#addressIndices = new Map();
-        for (let i = 0; i < Wallet.chains; i++) {
-            this.#highestUsedIndices.set(i, 0);
-            this.#loadedIndexes.set(i, 0);
-            this.#addressIndices.set(i, 0);
-        }
+        this.#iterChains((chain) => {
+            this.#highestUsedIndices.set(chain, 0);
+            this.#loadedIndexes.set(chain, 0);
+            this.#addressIndices.set(chain, 0);
+        });
         this.#mempool = new Mempool();
         this.#lastProcessedBlock = 0;
         this.#historicalTxs.clear();
     }
 
     /**
-     * Derive the current address (by internal index)
+     * Derive the current external address
      * @return {string} Address
      *
      */
     getCurrentAddress() {
-        return this.#getAddress(0, this.#addressIndices.get(0));
+        const ext = Wallet.Chains.EXTERNAL;
+        return this.#getAddress(ext, this.#addressIndices.get(ext));
     }
 
     /**
@@ -291,10 +308,10 @@ export class Wallet {
      */
     #updateCurrentAddress() {
         // No need to update the change address, as it is only handled internally by the wallet.
-        const last = this.#highestUsedIndices.get(0);
-        const curr = this.#addressIndices.get(0);
+        const last = this.#highestUsedIndices.get(Wallet.Chains.EXTERNAL);
+        const curr = this.#addressIndices.get(Wallet.Chains.EXTERNAL);
         if (curr <= last) {
-            this.#addressIndices.set(0, last + 1);
+            this.#addressIndices.set(Wallet.Chains.EXTERNAL, last + 1);
         }
     }
 
@@ -302,7 +319,7 @@ export class Wallet {
      * Derive a generic address (given nReceiving and nIndex)
      * @return {string} Address
      */
-    #getAddress(nReceiving = 0, nIndex = 0) {
+    #getAddress(nReceiving, nIndex) {
         const path = this.#getDerivationPath(nReceiving, nIndex);
         return this.#masterKey.getAddress(path);
     }
@@ -319,7 +336,7 @@ export class Wallet {
      * Derive xpub (given nReceiving and nIndex)
      * @return {string} Address
      */
-    getXPub(nReceiving = 0, nIndex = 0) {
+    getXPub(nReceiving = Wallet.Chains.EXTERNAL, nIndex = 0) {
         // Get our current wallet XPub
         const derivationPath = this.#getDerivationPath(nReceiving, nIndex)
             .split('/')
@@ -395,7 +412,7 @@ export class Wallet {
     /**
      * @return {[string, string]} Address and its BIP32 derivation path
      */
-    getNewAddress(nReceiving = 0) {
+    getNewAddress(nReceiving = Wallet.Chains.EXTERNAL) {
         const last = this.#highestUsedIndices.get(nReceiving);
         const curr = this.#addressIndices.get(nReceiving);
         this.#addressIndices.set(nReceiving, Math.max(curr, last) + 1);
@@ -419,7 +436,7 @@ export class Wallet {
      * @returns {string}
      */
     getNewChangeAddress() {
-        return this.getNewAddress(1)[0];
+        return this.getNewAddress(Wallet.Chains.INTERNAL)[0];
     }
 
     /**
@@ -494,7 +511,7 @@ export class Wallet {
     /**
      * @return {String} BIP32 path or null if it's not your address
      */
-    #getDerivationPath(nReceiving = 0, nIndex = 0) {
+    #getDerivationPath(nReceiving, nIndex) {
         return this.#masterKey.getDerivationPath(
             this.#nAccount,
             nReceiving,
@@ -666,74 +683,68 @@ export class Wallet {
 
     /**
      * Convert a list of Blockbook transactions to HistoricalTxs
-     * @param {import('./transaction.js').Transaction[]} arrTXs - An array of the Blockbook TXs
-     * @returns {Promise<Array<HistoricalTx>>} - A new array of `HistoricalTx`-formatted transactions
+     * @param {import('./transaction.js').Transaction} tx - A  Transaction
+     * @returns {Promise<HistoricalTx>} - The corresponding `HistoricalTx`- formatted transaction
      */
-    async #toHistoricalTXs(arrTXs) {
-        let histTXs = [];
-        for (const tx of arrTXs) {
-            const { credit, ownAllVout } = this.#mempool.getCredit(tx);
-            const { debit, ownAllVin } = this.#mempool.getDebit(tx);
-            // The total 'delta' or change in balance, from the Tx's sums
-            let nAmount = (credit - debit) / COIN;
+    async #toHistoricalTX(tx) {
+        const { credit, ownAllVout } = this.#mempool.getCredit(tx);
+        const { debit, ownAllVin } = this.#mempool.getDebit(tx);
+        // The total 'delta' or change in balance, from the Tx's sums
+        let nAmount = (credit - debit) / COIN;
 
-            // Shielded data
-            const { shieldCredit, shieldDebit, arrShieldReceivers } =
-                await this.#extractSaplingAmounts(tx);
-            const nShieldAmount = (shieldCredit - shieldDebit) / COIN;
-            const ownAllShield = shieldDebit - shieldCredit === tx.valueBalance;
-            // The receiver addresses, if any
-            let arrReceivers = this.#getOutAddress(tx);
-            const getFilteredCredit = (filter) => {
-                return tx.vout
-                    .filter((_, i) => {
-                        const status = this.#mempool.getOutpointStatus(
-                            new COutpoint({
-                                txid: tx.txid,
-                                n: i,
-                            })
-                        );
-                        return status & filter && status & OutpointState.OURS;
-                    })
-                    .reduce((acc, o) => acc + o.value, 0);
-            };
+        // Shielded data
+        const { shieldCredit, shieldDebit, arrShieldReceivers } =
+            await this.#extractSaplingAmounts(tx);
+        const nShieldAmount = (shieldCredit - shieldDebit) / COIN;
+        const ownAllShield = shieldDebit - shieldCredit === tx.valueBalance;
+        // The receiver addresses, if any
+        let arrReceivers = this.#getOutAddress(tx);
+        const getFilteredCredit = (filter) => {
+            return tx.vout
+                .filter((_, i) => {
+                    const status = this.#mempool.getOutpointStatus(
+                        new COutpoint({
+                            txid: tx.txid,
+                            n: i,
+                        })
+                    );
+                    return status & filter && status & OutpointState.OURS;
+                })
+                .reduce((acc, o) => acc + o.value, 0);
+        };
 
-            // Figure out the type, based on the Tx's properties
-            let type = HistoricalTxType.UNKNOWN;
-            if (tx.isCoinStake()) {
-                type = HistoricalTxType.STAKE;
-            } else if (tx.isProposalFee()) {
-                type = HistoricalTxType.PROPOSAL_FEE;
-            } else if (this.#checkForUndelegations(tx)) {
-                type = HistoricalTxType.UNDELEGATION;
-                nAmount = getFilteredCredit(OutpointState.P2PKH) / COIN;
-            } else if (this.#checkForDelegations(tx)) {
-                type = HistoricalTxType.DELEGATION;
-                arrReceivers = arrReceivers.filter((addr) => {
-                    return addr[0] === cChainParams.current.STAKING_PREFIX;
-                });
-                nAmount = getFilteredCredit(OutpointState.P2CS) / COIN;
-            } else if (nAmount + nShieldAmount > 0) {
-                type = HistoricalTxType.RECEIVED;
-            } else if (nAmount + nShieldAmount < 0) {
-                type = HistoricalTxType.SENT;
-            }
-
-            histTXs.push(
-                new HistoricalTx(
-                    type,
-                    tx.txid,
-                    arrReceivers,
-                    arrShieldReceivers,
-                    tx.blockTime,
-                    tx.blockHeight,
-                    nAmount,
-                    nShieldAmount,
-                    ownAllVin && ownAllVout && ownAllShield
-                )
-            );
+        // Figure out the type, based on the Tx's properties
+        let type = HistoricalTxType.UNKNOWN;
+        if (tx.isCoinStake()) {
+            type = HistoricalTxType.STAKE;
+        } else if (tx.isProposalFee()) {
+            type = HistoricalTxType.PROPOSAL_FEE;
+        } else if (this.#checkForUndelegations(tx)) {
+            type = HistoricalTxType.UNDELEGATION;
+            nAmount = getFilteredCredit(OutpointState.P2PKH) / COIN;
+        } else if (this.#checkForDelegations(tx)) {
+            type = HistoricalTxType.DELEGATION;
+            arrReceivers = arrReceivers.filter((addr) => {
+                return addr[0] === cChainParams.current.STAKING_PREFIX;
+            });
+            nAmount = getFilteredCredit(OutpointState.P2CS) / COIN;
+        } else if (nAmount + nShieldAmount > 0) {
+            type = HistoricalTxType.RECEIVED;
+        } else if (nAmount + nShieldAmount < 0) {
+            type = HistoricalTxType.SENT;
         }
-        return histTXs;
+
+        return new HistoricalTx(
+            type,
+            tx.txid,
+            arrReceivers,
+            arrShieldReceivers,
+            tx.blockTime,
+            tx.blockHeight,
+            nAmount,
+            nShieldAmount,
+            ownAllVin && ownAllVout && ownAllShield
+        );
     }
 
     /**
@@ -768,7 +779,7 @@ export class Wallet {
      * @param {Transaction} tx
      */
     async #pushToHistoricalTx(tx) {
-        const hTx = (await this.#toHistoricalTXs([tx]))[0];
+        const hTx = await this.#toHistoricalTX(tx);
         this.#historicalTxs.insert(hTx);
     }
 
